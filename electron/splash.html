@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Khởi động KTX DUE Desktop</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #001f3f 0%, #003366 50%, #004080 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      user-select: none;
+      overflow: hidden;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 16px;
+      padding: 36px 44px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      max-width: 520px;
+      width: 90%;
+    }
+    .badge {
+      display: inline-block;
+      background: #f59e0b;
+      color: #111827;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      margin-bottom: 16px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    h1 {
+      font-size: 20px;
+      margin: 0 0 8px 0;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.3;
+    }
+    p.subtitle {
+      font-size: 13px;
+      color: #cbd5e1;
+      margin: 0 0 24px 0;
+      line-height: 1.4;
+    }
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+      margin: 0 auto 20px auto;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .status {
+      font-size: 13px;
+      color: #93c5fd;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    .hint {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .footer {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 11px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">BPMN 2.0 TO-BE &bull; NHÓM 4</div>
+    <h1>HỆ THỐNG KÝ TÚC XÁ ĐH KINH TẾ ĐÀ NẴNG</h1>
+    <p class="subtitle">Ứng dụng Quản lý Tuyển sinh Nội trú Độc lập (MIS3047)</p>
+    <div class="spinner"></div>
+    <div class="status" id="status-text">Đang kết nối máy chủ nội bộ (port 3000)...</div>
+    <div class="hint">Hệ thống đang sẵn sàng cơ sở dữ liệu và AI Vision...</div>
+    <div class="footer">Trường Đại học Kinh tế &ndash; Đại học Đà Nẵng (DUE)</div>
+  </div>
+</body>
+</html>
