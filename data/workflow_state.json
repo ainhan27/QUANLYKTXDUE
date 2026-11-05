@@ -1,0 +1,22 @@
+{
+  "currentStep": 9,
+  "isRankingsFinalized": true,
+  "isPublished": true,
+  "assignedRoom": "Phòng 301 - Khu A (4 người)",
+  "roundName": "Đợt 1 Tuyển sinh KTX DUE 2026-2027",
+  "directorDirectives": [
+    {
+      "type": "PHE_DUYET",
+      "title": "Trưởng Ban KTX Đã Ký Duyệt Quyết Định B2 – Chuyển QLSV Phát Hành Email",
+      "message": "Trưởng ban Quản lý KTX đã ký quyết định phê duyệt danh sách chính thức (B2). Hệ thống AI đã soạn sẵn 120 email trúng tuyển kèm Hợp đồng điện tử. Đề nghị Cán bộ QLSV kiểm tra các dự thảo và bấm xác nhận phát hành gửi đến cho toàn bộ sinh viên.",
+      "sender": "ThS. Nguyễn Văn Quản – Trưởng Ban Quản lý KTX",
+      "id": "dir-1793530657881",
+      "created_at": "2026-11-01T10:57:37.881Z",
+      "is_read": false
+    }
+  ],
+  "isSigned": true,
+  "publishedAt": "2026-11-01T10:57:40.220Z",
+  "signDeadline": "2026-11-04T10:57:40.220Z",
+  "signedAt": "2026-11-01T10:57:47.574Z"
+}
