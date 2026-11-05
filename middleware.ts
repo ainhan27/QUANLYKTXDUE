@@ -1,10 +1,8 @@
 // ==============================================================================
 // NEXT.JS 14 MIDDLEWARE: KIỂM SOÁT PHÂN QUYỀN TRUY CẬP THEO VAI TRÒ (4 ROLES)
 // ==============================================================================
-
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
-
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
