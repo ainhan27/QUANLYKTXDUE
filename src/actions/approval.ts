@@ -619,16 +619,51 @@ export async function withdrawApplicationByApplicantAction(studentCode: string, 
   try {
     const { getAllStoredApplications, saveApplicationToStore, saveNotificationToStore } = await import('@/lib/data/live-store');
     const stored = getAllStoredApplications();
-    const app = stored.find((x) => x.ma_sv === studentCode || x.id === studentCode);
+    let app = stored.find((x) => x.ma_sv === studentCode || x.id === studentCode);
+
+    // Fallback sang Supabase Cloud nếu chưa có trong bộ nhớ cục bộ
+    if (!app && process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      try {
+        const { createAdminClient } = await import('@/lib/supabase/admin');
+        const supabaseAdmin = createAdminClient();
+        const { data: dbApp } = await supabaseAdmin
+          .from('applications')
+          .select('*')
+          .or(`ma_sv.eq.${studentCode},id.eq.${studentCode}`)
+          .maybeSingle();
+        if (dbApp) {
+          app = dbApp;
+        }
+      } catch (err) {
+        console.warn('Lỗi đọc Supabase trong withdraw action:', err);
+      }
+    }
 
     if (!app) {
-      return { success: false, message: 'Không tìm thấy hồ sơ sinh viên' };
+      return { success: false, message: 'Không tìm thấy hồ sơ sinh viên: ' + studentCode };
     }
 
     const cancelReason = reason || 'Người đề nghị (sinh viên) chủ động rút hồ sơ / hủy yêu cầu đăng ký nội trú';
     app.status = 'HUY_SUAT';
     app.ghi_chu_ly_do = `HỦY THEO YÊU CẦU CỦA NGƯỜI ĐỀ NGHỊ: ${cancelReason}`;
     saveApplicationToStore(app);
+
+    // Đồng bộ trực tiếp vào Supabase Cloud
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      try {
+        const { createAdminClient } = await import('@/lib/supabase/admin');
+        const supabaseAdmin = createAdminClient();
+        await supabaseAdmin
+          .from('applications')
+          .update({
+            status: 'HUY_SUAT',
+            ghi_chu_ly_do: `HỦY THEO YÊU CẦU CỦA NGƯỜI ĐỀ NGHỊ: ${cancelReason}`,
+          })
+          .or(`ma_sv.eq.${studentCode},id.eq.${studentCode}`);
+      } catch (sbErr) {
+        console.warn('Lỗi cập nhật Supabase trong withdraw action:', sbErr);
+      }
+    }
 
     // Gửi thông báo xác nhận hủy hồ sơ đến sinh viên
     saveNotificationToStore({
@@ -838,7 +873,7 @@ export async function sendSupplementRequestAction(params: {
       ? `<div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
           <div style="background-color: #003366; color: white; padding: 20px; text-align: center;">
             <h2 style="margin: 0; font-size: 18px; letter-spacing: 0.5px;">TRƯỜNG ĐẠI HỌC KINH TẾ – ĐH ĐÀ NẴNG (DUE)</h2>
-            <p style="margin: 6px 0 0; font-size: 13px; color: #FFB800; font-weight: bold;">BAN QUẢN LÝ KÝ TÚC XÁ – YÊU CẦU BỔ SUNG MINH CHỨNG (TASK TR)</p>
+            <p style="margin: 6px 0 0; font-size: 13px; color: #FFB800; font-weight: bold;">BAN QUẢN LÝ KÝ TÚC XÁ – YÊU CẦU BỔ SUNG MINH CHỨNG (HẠN 48 GIỜ)</p>
           </div>
           <div style="padding: 24px; color: #1e293b; line-height: 1.6; white-space: pre-line;">
             ${emailBody.replace(/\n/g, '<br/>')}
@@ -869,7 +904,7 @@ export async function sendSupplementRequestAction(params: {
 
     return {
       success: true,
-      message: `Đã gửi email (Msg_YCBS) thành công tới sinh viên ${studentName} (${targetEmail})! Hồ sơ đã chuyển sang trạng thái CẦN BỔ SUNG (Hạn chót: 48h).`,
+      message: `Đã gửi email yêu cầu bổ sung thành công tới sinh viên ${studentName} (${targetEmail})! Hồ sơ đã chuyển sang trạng thái CẦN BỔ SUNG (Hạn chót: 48h).`,
       emailId: emailRes.messageId,
     };
   } catch (error: unknown) {
@@ -881,7 +916,7 @@ export async function sendSupplementRequestAction(params: {
 }
 
 // ==============================================================================
-// BƯỚC 5: CÁN BỘ QLSV DUYỆT ĐẠT MINH CHỨNG (CỘNG ĐIỂM ƯU TIÊN & CẬP NHẬT THỨ HẠNG SP3)
+// BƯỚC 5: CÁN BỘ QLSV DUYỆT ĐẠT MINH CHỨNG (CỘNG ĐIỂM ƯU TIÊN & CẬP NHẬT THỨ HẠNG)
 // ==============================================================================
 export async function approveEvidenceAction(applicationId: string, studentCode?: string, bonusPoints?: number) {
   try {
@@ -889,11 +924,30 @@ export async function approveEvidenceAction(applicationId: string, studentCode?:
     const { PRIORITY_POLICY_POINTS } = await import('@/lib/constants/workflow');
 
     const list = getAllStoredApplications();
-    const app = list.find((x) => x.id === applicationId || (studentCode && x.ma_sv === studentCode));
+    let app = list.find((x) => x.id === applicationId || (studentCode && x.ma_sv === studentCode));
 
-    let awardedPoints = bonusPoints ?? 35;
+    if (!app && process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      try {
+        const { createAdminClient } = await import('@/lib/supabase/admin');
+        const supabaseAdmin = createAdminClient();
+        const { data: dbApp } = await supabaseAdmin
+          .from('applications')
+          .select('*')
+          .or(`id.eq.${applicationId},ma_sv.eq.${studentCode || applicationId}`)
+          .maybeSingle();
+        if (dbApp) {
+          app = dbApp;
+        }
+      } catch (err) {
+        console.warn('Lỗi đọc Supabase trong approveEvidenceAction:', err);
+      }
+    }
+
+    let awardedPoints = bonusPoints ?? (app?.dien_uu_tien === 'KHONG' ? 0 : 35);
     if (app) {
-      if (!bonusPoints) {
+      if (app.dien_uu_tien === 'KHONG' || app.dien_uu_tien_label?.toLowerCase().includes('không')) {
+        awardedPoints = 0;
+      } else if (!bonusPoints) {
         const policyPts = PRIORITY_POLICY_POINTS[app.dien_uu_tien]?.points;
         if (policyPts && policyPts > 0) {
           awardedPoints = policyPts;
@@ -964,7 +1018,7 @@ export async function approveEvidenceAction(applicationId: string, studentCode?:
     return {
       success: true,
       awardedPoints,
-      message: `Cán bộ QLSV đã xác nhận minh chứng ĐẠT! Đã cộng +${awardedPoints} điểm ưu tiên cho sinh viên ${app?.ho_ten || studentCode}. Thứ hạng trên Bảng xếp hạng (SP3) đã được tự động cập nhật tăng lên.`,
+      message: `Cán bộ QLSV đã xác nhận minh chứng ĐẠT! Đã cộng +${awardedPoints} điểm ưu tiên cho sinh viên ${app?.ho_ten || studentCode}. Thứ hạng trên Bảng xếp hạng tuyển sinh đã được tự động cập nhật tăng lên.`,
     };
   } catch (error: unknown) {
     return {
@@ -988,7 +1042,25 @@ export async function submitSupplementEvidenceAction(params: {
     const { analyzeEvidenceWithGemini } = await import('@/services/ai-vision');
 
     const list = getAllStoredApplications();
-    const app = list.find((x) => x.ma_sv === studentCode);
+    let app = list.find((x) => x.ma_sv === studentCode || x.id === studentCode);
+
+    if (!app && process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      try {
+        const { createAdminClient } = await import('@/lib/supabase/admin');
+        const supabaseAdmin = createAdminClient();
+        const { data: dbApp } = await supabaseAdmin
+          .from('applications')
+          .select('*')
+          .or(`ma_sv.eq.${studentCode},id.eq.${studentCode}`)
+          .maybeSingle();
+        if (dbApp) {
+          app = dbApp;
+        }
+      } catch (err) {
+        console.warn('Lỗi đọc Supabase trong submitSupplementEvidenceAction:', err);
+      }
+    }
+
     if (!app) {
       return { success: false, message: 'Không tìm thấy hồ sơ của sinh viên: ' + studentCode };
     }
@@ -1013,11 +1085,14 @@ export async function submitSupplementEvidenceAction(params: {
     const isAutoApproved = confidence >= 0.95 && aiAnalysis.decision === 'THAM_DINH_DAT';
 
     const { PRIORITY_POLICY_POINTS } = await import('@/lib/constants/workflow');
-    let awardedPoints = 35;
-    const policyPts = PRIORITY_POLICY_POINTS[app.dien_uu_tien]?.points;
-    if (policyPts && policyPts > 0) {
-      awardedPoints = policyPts;
-    } else if (
+    let awardedPoints = app?.dien_uu_tien === 'KHONG' ? 0 : 35;
+    if (app?.dien_uu_tien === 'KHONG' || app?.dien_uu_tien_label?.toLowerCase().includes('không')) {
+      awardedPoints = 0;
+    } else {
+      const policyPts = PRIORITY_POLICY_POINTS[app.dien_uu_tien]?.points;
+      if (policyPts && policyPts > 0) {
+        awardedPoints = policyPts;
+      } else if (
       app.dien_uu_tien_label?.toLowerCase().includes('liệt sĩ') ||
       app.dien_uu_tien_label?.toLowerCase().includes('thương binh')
     ) {
@@ -1032,6 +1107,7 @@ export async function submitSupplementEvidenceAction(params: {
     } else if (app.diem_uu_tien > 0) {
       awardedPoints = app.diem_uu_tien;
     }
+  }
 
     app.cccd_image_base64 = cccdImg;
     if (priorityImg) app.priority_image_base64 = priorityImg;

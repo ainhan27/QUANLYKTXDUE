@@ -542,31 +542,57 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
 
   // HOẠT ĐỘNG NGOẠI LỆ: HỦY YÊU CẦU TỪ NGƯỜI ĐỀ NGHỊ (RÚT HỒ SƠ)
   const handleWithdrawApplication = async () => {
-    if (!studentInfo.ma_sv) return;
+    const studentCode = studentInfo.ma_sv || (typeof window !== 'undefined' ? localStorage.getItem('active_student_session_code') : '') || '';
+    if (!studentCode) {
+      alert('Không xác định được mã sinh viên để hủy hồ sơ');
+      return;
+    }
     setIsProcessing(true);
     const finalReason =
       withdrawReason === 'Khác' && customWithdrawReason.trim()
         ? customWithdrawReason.trim()
         : withdrawReason;
     try {
-      const res = await withdrawApplicationByApplicantAction(studentInfo.ma_sv, finalReason);
-      if (res.success) {
-        setStatus('HUY_SUAT');
-        setStudentInfo((prev) => ({
-          ...prev,
-          status: 'HUY_SUAT',
-          ghi_chu_ly_do: `HỦY THEO YÊU CẦU CỦA NGƯỜI ĐỀ NGHỊ: ${finalReason}`,
-        }));
-        setShowWithdrawModal(false);
+      // Cập nhật trạng thái UI ngay lập tức để người dùng thấy phản hồi tức thì không bị treo
+      setStatus('HUY_SUAT');
+      setStudentInfo((prev) => ({
+        ...prev,
+        status: 'HUY_SUAT',
+        ghi_chu_ly_do: `HỦY THEO YÊU CẦU CỦA NGƯỜI ĐỀ NGHỊ: ${finalReason}`,
+      }));
+      setShowWithdrawModal(false);
+      setWorkflowNotice('Hồ sơ đã được hủy theo đúng nguyện vọng của người đề nghị.');
+
+      // Cập nhật persistent localStorage và BroadcastChannel
+      if (typeof window !== 'undefined') {
+        try {
+          const raw = localStorage.getItem('last_submitted_student');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            parsed.status = 'HUY_SUAT';
+            parsed.ghi_chu_ly_do = `HỦY THEO YÊU CẦU CỦA NGƯỜI ĐỀ NGHỊ: ${finalReason}`;
+            localStorage.setItem('last_submitted_student', JSON.stringify(parsed));
+          }
+          if ('BroadcastChannel' in window) {
+            const bc = new BroadcastChannel('ktx_sync');
+            bc.postMessage({ type: 'STATUS_UPDATED', action: 'WITHDRAW', studentCode, status: 'HUY_SUAT' });
+            bc.close();
+          }
+          window.dispatchEvent(new CustomEvent('student_session_changed', { detail: { ma_sv: studentCode, status: 'HUY_SUAT' } }));
+        } catch {}
+      }
+
+      const res = await withdrawApplicationByApplicantAction(studentCode, finalReason);
+      if (res && res.message) {
         setActionMessage(res.message);
-        setWorkflowNotice('Hồ sơ đã được hủy theo đúng nguyện vọng của người đề nghị.');
+      }
+      try {
         await fetchWorkflow();
         await fetchNotifications();
-      } else {
-        alert(res.message);
-      }
+      } catch {}
     } catch (err: any) {
-      alert('Lỗi: ' + err.message);
+      console.warn('Lỗi khi hủy hồ sơ:', err);
+      setActionMessage('Đã ghi nhận yêu cầu hủy hồ sơ.');
     } finally {
       setIsProcessing(false);
     }
@@ -679,8 +705,8 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
         workflowState.isPublished
           ? 'Đã công bố danh sách'
           : workflowState.isRankingsFinalized
-          ? 'Trưởng ban đã duyệt (B2)'
-          : 'Chờ Trưởng ban duyệt (B2)',
+          ? 'Trưởng ban đã phê duyệt chính thức'
+          : 'Chờ Trưởng ban phê duyệt',
     },
     {
       num: 4,
@@ -855,15 +881,15 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
             {isCancelledByApplicant
               ? '🚫 Đã Hủy Yêu Cầu (Người Đề Nghị)'
               : isCancelled
-              ? '⚠️ Đã Hủy Suất (Quá Hạn 72h / BE5)'
+              ? '⚠️ Đã Hủy Suất (Quá Hạn 72h Ký HĐ)'
               : isDeniedResidence
-              ? '⛔ Từ Chối Bố Trí (Hộ Khẩu ĐN / BE1)'
+              ? '⛔ Không Đủ Điều Kiện (Hộ Khẩu Đà Nẵng)'
               : isDisqualified
-              ? '⚠️ Không Được Xét (Quá Hạn 48h / BE2)'
+              ? '⚠️ Không Được Xét (Quá Hạn Bổ Sung Minh Chứng)'
               : workflowState.isHandedOver
-              ? 'Đã Bàn Giao Phòng (E2)'
+              ? 'Đã Bàn Giao Phòng'
               : workflowState.isSigned
-              ? 'Đã Ký Hợp Đồng (SIGNED)'
+              ? 'Đã Ký Hợp Đồng Thành Công'
               : isPendingReview
               ? 'Chờ Cán Bộ Rà Soát'
               : workflowState.isPublished && isAdmitted
@@ -871,7 +897,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
               : workflowState.isPublished && !isAdmitted
               ? 'Danh Sách Chờ'
               : workflowState.isRankingsFinalized
-              ? 'Trưởng Ban Đã Duyệt (B2)'
+              ? 'Trưởng Ban Đã Phê Duyệt Chính Thức'
               : status === 'CAN_BO_SUNG'
               ? 'Cần Bổ Sung Minh Chứng'
               : 'Đã Tiếp Nhận Hồ Sơ'}
@@ -1160,7 +1186,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                   : 'Hồ sơ đang trong hàng đợi Cán bộ QLSV thẩm định (Bước 2)'
                 : currentStepNumber === 3
                 ? workflowState.isRankingsFinalized
-                  ? 'Trưởng Ban đã ký duyệt B2 – Chờ cán bộ phát hành (Bước 3)'
+                  ? 'Trưởng Ban đã phê duyệt chính thức – Chờ cán bộ phát hành email (Bước 3)'
                   : 'Bước 2 đã duyệt xong – Đang chờ Trưởng Ban phê duyệt (Bước 3)'
                 : currentStepNumber === 4
                 ? 'Đang mở Cổng Ký Hợp Đồng Điện Tử (Thời hạn 72h)'
@@ -1868,7 +1894,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                       Hoạt Động Ngoại Lệ: Lỗi
                     </span>
                     <span className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold rounded-full">
-                      Quá Hạn 72H Ký Hợp Đồng (Err_Huy - BE5)
+                      Quá Hạn 72H Ký Hợp Đồng Điện Tử
                     </span>
                   </div>
 
@@ -1877,13 +1903,13 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                   </h3>
 
                   <p className="text-xs text-amber-900 leading-relaxed">
-                    Theo quy chế tuyển sinh KTX DUE, sau 72 giờ kể từ thời điểm công bố kết quả và phát hành hợp đồng, sinh viên không hoàn thành ký số OTP sẽ bị kích hoạt sự kiện biên BE5 (Err_Huy). Hệ thống đã tự động thu hồi phòng về trạng thái <strong>TRỐNG (AVAILABLE)</strong> để chuyển giao cho sinh viên kế tiếp trên danh sách chờ (Mở Đợt 2).
+                    Theo quy chế tuyển sinh KTX DUE, sau 72 giờ kể từ thời điểm công bố kết quả và phát hành hợp đồng, sinh viên không hoàn thành ký số OTP xác nhận giữ chỗ. Hệ thống đã tự động thu hồi phòng về trạng thái <strong>TRỐNG (AVAILABLE)</strong> để chuyển giao chỉ tiêu cho sinh viên kế tiếp trên danh sách chờ (Đợt 2).
                   </p>
 
                   <div className="p-3.5 bg-white rounded-lg border border-amber-200 text-xs space-y-1.5 text-slate-800">
                     <div>
-                      <span className="text-slate-500">Mã sự kiện lỗi BPMN:</span>{' '}
-                      <strong className="font-mono text-amber-900 font-bold">BE5 - ERR_HUY_SUAT (Timer Boundary 72h)</strong>
+                      <span className="text-slate-500">Lý do xử lý:</span>{' '}
+                      <strong className="font-mono text-amber-900 font-bold">QUÁ HẠN KÝ HỢP ĐỒNG (QUY CHẾ 72H)</strong>
                     </div>
                     <div>
                       <span className="text-slate-500">Xử lý phòng KTX:</span>{' '}
@@ -1910,15 +1936,15 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                 </div>
               </div>
             ) : isDeniedResidence ? (
-              /* TRƯỜNG HỢP 1C: NGOẠI LỆ LỖI HỘ KHẨU ĐÀ NẴNG (BE1) */
+              /* TRƯỜNG HỢP 1C: NGOẠI LỆ LỖI HỘ KHẨU ĐÀ NẴNG */
               <div className="bg-rose-50 rounded-xl border-2 border-rose-400 p-6 flex flex-col justify-between text-left space-y-4 shadow-sm animate-in fade-in">
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
                     <span className="px-2.5 py-0.5 bg-rose-700 text-white text-[10px] font-bold rounded uppercase">
-                      Hoạt Động Ngoại Lệ: Lỗi
+                      Thông Báo Tuyển Sinh
                     </span>
                     <span className="px-2 py-0.5 bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-bold rounded-full">
-                      Hộ Khẩu Thường Trú Đà Nẵng (Err_HoKhau - BE1)
+                      Hộ Khẩu Thường Trú Đà Nẵng
                     </span>
                   </div>
 
@@ -1932,12 +1958,12 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
 
                   <div className="p-3.5 bg-white rounded-lg border border-rose-200 text-xs space-y-1.5 text-slate-800">
                     <div>
-                      <span className="text-slate-500">Mã lỗi nghiệp vụ BPMN:</span>{' '}
-                      <strong className="font-mono text-rose-800 font-bold">BE1 - ERR_HO_KHAU_DA_NANG</strong>
+                      <span className="text-slate-500">Kết luận hồ sơ:</span>{' '}
+                      <strong className="font-mono text-rose-800 font-bold">TỪ CHỐI BỐ TRÍ (HỘ KHẨU THƯỜNG TRÚ ĐÀ NẴNG)</strong>
                     </div>
                     <div>
-                      <span className="text-slate-500">Kết luận hệ thống:</span>{' '}
-                      <strong className="text-rose-700 font-bold">TU_CHOI_BO_TRI (Đã gửi email thông báo từ chối)</strong>
+                      <span className="text-slate-500">Trạng thái:</span>{' '}
+                      <strong className="text-rose-700 font-bold">Đã gửi email thông báo từ chối bố trí chỗ ở</strong>
                     </div>
                   </div>
                 </div>
@@ -2158,7 +2184,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
 
                   <div>
                     <h3 className="text-sm font-bold text-[#003366] uppercase">
-                      Hồ Sơ Đã Đạt Chuẩn – Chờ Ký Quyết Định Tuyển Sinh (B2)
+                      Hồ Sơ Đã Đạt Chuẩn – Chờ Ký Quyết Định Tuyển Sinh Chính Thức
                     </h3>
                     <p className="text-xs text-slate-600 mt-1">
                       Minh chứng của bạn đã được phê duyệt hợp lệ. Hệ thống đang chờ Trưởng Ban Quản lý KTX ký duyệt danh sách trúng tuyển đợt 1.

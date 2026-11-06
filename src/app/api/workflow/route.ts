@@ -106,12 +106,51 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, count: apps.length });
     }
 
+    if (action === 'approve_evidence') {
+      const { applicationId, studentCode, points } = body;
+      const pts = Number(points) || 35;
+      const { getAllStoredApplications, saveApplicationToStore } = await import('@/lib/data/live-store');
+      const apps = getAllStoredApplications();
+      const target = apps.find((a) => a.id === applicationId || (studentCode && a.ma_sv === studentCode));
+      if (target) {
+        target.status = 'THAM_DINH_DAT';
+        target.diem_uu_tien = pts;
+        saveApplicationToStore(target);
+      }
+
+      if (
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id') &&
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      ) {
+        try {
+          const { createAdminClient } = await import('@/lib/supabase/admin');
+          const supabase = createAdminClient();
+          if (studentCode) {
+            await supabase
+              .from('applications')
+              .update({ status: 'THAM_DINH_DAT', diem_uu_tien: pts })
+              .or(`id.eq.${applicationId},ma_sv.eq.${studentCode}`);
+          } else {
+            await supabase
+              .from('applications')
+              .update({ status: 'THAM_DINH_DAT', diem_uu_tien: pts })
+              .eq('id', applicationId);
+          }
+        } catch (e) {
+          console.warn('Lỗi cập nhật Supabase trong approve_evidence:', e);
+        }
+      }
+
+      return NextResponse.json({ success: true, message: 'Đã lưu quyết định duyệt vào database' });
+    }
+
     if (action === 'return_to_officer') {
-      // XOR 3: Trưởng ban gửi thông báo trả về điều chỉnh cho Cán bộ QLSV
+      // Trưởng ban gửi thông báo trả về điều chỉnh cho Cán bộ QLSV
       const reason = body.reason || 'Trưởng ban KTX yêu cầu bộ phận QLSV rà soát điều chỉnh lại cơ cấu chỉ tiêu và hồ sơ minh chứng.';
       const updated = addDirectorDirectiveToStore({
         type: 'TRA_VE',
-        title: 'Trưởng Ban KTX Yêu Cầu Điều Chỉnh Danh Sách (XOR 3)',
+        title: 'Trưởng Ban KTX Yêu Cầu Cán Bộ Rà Soát Điều Chỉnh Danh Sách',
         message: reason,
         sender: 'ThS. Nguyễn Văn Quản – Trưởng Ban Quản lý KTX',
       });

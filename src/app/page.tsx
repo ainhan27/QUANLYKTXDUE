@@ -412,7 +412,7 @@ export default function HomePage() {
                 </div>
                 <h4 className="text-base font-bold text-slate-900">Thu Hồi Quá Hạn 72h &amp; Mở Đợt 2</h4>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Xử lý sự kiện BE5 Err_Huy khi sinh viên không ký hợp đồng đúng hạn, hoàn phòng về AVAILABLE và mời danh sách chờ.
+                  Tự động xử lý khi sinh viên không ký hợp đồng đúng hạn 72 giờ, thu hồi và hoàn trả phòng về trạng thái TRỐNG để mời danh sách chờ (Đợt 2).
                 </p>
               </div>
               <Link

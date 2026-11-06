@@ -432,6 +432,27 @@ export async function analyzeCccdImage(
 ): Promise<CccdAnalysisResult> {
   const cleanBase64 = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
 
+  // KIỂM TRA TÍNH TOÀN VẸN CỦA TỆP ẢNH CCCD TRƯỚC KHI XỬ LÝ
+  const isImageCorrupt = !cleanBase64 || cleanBase64 === 'undefined' || cleanBase64 === 'null' || cleanBase64.length < 100;
+  if (isImageCorrupt) {
+    return {
+      is_valid: false,
+      has_cccd_keywords: false,
+      has_police_chief_keyword: false,
+      extracted_name: studentName,
+      extracted_cccd: citizenId,
+      extracted_gender: 'Nữ',
+      name_matched: false,
+      cccd_matched: false,
+      matched_fields: [],
+      mismatched_fields: ['Tệp ảnh CCCD bị lỗi, đường dẫn hỏng hoặc không tải được'],
+      confidence: 0.0,
+      detected_text: '[LỖI TỆP ẢNH]: Dữ liệu ảnh CCCD bị hỏng hoặc đường dẫn không hợp lệ.',
+      notes: 'Tệp ảnh CCCD không tải được hoặc bị hỏng đường dẫn. Đã chặn tự động duyệt.',
+      requires_red_stamp: false,
+    };
+  }
+
   // A. Thử gọi Gemini nếu có key
   if (apiKey && apiKey.length > 20 && !apiKey.includes('AIzaSy...')) {
     try {
@@ -510,6 +531,25 @@ Trả về JSON: { "is_valid": boolean, "name_matched": boolean, "cccd_matched":
     const cleanDigits = citizenId.replace(/\D/g, '');
     const isCccdFormatValid = cleanDigits.length >= 9;
     const scannedGender = extractGenderFromCccd(citizenId, '');
+
+    if (!isImageValid || !isCccdFormatValid) {
+      return {
+        is_valid: false,
+        has_cccd_keywords: false,
+        has_police_chief_keyword: false,
+        extracted_name: studentName,
+        extracted_cccd: citizenId,
+        extracted_gender: scannedGender,
+        name_matched: false,
+        cccd_matched: false,
+        matched_fields: [],
+        mismatched_fields: ['Dữ liệu tệp ảnh CCCD không hợp lệ hoặc bị hỏng'],
+        confidence: 0.0,
+        detected_text: '[LỖI HÌNH ẢNH]: Tệp ảnh CCCD không hợp lệ.',
+        notes: 'File ảnh CCCD không toàn vẹn. Đã chặn tự động duyệt.',
+        requires_red_stamp: false,
+      };
+    }
 
     return {
       is_valid: isImageValid && isCccdFormatValid,
@@ -603,10 +643,10 @@ Trả về JSON: { "is_valid": boolean, "name_matched": boolean, "cccd_matched":
     mismatched_fields: mismatchedFields,
     confidence,
     detected_text: ocrText.substring(0, 300) || '(Đã tiếp nhận và đối chiếu ảnh CCCD)',
-    notes: nameCheck.isMatch && cccdCheck.isMatch
-      ? 'Dữ liệu họ tên và số CCCD trùng khớp 100% với ảnh chụp.'
-      : mismatchedFields.join('. '),
     requires_red_stamp: false,
+    notes: nameCheck.isMatch && cccdCheck.isMatch
+      ? 'Dữ liệu họ tên và số CCCD trùng khớp 100% với ảnh chụp. Định danh do Bộ Công An cấp (có chip/mã vạch/dấu nổi), không yêu cầu mộc tròn đỏ UBND.'
+      : `${mismatchedFields.join('. ')}. (Lưu ý: CCCD không yêu cầu mộc đỏ UBND).`,
   };
 }
 
@@ -624,15 +664,31 @@ export async function analyzePriorityProofImage(
   const cleanBase64 = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
   const targetKeywords = POLICY_KEYWORD_MAP[policyKey] || POLICY_KEYWORD_MAP['KHONG'];
 
-  if (policyKey === 'KHONG') {
+  // TRƯỜNG HỢP 1: SINH VIÊN CHỌN KHÔNG THUỘC DIỆN ƯU TIÊN
+  if (policyKey === 'KHONG' || !policyKey) {
     return {
       is_valid: true,
       matched_policy_keywords: ['Không thuộc diện ưu tiên'],
-      has_official_stamp_or_seal: true,
+      has_official_stamp_or_seal: false,
       name_matched: true,
       confidence: 1.0,
-      detected_text: 'Không đăng ký diện ưu tiên',
-      notes: 'Hồ sơ tiêu chuẩn xét tuyển theo điểm và khoảng cách.',
+      detected_text: 'Không đăng ký diện ưu tiên (Điểm ưu tiên: +0đ)',
+      notes: 'Hồ sơ tiêu chuẩn xét tuyển theo điểm và khoảng cách (0 điểm ưu tiên). Không yêu cầu mộc đỏ.',
+      requires_red_stamp: false,
+    };
+  }
+
+  // KIỂM TRA TÍNH TOÀN VẸN CỦA TỆP ẢNH MINH CHỨNG ƯU TIÊN
+  const isImageCorrupt = !cleanBase64 || cleanBase64 === 'undefined' || cleanBase64 === 'null' || cleanBase64.length < 100;
+  if (isImageCorrupt) {
+    return {
+      is_valid: false,
+      matched_policy_keywords: [],
+      has_official_stamp_or_seal: false,
+      name_matched: false,
+      confidence: 0.0,
+      detected_text: '[LỖI TỆP ẢNH]: Tệp ảnh minh chứng ưu tiên bị hỏng hoặc không tải được.',
+      notes: 'Tệp ảnh minh chứng ưu tiên không toàn vẹn. Cần bổ sung lại ảnh mới.',
       requires_red_stamp: true,
     };
   }
@@ -641,6 +697,39 @@ export async function analyzePriorityProofImage(
   const ocrText = await fastOcrScan(cleanBase64, 1500);
   const normalized = normalizeText(ocrText);
   const lower = ocrText.toLowerCase();
+
+  // TRƯỜNG HỢP 2: KIỂM TRA TỪ KHÓA PHỦ ĐỊNH ƯU TIÊN TRÊN VĂN BẢN (ƯU TIÊN: KHÔNG +0)
+  const negativePriorityPatterns = [
+    'uu tien: khong',
+    'uu tien : khong',
+    'uu tien:khong',
+    'uu tien:  khong',
+    'bao tro uu tien: khong',
+    'chinh sach bao tro uu tien: khong',
+    'chinh sach uu tien: khong',
+    'khong +0',
+    'khong+0',
+    'khong thuoc dien',
+    'khong uu tien',
+    'khong duoc huong',
+  ];
+
+  const hasNegativePriority = negativePriorityPatterns.some(
+    (pat) => normalized.includes(pat) || lower.includes(pat)
+  );
+
+  if (hasNegativePriority) {
+    return {
+      is_valid: false,
+      matched_policy_keywords: ['Xác nhận: ƯU TIÊN: KHÔNG (+0 điểm)'],
+      has_official_stamp_or_seal: false,
+      name_matched: true,
+      confidence: 0.10,
+      detected_text: ocrText.substring(0, 300) || 'XÁC NHẬN THUỘC DIỆN CHÍNH SÁCH BẢO TRỢ ƯU TIÊN: KHÔNG +0',
+      notes: 'Văn bản ghi rõ: XÁC NHẬN THUỘC DIỆN CHÍNH SÁCH BẢO TRỢ ƯU TIÊN: KHÔNG (+0 điểm). Điểm ưu tiên = 0. Không đủ điều kiện cộng điểm ưu tiên.',
+      requires_red_stamp: false,
+    };
+  }
 
   const matchedKeywords: string[] = [];
   for (const kw of targetKeywords) {
@@ -790,7 +879,12 @@ export async function analyzeEvidenceWithGemini(
   let docType = 'Căn cước công dân & Minh chứng';
   let overallConfidence = cccdResult.confidence;
 
-  if (priorityResult && priorityResult.confidence < 0.30) {
+  if (!cccdResult.is_valid || cccdResult.confidence === 0) {
+    overallConfidence = 0.0;
+    decision = 'CHO_THAM_DINH';
+    docType = 'Lỗi tệp ảnh minh chứng (Ảnh CCCD hỏng/không tải được)';
+    rejectionReason = cccdResult.notes || 'Tệp ảnh CCCD không tải được hoặc bị hỏng đường dẫn. Đã chặn tự động duyệt.';
+  } else if (priorityResult && priorityResult.confidence < 0.30) {
     // Độ tin cậy dưới 30% do sai lệch đối tượng hoặc khu vực
     overallConfidence = priorityResult.confidence;
     decision = 'CHO_THAM_DINH';

@@ -166,7 +166,7 @@ export async function submitApplicationFullPipeline(payload: SubmitApplicationPa
       // QUY TẮC: NẾU CHƯA ĐƯỢC DUYỆT (CHO_THAM_DINH / CAN_BO_SUNG) -> ĐIỂM ƯU TIÊN LÀ 0
       // CHỈ KHI CÁN BỘ QLSV RÀ SOÁT DUYỆT ĐẠT MỚI ĐƯỢC CỘNG ĐIỂM & XẾP HẠNG
       // ========================================================================
-      const finalPoints = isAutoApproved ? basePoints : 0;
+      const finalPoints = (isAutoApproved && dien_uu_tien !== 'KHONG') ? basePoints : 0;
       const isTrungTuyen = isAutoApproved ? finalPoints >= 30 : false;
 
       // XÁC ĐỊNH GIỚI TÍNH TỰ ĐỘNG TỪ ẢNH CCCD / THUẬT TOÁN 12 SỐ CĂN CƯỚC VIỆT NAM

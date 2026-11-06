@@ -329,6 +329,7 @@ export default function EvidenceReviewQueue() {
   const [isSending, setIsSending] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [isApprovingAll, setIsApprovingAll] = useState(false);
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
 
   // STATE MỞ MODAL RÀ SOÁT TOÀN VĂN EMAIL CÔNG BỐ DO AI SOẠN THẢO (CƠ CHẾ CON NGƯỜI RÀ SOÁT - TASK TCB / SP4)
   const [isReviewEmailModalOpen, setIsReviewEmailModalOpen] = useState(false);
@@ -450,13 +451,17 @@ export default function EvidenceReviewQueue() {
             supplementSubmittedAt: app.supplement_submitted_at,
             cccdImageUrl: app.cccd_image_base64?.startsWith('data:')
               ? app.cccd_image_base64
-              : `data:image/jpeg;base64,${app.cccd_image_base64}`,
+              : (app.cccd_image_base64 && app.cccd_image_base64.length > 50 && !app.cccd_image_base64.includes('undefined'))
+                ? `data:image/jpeg;base64,${app.cccd_image_base64}`
+                : undefined,
             priorityImageUrl: app.priority_image_base64
               ? app.priority_image_base64.startsWith('data:')
                 ? app.priority_image_base64
-                : `data:image/jpeg;base64,${app.priority_image_base64}`
+                : (app.priority_image_base64.length > 50 && !app.priority_image_base64.includes('undefined'))
+                  ? `data:image/jpeg;base64,${app.priority_image_base64}`
+                  : undefined
               : undefined,
-            aiConfidence: Number(app.ai_result?.confidence) || 0.96,
+            aiConfidence: Number(app.ai_result?.confidence) ?? (app.status === 'THAM_DINH_DAT' ? 1.0 : 0.85),
             aiDocType: app.ai_result?.document_type || 'Hồ sơ thẩm định trực tuyến',
             aiExtractedName: app.ai_result?.extracted_info?.ho_ten || app.ho_ten,
             aiExtractedCccd: app.ai_result?.extracted_info?.so_dinh_danh || app.cccd,
@@ -466,12 +471,16 @@ export default function EvidenceReviewQueue() {
             cccdCheck: {
               hasKeyword: app.ai_result?.cccd_analysis?.has_cccd_keywords ?? true,
               hasPoliceChief: app.ai_result?.cccd_analysis?.has_police_chief_keyword ?? false,
-              note: app.ai_result?.cccd_analysis?.notes || 'Xác thực định danh CCCD (Không yêu cầu con dấu đỏ).',
+              note: app.ai_result?.cccd_analysis?.notes || 'Xác thực định danh CCCD do Bộ Công An cấp (Không yêu cầu mộc đỏ UBND).',
             },
             priorityCheck: {
-              matchedKeywords: app.ai_result?.priority_analysis?.matched_policy_keywords || [app.dien_uu_tien_label],
-              hasOfficialStamp: app.ai_result?.priority_analysis?.has_official_stamp_or_seal ?? true,
-              note: app.ai_result?.priority_analysis?.notes || 'Đã kiểm tra con dấu của cơ quan thẩm quyền.',
+              matchedKeywords: app.ai_result?.priority_analysis?.matched_policy_keywords || [app.dien_uu_tien_label || app.dien_uu_tien],
+              hasOfficialStamp: (app.dien_uu_tien === 'KHONG' || app.diem_uu_tien === 0)
+                ? false
+                : (app.ai_result?.priority_analysis?.has_official_stamp_or_seal ?? false),
+              note: (app.dien_uu_tien === 'KHONG' || app.diem_uu_tien === 0)
+                ? 'Không đăng ký diện ưu tiên (0đ). Không yêu cầu mộc đỏ.'
+                : (app.ai_result?.priority_analysis?.notes || 'Đã kiểm tra con dấu của cơ quan thẩm quyền.'),
             },
             aiWarnings: app.ai_result?.mismatch_warnings || [],
             draftEmail: {
@@ -791,6 +800,21 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
           window.dispatchEvent(new CustomEvent('student_session_changed', { detail: { ma_sv: currentItem.ma_sv, status: 'THAM_DINH_DAT' } }));
         } catch {}
       }
+
+      // ĐỒNG BỘ TRỰC TIẾP LÊN WORKFLOW & SUPABASE
+      try {
+        await fetch('/api/workflow', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'approve_evidence',
+            applicationId: currentItem.id,
+            studentCode: currentItem.ma_sv,
+            points: points,
+          }),
+        });
+        fetchWorkflow();
+      } catch {}
     } catch (e) {
       console.warn('Approve evidence error:', e);
     } finally {
@@ -978,7 +1002,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-[10px] font-bold rounded-full">
-                  ✓ Trưởng Ban Đã Ký Quyết Định Duyệt (B2)
+                  ✓ Trưởng Ban Đã Ký Quyết Định Duyệt Chính Thức
                 </span>
               </div>
               <h2 className="text-sm sm:text-base font-bold text-white">
@@ -1390,29 +1414,88 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                 </div>
 
                 <div className="my-4 bg-slate-100 rounded-xl p-3 flex items-center justify-center min-h-[300px] max-h-[380px] overflow-hidden border border-slate-200">
-                  {activeImageTab === 'cccd' ? (
-                    <img
-                      src={
-                        currentItem.cccdImageUrl && !currentItem.cccdImageUrl.includes('unsplash.com')
+                  {(() => {
+                    const isTabBroken = Boolean(
+                      brokenImages[`${currentItem.id}-${activeImageTab}`] ||
+                      brokenImages[currentItem.id]
+                    );
+
+                    if (isTabBroken) {
+                      return (
+                        <div className="flex flex-col items-center justify-center p-8 bg-rose-50 border-2 border-dashed border-rose-300 rounded-xl text-center space-y-2 w-full h-[320px]">
+                          <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 text-2xl font-bold">
+                            ⚠️
+                          </div>
+                          <h4 className="text-sm font-bold text-rose-900">
+                            Tệp Ảnh {activeImageTab === 'cccd' ? 'CCCD' : 'Minh Chứng'} Bị Lỗi / Không Thể Tải
+                          </h4>
+                          <p className="text-xs text-rose-700 max-w-sm">
+                            Đường dẫn ảnh không hợp lệ hoặc tệp bị hỏng. Hệ thống đã khóa tính năng AI duyệt tự động.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBrokenImages((prev) => {
+                                const next = { ...prev };
+                                delete next[`${currentItem.id}-${activeImageTab}`];
+                                delete next[currentItem.id];
+                                return next;
+                              });
+                            }}
+                            className="mt-2 px-3 py-1 bg-white hover:bg-rose-100 border border-rose-300 text-rose-800 rounded text-[11px] font-bold transition cursor-pointer"
+                          >
+                            🔄 Tải lại hình ảnh
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    if (activeImageTab === 'cccd') {
+                      const cccdSrc =
+                        currentItem.cccdImageUrl &&
+                        !currentItem.cccdImageUrl.includes('unsplash.com') &&
+                        !currentItem.cccdImageUrl.includes('undefined') &&
+                        currentItem.cccdImageUrl.length > 50
                           ? currentItem.cccdImageUrl
-                          : generateRealisticCccdSvg(currentItem.ho_ten, currentItem.cccd, 'Nữ')
-                      }
-                      alt="CCCD"
-                      className="max-h-[340px] w-auto object-contain rounded-lg shadow-sm"
-                    />
-                  ) : currentItem.priorityImageUrl && !currentItem.priorityImageUrl.includes('unsplash.com') ? (
-                    <img
-                      src={currentItem.priorityImageUrl}
-                      alt="Minh chứng ưu tiên"
-                      className="max-h-[340px] w-auto object-contain rounded-lg shadow-sm"
-                    />
-                  ) : (
-                    <img
-                      src={generateRealisticPrioritySvg(currentItem.ho_ten, currentItem.dien_uu_tien, currentItem.ma_sv)}
-                      alt="Minh chứng ưu tiên"
-                      className="max-h-[340px] w-auto object-contain rounded-lg shadow-sm"
-                    />
-                  )}
+                          : generateRealisticCccdSvg(currentItem.ho_ten, currentItem.cccd, 'Nữ');
+                      return (
+                        <img
+                          src={cccdSrc}
+                          alt="CCCD"
+                          onError={() => {
+                            setBrokenImages((prev) => ({
+                              ...prev,
+                              [`${currentItem.id}-cccd`]: true,
+                              [currentItem.id]: true,
+                            }));
+                          }}
+                          className="max-h-[340px] w-auto object-contain rounded-lg shadow-sm"
+                        />
+                      );
+                    }
+
+                    const prioritySrc =
+                      currentItem.priorityImageUrl &&
+                      !currentItem.priorityImageUrl.includes('unsplash.com') &&
+                      !currentItem.priorityImageUrl.includes('undefined') &&
+                      currentItem.priorityImageUrl.length > 50
+                        ? currentItem.priorityImageUrl
+                        : generateRealisticPrioritySvg(currentItem.ho_ten, currentItem.dien_uu_tien, currentItem.ma_sv);
+                    return (
+                      <img
+                        src={prioritySrc}
+                        alt="Minh chứng ưu tiên"
+                        onError={() => {
+                          setBrokenImages((prev) => ({
+                            ...prev,
+                            [`${currentItem.id}-priority`]: true,
+                            [currentItem.id]: true,
+                          }));
+                        }}
+                        className="max-h-[340px] w-auto object-contain rounded-lg shadow-sm"
+                      />
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -1428,250 +1511,327 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
             </div>
 
             {/* CỘT PHẢI: KẾT QUẢ PHÂN TÍCH AI VISION, VĂN BẢN OCR & NÚT HÀNH ĐỘNG */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between space-y-4">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-                  <span className="text-xs font-bold text-slate-800 uppercase">
-                    Kết Quả Thẩm Định Tự Động AI Vision
-                  </span>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs font-semibold text-slate-600">Độ tin cậy:</span>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-black border flex items-center space-x-1 ${
-                        currentItem.aiConfidence >= 0.95
-                          ? 'bg-emerald-100 text-emerald-800 border-emerald-400'
-                          : 'bg-amber-100 text-amber-800 border-amber-400'
-                      }`}
-                    >
-                      <span>{currentItem.aiConfidence >= 0.95 ? '✓' : '⚠️'}</span>
-                      <span>{(currentItem.aiConfidence * 100).toFixed(0)}%</span>
-                      <span className="text-[10px] font-bold">
-                        {currentItem.aiConfidence >= 0.95 ? '(≥ 95% - Tự động cho qua)' : '(< 95% - Con người duyệt lại)'}
-                      </span>
-                    </span>
-                  </div>
-                </div>
+            {(() => {
+              const isImageBroken = Boolean(
+                brokenImages[currentItem.id] ||
+                brokenImages[`${currentItem.id}-cccd`] ||
+                brokenImages[`${currentItem.id}-priority`]
+              );
+              const isNoPriority =
+                currentItem.dien_uu_tien === 'KHONG' ||
+                currentItem.dien_uu_tien?.toLowerCase().includes('không') ||
+                currentItem.diem_uu_tien === 0;
 
-                {/* ĐỐI CHIẾU DỮ LIỆU ĐĂNG KÝ VỚI ẢNH CHỤP */}
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1.5">
-                  <div className="flex justify-between items-center font-bold text-slate-800">
-                    <span>Đối Chiếu Dữ Liệu Khai Báo vs Ảnh Chụp:</span>
-                    <span className="text-[10px] text-slate-500 font-normal">AI OCR Cross-Check</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-                    <div className="p-2 bg-white rounded border border-slate-200">
-                      <span className="text-slate-500 block text-[10px]">Họ tên đăng ký:</span>
-                      <strong className="text-slate-900">{currentItem.ho_ten}</strong>
-                      <span className="block text-[10px] text-emerald-700 font-bold mt-1">
-                        {currentItem.nameMatched ?? true ? '✓ Trùng khớp với ảnh' : '⚠️ Cần đối chiếu lại'}
+              return (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between space-y-4">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                      <span className="text-xs font-bold text-slate-800 uppercase">
+                        Kết Quả Thẩm Định Tự Động AI Vision
                       </span>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-semibold text-slate-600">Độ tin cậy:</span>
+                        {isImageBroken ? (
+                          <span className="px-3 py-1 rounded-full text-xs font-black border bg-rose-100 text-rose-800 border-rose-400">
+                            <span>❌ 0% (Ảnh lỗi - Đã chặn tự động duyệt)</span>
+                          </span>
+                        ) : (
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-black border flex items-center space-x-1 ${
+                              currentItem.aiConfidence >= 0.95
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-400'
+                                : 'bg-amber-100 text-amber-800 border-amber-400'
+                            }`}
+                          >
+                            <span>{currentItem.aiConfidence >= 0.95 ? '✓' : '⚠️'}</span>
+                            <span>{(currentItem.aiConfidence * 100).toFixed(0)}%</span>
+                            <span className="text-[10px] font-bold">
+                              {currentItem.aiConfidence >= 0.95 ? '(≥ 95% - Tự động cho qua)' : '(< 95% - Con người duyệt lại)'}
+                            </span>
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="p-2 bg-white rounded border border-slate-200">
-                      <span className="text-slate-500 block text-[10px]">Số CCCD đăng ký:</span>
-                      <strong className="text-slate-900 font-mono">{currentItem.cccd}</strong>
-                      <span className="block text-[10px] text-emerald-700 font-bold mt-1">
-                        {currentItem.cccdMatched ?? true ? '✓ Trùng khớp với ảnh' : '⚠️ Cần đối chiếu lại'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
 
-                {/* 1. KẾT QUẢ KIỂM TRA CCCD */}
-                {(() => {
-                  const isCccdValid =
-                    (currentItem.cccdCheck?.hasKeyword ?? true) &&
-                    (currentItem.nameMatched ?? true) &&
-                    (currentItem.cccdMatched ?? true);
-                  return (
-                    <div
-                      className={`p-3 rounded-lg text-xs space-y-1.5 border ${
-                        isCccdValid
-                          ? 'bg-emerald-50/60 border-emerald-200'
-                          : 'bg-rose-50/60 border-rose-200'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center font-bold">
-                        <span className={isCccdValid ? 'text-emerald-950 font-bold' : 'text-rose-950 font-bold'}>
-                          1. Thẩm Định Căn Cước Công Dân (CCCD):
-                        </span>
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            isCccdValid
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-rose-100 text-rose-800'
+                    {/* ĐỐI CHIẾU DỮ LIỆU ĐĂNG KÝ VỚI ẢNH CHỤP */}
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1.5">
+                      <div className="flex justify-between items-center font-bold text-slate-800">
+                        <span>Đối Chiếu Dữ Liệu Khai Báo vs Ảnh Chụp:</span>
+                        <span className="text-[10px] text-slate-500 font-normal">AI OCR Cross-Check</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                        <div className="p-2 bg-white rounded border border-slate-200">
+                          <span className="text-slate-500 block text-[10px]">Họ tên đăng ký:</span>
+                          <strong className="text-slate-900">{currentItem.ho_ten}</strong>
+                          <span className={`block text-[10px] font-bold mt-1 ${
+                            isImageBroken
+                              ? 'text-rose-600'
+                              : (currentItem.nameMatched ?? true)
+                              ? 'text-emerald-700'
+                              : 'text-amber-700'
+                          }`}>
+                            {isImageBroken
+                              ? '❌ Không thể đối chiếu (Ảnh bị lỗi)'
+                              : (currentItem.nameMatched ?? true)
+                              ? '✓ Trùng khớp với ảnh'
+                              : '⚠️ Cần đối chiếu lại'}
+                          </span>
+                        </div>
+                        <div className="p-2 bg-white rounded border border-slate-200">
+                          <span className="text-slate-500 block text-[10px]">Số CCCD đăng ký:</span>
+                          <strong className="text-slate-900 font-mono">{currentItem.cccd}</strong>
+                          <span className={`block text-[10px] font-bold mt-1 ${
+                            isImageBroken
+                              ? 'text-rose-600'
+                              : (currentItem.cccdMatched ?? true)
+                              ? 'text-emerald-700'
+                              : 'text-amber-700'
+                          }`}>
+                            {isImageBroken
+                              ? '❌ Không thể đối chiếu (Ảnh bị lỗi)'
+                              : (currentItem.cccdMatched ?? true)
+                              ? '✓ Trùng khớp với ảnh'
+                              : '⚠️ Cần đối chiếu lại'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 1. KẾT QUẢ KIỂM TRA CCCD */}
+                    {(() => {
+                      const isCccdValid =
+                        !isImageBroken &&
+                        (currentItem.cccdCheck?.hasKeyword ?? true) &&
+                        (currentItem.nameMatched ?? true) &&
+                        (currentItem.cccdMatched ?? true);
+                      return (
+                        <div
+                          className={`p-3 rounded-lg text-xs space-y-1.5 border ${
+                            isImageBroken
+                              ? 'bg-rose-50/80 border-rose-300'
+                              : isCccdValid
+                              ? 'bg-emerald-50/60 border-emerald-200'
+                              : 'bg-rose-50/60 border-rose-200'
                           }`}
                         >
-                          {isCccdValid ? '✓ CCCD đạt chuẩn' : '⚠️ Cần đối chiếu'}
-                        </span>
-                      </div>
-                      {isCccdValid ? (
-                        <p className="text-emerald-800 font-medium">
-                          Họ tên và số CCCD trùng khớp với ảnh chụp.
-                        </p>
-                      ) : (
-                        <p className="text-rose-700 font-semibold">
-                          Lý do: {currentItem.cccdCheck?.note || 'Họ tên hoặc số CCCD không trùng khớp với ảnh.'}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })()}
+                          <div className="flex justify-between items-center font-bold">
+                            <span className={isImageBroken ? 'text-rose-950 font-bold' : isCccdValid ? 'text-emerald-950 font-bold' : 'text-rose-950 font-bold'}>
+                              1. Thẩm Định Căn Cước Công Dân (CCCD):
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                isImageBroken
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : isCccdValid
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-rose-100 text-rose-800'
+                              }`}
+                            >
+                              {isImageBroken ? '❌ Ảnh CCCD bị lỗi' : isCccdValid ? '✓ CCCD đạt chuẩn' : '⚠️ Cần đối chiếu'}
+                            </span>
+                          </div>
+                          {isImageBroken ? (
+                            <p className="text-rose-700 font-semibold">
+                              Tệp ảnh CCCD không tải được hoặc đường dẫn bị hỏng. AI đã chặn tự động duyệt. Cán bộ cần kiểm tra file gốc hoặc yêu cầu sinh viên bổ sung.
+                            </p>
+                          ) : isCccdValid ? (
+                            <p className="text-emerald-800 font-medium">
+                              Họ tên và số CCCD trùng khớp với ảnh chụp. Thẻ do Bộ Công An cấp (có chip/mã vạch), không yêu cầu mộc tròn đỏ UBND.
+                            </p>
+                          ) : (
+                            <p className="text-rose-700 font-semibold">
+                              Lý do: {currentItem.cccdCheck?.note || 'Họ tên hoặc số CCCD không trùng khớp với ảnh.'}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
 
-                {/* 2. KẾT QUẢ KIỂM TRA GIẤY TỜ ƯU TIÊN */}
-                {(() => {
-                  const isPriorityValid = currentItem.priorityCheck?.hasOfficialStamp;
-                  return (
-                    <div
-                      className={`p-3 rounded-lg text-xs space-y-1.5 border ${
-                        isPriorityValid
-                          ? 'bg-emerald-50/60 border-emerald-200'
-                          : 'bg-rose-50/60 border-rose-200'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center font-bold">
-                        <span className={isPriorityValid ? 'text-emerald-950 font-bold' : 'text-rose-950 font-bold'}>
-                          2. Giấy Tờ Ưu Tiên:
-                        </span>
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    {/* 2. KẾT QUẢ KIỂM TRA GIẤY TỜ ƯU TIÊN */}
+                    {(() => {
+                      if (isNoPriority) {
+                        return (
+                          <div className="p-3 rounded-lg text-xs space-y-1.5 border bg-slate-50 border-slate-200">
+                            <div className="flex justify-between items-center font-bold">
+                              <span className="text-slate-800 font-bold">
+                                2. Giấy Tờ Ưu Tiên:
+                              </span>
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700">
+                                Không ưu tiên (+0đ)
+                              </span>
+                            </div>
+                            <p className="text-slate-600 font-medium">
+                              Hồ sơ tiêu chuẩn: Sinh viên không đăng ký diện ưu tiên (0đ). Không yêu cầu mộc đỏ.
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      const isPriorityValid = !isImageBroken && currentItem.priorityCheck?.hasOfficialStamp;
+                      return (
+                        <div
+                          className={`p-3 rounded-lg text-xs space-y-1.5 border ${
                             isPriorityValid
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-rose-100 text-rose-800'
+                              ? 'bg-emerald-50/60 border-emerald-200'
+                              : 'bg-rose-50/60 border-rose-200'
                           }`}
                         >
-                          {isPriorityValid ? '✓ Có Mộc Đỏ' : '⚠️ Thiếu Mộc Đỏ'}
-                        </span>
+                          <div className="flex justify-between items-center font-bold">
+                            <span className={isPriorityValid ? 'text-emerald-950 font-bold' : 'text-rose-950 font-bold'}>
+                              2. Giấy Tờ Ưu Tiên:
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                isPriorityValid
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-rose-100 text-rose-800'
+                              }`}
+                            >
+                              {isPriorityValid ? '✓ Có Mộc Đỏ' : '⚠️ Thiếu Mộc Đỏ'}
+                            </span>
+                          </div>
+                          {isPriorityValid ? (
+                            <p className="text-emerald-800 font-medium">
+                              Đã nhận diện con dấu mộc đỏ hợp lệ của cơ quan thẩm quyền.
+                            </p>
+                          ) : (
+                            <p className="text-rose-700 font-semibold">
+                              Lý do: {currentItem.priorityCheck?.note || 'Chưa phát hiện mộc đỏ của cơ quan thẩm quyền.'}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* 3. VĂN BẢN OCR TRÍCH XUẤT */}
+                    <details className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs cursor-pointer group">
+                      <summary className="font-bold text-slate-700 select-none flex items-center justify-between">
+                        <span>Xem văn bản OCR trích xuất</span>
+                        <span className="text-[10px] text-slate-400 group-open:rotate-180 transition-transform">▼</span>
+                      </summary>
+                      <p className="font-mono text-[11px] text-slate-600 mt-2 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                        {isImageBroken ? '(Không thể trích xuất do tệp ảnh bị lỗi)' : currentItem.detectedOcrText}
+                      </p>
+                    </details>
+
+                    {/* 4. DỰ THẢO EMAIL AI */}
+                    {!(isRoundClosed || (currentItem.aiConfidence >= 0.95 && !isImageBroken && currentItem.status === 'THAM_DINH_DAT')) && (
+                      <div className="p-3 bg-indigo-50/60 border border-indigo-200 rounded-lg text-xs">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-bold text-indigo-950 uppercase text-[11px]">
+                            ✉️ Dự Thảo Email Yêu Cầu Bổ Sung (AI Soạn)
+                          </span>
+                          <span className="text-[10px] text-slate-500">Tới: {currentItem.ho_ten}</span>
+                        </div>
+                        <p className="font-semibold text-slate-800 text-[11px]">
+                          {currentItem.draftEmail.subject}
+                        </p>
+                        <div
+                          className="mt-1 text-[10px] text-slate-600 p-2 bg-white rounded border border-indigo-100 line-clamp-2"
+                          dangerouslySetInnerHTML={{ __html: currentItem.draftEmail.bodyHtml }}
+                        />
+                        <div className="mt-2.5 flex items-center justify-end gap-2 pt-2 border-t border-indigo-100">
+                          <button
+                            type="button"
+                            onClick={openSupplementModal}
+                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] shadow-2xs flex items-center space-x-1 transition cursor-pointer"
+                          >
+                            <span>✉️</span>
+                            <span>Mở Soạn &amp; Gửi Email Cho {currentItem.ho_ten}</span>
+                          </button>
+                        </div>
                       </div>
-                      {isPriorityValid ? (
-                        <p className="text-emerald-800 font-medium">
-                          Đã nhận diện con dấu mộc đỏ hợp lệ.
-                        </p>
-                      ) : (
-                        <p className="text-rose-700 font-semibold">
-                          Lý do: {currentItem.priorityCheck?.note || 'Chưa phát hiện mộc đỏ của cơ quan thẩm quyền.'}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {/* 3. VĂN BẢN OCR TRÍCH XUẤT */}
-                <details className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs cursor-pointer group">
-                  <summary className="font-bold text-slate-700 select-none flex items-center justify-between">
-                    <span>Xem văn bản OCR trích xuất</span>
-                    <span className="text-[10px] text-slate-400 group-open:rotate-180 transition-transform">▼</span>
-                  </summary>
-                  <p className="font-mono text-[11px] text-slate-600 mt-2 whitespace-pre-wrap max-h-32 overflow-y-auto">
-                    {currentItem.detectedOcrText}
-                  </p>
-                </details>
-
-                {/* 4. DỰ THẢO EMAIL AI */}
-                {!(isRoundClosed || currentItem.aiConfidence >= 0.95 || currentItem.status === 'THAM_DINH_DAT') && (
-                  <div className="p-3 bg-indigo-50/60 border border-indigo-200 rounded-lg text-xs">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-bold text-indigo-950 uppercase text-[11px]">
-                        ✉️ Dự Thảo Email Yêu Cầu Bổ Sung (AI Soạn)
-                      </span>
-                      <span className="text-[10px] text-slate-500">Tới: {currentItem.ho_ten}</span>
-                    </div>
-                    <p className="font-semibold text-slate-800 text-[11px]">
-                      {currentItem.draftEmail.subject}
-                    </p>
-                    <div
-                      className="mt-1 text-[10px] text-slate-600 p-2 bg-white rounded border border-indigo-100 line-clamp-2"
-                      dangerouslySetInnerHTML={{ __html: currentItem.draftEmail.bodyHtml }}
-                    />
-                    <div className="mt-2.5 flex items-center justify-end gap-2 pt-2 border-t border-indigo-100">
-                      <button
-                        type="button"
-                        onClick={openSupplementModal}
-                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] shadow-2xs flex items-center space-x-1 transition"
-                      >
-                        <span>✉️</span>
-                        <span>Mở Soạn &amp; Gửi Email Cho {currentItem.ho_ten}</span>
-                      </button>
-                    </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              {/* CÁC NÚT HÀNH ĐỘNG CỦA CÁN BỘ QLSV */}
-              <div className="pt-4 border-t border-slate-200 space-y-3">
-                {isRoundClosed || currentItem.aiConfidence >= 0.95 || currentItem.status === 'THAM_DINH_DAT' ? (
-                  <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
-                    <div className="flex items-center space-x-2.5">
-                      <span className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0">
-                        ✓
-                      </span>
-                      <div>
-                        <span className="font-bold text-emerald-950">
-                          {isRoundClosed
-                            ? 'Đợt tuyển sinh đã phát hành và chốt danh sách chính thức'
-                            : 'Hồ sơ đã được AI tự động thẩm định đạt chuẩn và cộng điểm ưu tiên (+' + currentItem.diem_uu_tien + 'đ)'}
-                        </span>
-                        <p className="text-[11px] text-emerald-800 mt-0.5">
-                          {isRoundClosed
-                            ? 'Toàn bộ 120 email thông báo và hợp đồng điện tử 72h đã được phát hành. Khâu thẩm định minh chứng đã hoàn tất.'
-                            : `Sinh viên ${currentItem.ho_ten} đã được ghi nhận trực tiếp vào Bảng xếp hạng. Cán bộ không cần thao tác duyệt hay soạn gửi thư.`}
-                        </p>
+                  {/* CÁC NÚT HÀNH ĐỘNG CỦA CÁN BỘ QLSV */}
+                  <div className="pt-4 border-t border-slate-200 space-y-3">
+                    {isRoundClosed || (currentItem.aiConfidence >= 0.95 && !isImageBroken && currentItem.status === 'THAM_DINH_DAT') ? (
+                      <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
+                        <div className="flex items-center space-x-2.5">
+                          <span className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+                            ✓
+                          </span>
+                          <div>
+                            <span className="font-bold text-emerald-950">
+                              {isRoundClosed
+                                ? 'Đợt tuyển sinh đã phát hành và chốt danh sách chính thức'
+                                : 'Hồ sơ đã được thẩm định đạt chuẩn và cộng điểm ưu tiên (+' + currentItem.diem_uu_tien + 'đ)'}
+                            </span>
+                            <p className="text-[11px] text-emerald-800 mt-0.5">
+                              {isRoundClosed
+                                ? 'Toàn bộ 120 email thông báo và hợp đồng điện tử 72h đã được phát hành. Khâu thẩm định minh chứng đã hoàn tất.'
+                                : `Sinh viên ${currentItem.ho_ten} đã được ghi nhận trực tiếp vào Bảng xếp hạng.`}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <a
+                            href="/ranking"
+                            className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg font-bold text-xs shadow-xs transition flex items-center space-x-1"
+                          >
+                            <span>📊</span>
+                            <span>Xem Trên BXH &rarr;</span>
+                          </a>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    ) : (
+                      <div className="space-y-2">
+                        {isImageBroken && (
+                          <div className="p-2.5 bg-rose-50 border border-rose-300 rounded-lg text-rose-900 text-xs flex items-center space-x-2">
+                            <span className="text-base">⚠️</span>
+                            <span className="font-semibold text-[11px]">
+                              Tệp ảnh minh chứng bị hỏng hoặc không tải được. AI đã khóa tính năng tự động duyệt.
+                            </span>
+                          </div>
+                        )}
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={openSupplementModal}
+                            className="py-2.5 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-bold shadow transition-colors flex items-center justify-center space-x-1.5 cursor-pointer"
+                          >
+                            <span>⚠️</span>
+                            <span>Yêu Cầu Bổ Sung Minh Chứng (48h)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleApprove}
+                            disabled={isApproving}
+                            className={`py-2.5 px-4 rounded-lg text-xs font-bold shadow transition-colors flex items-center justify-center space-x-1.5 text-white disabled:opacity-50 cursor-pointer ${
+                              currentItem.isSupplementReview || currentItem.isSupplemented
+                                ? 'bg-purple-700 hover:bg-purple-800'
+                                : 'bg-blue-700 hover:bg-blue-800'
+                            }`}
+                          >
+                            <span>✓</span>
+                            <span>
+                              {isApproving
+                                ? 'Đang lưu vào CSDL...'
+                                : currentItem.isSupplementReview || currentItem.isSupplemented
+                                ? 'Duyệt Đạt Minh Chứng Bổ Sung (+Điểm)'
+                                : 'Duyệt Đạt (Lưu Vào Database & Cập Nhật BXH)'}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Các tác vụ phối hợp trong quy trình */}
+                    <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs">
                       <a
-                        href="/ranking"
-                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg font-bold text-xs shadow-xs transition flex items-center space-x-1"
+                        href="/director"
+                        className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded font-semibold text-[11px] flex items-center space-x-1"
                       >
-                        <span>📊</span>
-                        <span>Xem Trên BXH &rarr;</span>
+                        <span>📋</span>
+                        <span>Trình Danh Sách Cho Trưởng Ban Phê Duyệt &amp; Công Bố &rarr;</span>
                       </a>
                     </div>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={openSupplementModal}
-                      className="py-2.5 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-bold shadow transition-colors flex items-center justify-center space-x-1.5"
-                    >
-                      <span>⚠️</span>
-                      <span>Bước 5: Yêu Cầu Bổ Sung 48h (TR)</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleApprove}
-                      disabled={isApproving}
-                      className={`py-2.5 px-4 rounded-lg text-xs font-bold shadow transition-colors flex items-center justify-center space-x-1.5 text-white disabled:opacity-50 ${
-                        currentItem.isSupplementReview || currentItem.isSupplemented
-                          ? 'bg-purple-700 hover:bg-purple-800'
-                          : 'bg-blue-700 hover:bg-blue-800'
-                      }`}
-                    >
-                      <span>✓</span>
-                      <span>
-                        {isApproving
-                          ? 'Đang xử lý...'
-                          : currentItem.isSupplementReview || currentItem.isSupplemented
-                          ? 'Duyệt Đạt Minh Chứng Bổ Sung (+Điểm)'
-                          : 'Duyệt Đạt (Cộng Điểm & Cập Nhật BXH)'}
-                      </span>
-                    </button>
-                  </div>
-                )}
-
-                {/* Các tác vụ phối hợp trong quy trình BPMN */}
-                <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs">
-                  <a
-                    href="/director"
-                    className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded font-semibold text-[11px] flex items-center space-x-1"
-                  >
-                    <span>📋</span>
-                    <span>Trình Danh Sách Cho Trưởng Ban Phê Duyệt &amp; Công Bố (B2 &amp; TCB) &rarr;</span>
-                  </a>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         </>
       )}

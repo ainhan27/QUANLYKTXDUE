@@ -18,8 +18,8 @@ export interface CccdAnalysisResult {
   confidence: number;
   detected_text: string;
   notes: string;
-  // BẮT BUỘC: CCCD không yêu cầu dấu đỏ
-  requires_red_stamp: false;
+  // CCCD không yêu cầu dấu đỏ UBND
+  requires_red_stamp: boolean;
 }
 
 export interface PriorityProofAnalysisResult {
@@ -30,8 +30,8 @@ export interface PriorityProofAnalysisResult {
   confidence: number;
   detected_text: string;
   notes: string;
-  // BẮT BUỘC: Giấy xác nhận ưu tiên phải có con dấu/chữ ký xác nhận
-  requires_red_stamp: true;
+  // Giấy xác nhận ưu tiên chỉ yêu cầu dấu đỏ khi thuộc diện ưu tiên
+  requires_red_stamp: boolean;
 }
 
 export interface AIVisionAnalysisRequest {

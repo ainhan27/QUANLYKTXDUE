@@ -98,7 +98,7 @@ export async function sendWorkflowEmail(params: SendWorkflowEmailParams): Promis
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
           <div style="background-color: #003366; color: white; padding: 20px; text-align: center;">
             <h2 style="margin: 0; font-size: 18px;">BAN QUẢN LÝ KÝ TÚC XÁ – ĐH KINH TẾ ĐÀ NẴNG</h2>
-            <p style="margin: 5px 0 0; font-size: 12px; color: #FFB800;">YÊU CẦU BỔ SUNG MINH CHỨNG (Msg_YCBS)</p>
+            <p style="margin: 5px 0 0; font-size: 12px; color: #FFB800;">YÊU CẦU BỔ SUNG MINH CHỨNG (THỜI HẠN 48 GIỜ)</p>
           </div>
           <div style="padding: 24px; color: #334155; line-height: 1.6;">
             <p>Chào bạn <strong>${studentName}</strong> (MSSV: <strong>${studentCode}</strong>),</p>

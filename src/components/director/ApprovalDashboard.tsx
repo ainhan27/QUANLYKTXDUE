@@ -150,7 +150,7 @@ export default function ApprovalDashboard() {
             : c
         )
       );
-      setStatusMessage('✓ Đã thẩm định đạt 100% minh chứng! Hệ thống đã mở khóa để Trưởng ban ký Quyết định B2.');
+      setStatusMessage('✓ Đã thẩm định đạt 100% minh chứng! Hệ thống đã mở khóa để Trưởng ban ký Quyết định phê duyệt.');
       await fetchWorkflowAndApplications();
       if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
         const bc = new BroadcastChannel('ktx_sync');
@@ -164,7 +164,7 @@ export default function ApprovalDashboard() {
     }
   };
 
-  // TRƯỞNG BAN KÝ DUYỆT DANH SÁCH CHÍNH THỨC (QUYẾT ĐỊNH B2)
+  // TRƯỞNG BAN KÝ DUYỆT DANH SÁCH CHÍNH THỨC
   // SAU KHI DUYỆT: CHUYỂN TIẾP CHO CÁN BỘ QLSV ĐỂ PHÁT HÀNH EMAIL (AI SOẠN SẴN)
   const handleApproveAndPublish = async () => {
     setIsProcessing(true);
@@ -182,7 +182,7 @@ export default function ApprovalDashboard() {
       await fetchWorkflowAndApplications();
       setStatusMessage(
         res.message ||
-          'Trưởng ban đã phê duyệt danh sách chính thức (Quyết định B2)! AI đã soạn sẵn 120 email trúng tuyển kèm Hợp đồng điện tử. Đã chuyển tiếp sang Cán bộ Quản lý Sinh viên (QLSV) để phát hành gửi đến cho sinh viên.'
+          'Trưởng ban đã phê duyệt danh sách chính thức! AI đã soạn sẵn 120 email trúng tuyển kèm Hợp đồng điện tử. Đã chuyển tiếp sang Cán bộ Quản lý Sinh viên (QLSV) để phát hành gửi đến cho sinh viên.'
       );
 
       // Đồng bộ cross-tab tức thì 0ms
@@ -293,7 +293,7 @@ export default function ApprovalDashboard() {
         }),
       });
       setStatusMessage(
-        `⚠️ [XOR 3 TRẢ VỀ THÀNH CÔNG]: Đã gửi thông báo chỉ đạo điều chỉnh danh sách sang Cổng Cán bộ QLSV (/officer). Lý do: "${returnReason.trim()}".`
+        `⚠️ [TRẢ VỀ ĐIỀU CHỈNH THÀNH CÔNG]: Đã gửi thông báo chỉ đạo điều chỉnh danh sách sang Cổng Cán bộ QLSV (/officer). Lý do: "${returnReason.trim()}".`
       );
       setIsReturnModalOpen(false);
       setReturnReason('');
@@ -334,8 +334,8 @@ export default function ApprovalDashboard() {
                 {workflowState.isPublished
                   ? 'BƯỚC 4: ĐÃ PHÁT HÀNH EMAIL VÀ HỢP ĐỒNG 72H'
                   : workflowState.isRankingsFinalized
-                  ? 'BƯỚC 3 ĐÃ XONG: TRƯỞNG BAN ĐÃ DUYỆT (B2) – CHỜ CÁN BỘ QLSV GỬI EMAIL'
-                  : 'BƯỚC 3: CHỜ TRƯỞNG BAN PHÊ DUYỆT DANH SÁCH (B2)'}
+                  ? 'BƯỚC 3 ĐÃ XONG: TRƯỞNG BAN ĐÃ PHÊ DUYỆT CHÍNH THỨC – CHỜ CÁN BỘ QLSV GỬI EMAIL'
+                  : 'BƯỚC 3: CHỜ TRƯỞNG BAN PHÊ DUYỆT DANH SÁCH CHÍNH THỨC'}
               </strong>
             </span>
           </div>
@@ -406,9 +406,9 @@ export default function ApprovalDashboard() {
                   type="button"
                   onClick={() => setIsReturnModalOpen(true)}
                   disabled={isProcessing}
-                  className="px-4 py-2.5 border border-rose-300 text-rose-200 hover:bg-rose-500/20 rounded-xl text-xs font-bold transition disabled:opacity-50"
+                  className="px-4 py-2.5 border border-rose-300 text-rose-200 hover:bg-rose-500/20 rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer"
                 >
-                  Trả Về Điều Chỉnh (XOR 3)
+                  Trả Về Cho Cán Bộ Thẩm Định Lại
                 </button>
                 <button
                   type="button"
@@ -417,12 +417,12 @@ export default function ApprovalDashboard() {
                   className={`px-5 py-3 rounded-xl text-xs font-black shadow-lg transition flex items-center space-x-2 ${
                     pendingCount > 0
                       ? 'bg-slate-700 text-slate-300 border border-slate-600 cursor-not-allowed opacity-75'
-                      : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white hover:shadow-xl'
+                      : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white hover:shadow-xl cursor-pointer'
                   }`}
                   title={
                     pendingCount > 0
                       ? `Khóa: Cán bộ QLSV phải duyệt hết ${pendingCount} minh chứng còn lại trước khi Trưởng ban được công bố danh sách.`
-                      : 'Ký quyết định phê duyệt chính thức B2'
+                      : 'Ký quyết định phê duyệt chính thức'
                   }
                 >
                   {isProcessing ? (
@@ -430,7 +430,7 @@ export default function ApprovalDashboard() {
                   ) : pendingCount > 0 ? (
                     <span>🔒 KHÓA: CẦN CÁN BỘ QLSV DUYỆT XONG MINH CHỨNG ({pendingCount})</span>
                   ) : (
-                    <span>TRƯỞNG BAN: PHÊ DUYỆT DANH SÁCH (QUYẾT ĐỊNH B2)</span>
+                    <span>TRƯỞNG BAN: KÝ PHÊ DUYỆT DANH SÁCH CHÍNH THỨC</span>
                   )}
                 </button>
               </>
