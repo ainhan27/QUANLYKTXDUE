@@ -132,6 +132,9 @@ export default function HomePage() {
               <div className="relative rounded-2xl overflow-hidden bg-slate-900 border-2 border-white/30 shadow-2xl">
                 <img
                   src="/images/ktx-building.png"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://raw.githubusercontent.com/ainhan27/QUANLYKTXDUE/main/public/images/ktx-building.png';
+                  }}
                   alt="Ký túc xá sinh viên quốc tế - Trường Đại học Kinh tế ĐH Đà Nẵng"
                   className="w-full h-64 sm:h-72 object-cover object-center group-hover:scale-105 transition-transform duration-700"
                 />

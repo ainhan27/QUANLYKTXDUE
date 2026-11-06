@@ -273,7 +273,7 @@ export async function submitApplicationFullPipeline(payload: SubmitApplicationPa
       };
     })();
 
-    return await withTimeout(pipelinePromise, 25000, 'Xử lý hồ sơ');
+    return await withTimeout(pipelinePromise, 9000, 'Xử lý hồ sơ');
   } catch (error: unknown) {
     console.error('Lỗi quy trình submitApplicationFullPipeline:', error);
     return {

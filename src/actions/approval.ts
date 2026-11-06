@@ -1,4 +1,5 @@
 'use server';
+
 // ==============================================================================
 // SERVER ACTIONS: THỰC THI QUY TRÌNH TO-BE BƯỚC 6 -> BƯỚC 10
 // 6. CHỐT & TRƯỞNG BAN DUYỆT (SP4 - CHOT, B2)
@@ -540,7 +541,7 @@ export async function declineContractAction(applicationId: string, studentCode?:
 
     if (app) {
       app.status = 'HUY_SUAT';
-      app.ghi_chu_ly_do = declineReason;
+      app.ghi_chu_ly_do = `HỦY THEO YÊU CẦU CỦA NGƯỜI ĐỀ NGHỊ: ${declineReason}`;
       saveApplicationToStore(app);
 
       // Gửi thông báo xác nhận hủy suất
@@ -593,6 +594,189 @@ export async function declineContractAction(applicationId: string, studentCode?:
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Lỗi khi từ chối nhận phòng',
+    };
+  }
+}
+
+// ==============================================================================
+// HOẠT ĐỘNG NGOẠI LỆ 1: HỦY YÊU CẦU TỪ NGƯỜI ĐỀ NGHỊ (APPLICANT CANCELLATION / RÚT HỒ SƠ)
+// SINH VIÊN (NGƯỜI ĐỀ NGHỊ) CHỦ ĐỘNG RÚT HỒ SƠ ĐĂNG KÝ HOẶC HỦY NGUYỆN VỌNG NỘI TRÚ
+// ==============================================================================
+export async function withdrawApplicationByApplicantAction(studentCode: string, reason?: string) {
+  try {
+    const { getAllStoredApplications, saveApplicationToStore, saveNotificationToStore } = await import('@/lib/data/live-store');
+    const stored = getAllStoredApplications();
+    const app = stored.find((x) => x.ma_sv === studentCode || x.id === studentCode);
+
+    if (!app) {
+      return { success: false, message: 'Không tìm thấy hồ sơ sinh viên' };
+    }
+
+    const cancelReason = reason || 'Người đề nghị (sinh viên) chủ động rút hồ sơ / hủy yêu cầu đăng ký nội trú';
+    app.status = 'HUY_SUAT';
+    app.ghi_chu_ly_do = `HỦY THEO YÊU CẦU CỦA NGƯỜI ĐỀ NGHỊ: ${cancelReason}`;
+    saveApplicationToStore(app);
+
+    // Gửi thông báo xác nhận hủy hồ sơ đến sinh viên
+    saveNotificationToStore({
+      id: `notif-${Date.now()}`,
+      application_id: app.id,
+      recipient_email: app.email,
+      student_code: app.ma_sv,
+      student_name: app.ho_ten,
+      tieu_de: '[KTX DUE] Xác Nhận Hủy Yêu Cầu / Rút Hồ Sơ Tuyển Sinh Nội Trú KTX',
+      noi_dung: `<p>Chào sinh viên <strong>${app.ho_ten}</strong> (MSSV: <strong>${app.ma_sv}</strong>),</p>
+<p>Hệ thống KTX DUE đã tiếp nhận và ghi nhận <strong>HỦY YÊU CẦU TỪ NGƯỜI ĐỀ NGHỊ</strong> theo nguyện vọng của bạn.</p>
+<p><strong>Lý do rút hồ sơ:</strong> <em>${cancelReason}</em></p>
+<p>Hồ sơ của bạn đã được chuyển sang trạng thái <strong>ĐÃ HỦY</strong>. Quyền xét tuyển và chỉ tiêu giữ chỗ (nếu có) đã được giải phóng để nhường cho sinh viên kế tiếp trên danh sách chờ theo đúng quy chế tuyển sinh.</p>`,
+      loai: 'HUY_SUAT',
+      status: 'DA_GUI',
+      created_at: new Date().toISOString(),
+    });
+
+    return {
+      success: true,
+      message: 'Hồ sơ đã được hủy thành công theo đúng yêu cầu của người đề nghị (sinh viên).',
+    };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Lỗi khi hủy yêu cầu',
+    };
+  }
+}
+
+// ==============================================================================
+// KHÔI PHỤC HỒ SƠ TỪ TRẠNG THÁI NGOẠI LỆ (DÀNH CHO KIỂM THỬ / DEMO ĐỒ ÁN)
+// ==============================================================================
+export async function restoreApplicationAction(studentCode: string) {
+  try {
+    const { getAllStoredApplications, saveApplicationToStore } = await import('@/lib/data/live-store');
+    const stored = getAllStoredApplications();
+    const app = stored.find((x) => x.ma_sv === studentCode || x.id === studentCode);
+
+    if (!app) {
+      return { success: false, message: 'Không tìm thấy hồ sơ sinh viên' };
+    }
+
+    app.status = 'THAM_DINH_DAT';
+    app.ghi_chu_ly_do = undefined;
+    if (app.tinh_thanh === 'Đà Nẵng') {
+      app.tinh_thanh = 'Quảng Nam';
+    }
+    saveApplicationToStore(app);
+
+    return {
+      success: true,
+      message: `Đã khôi phục hồ sơ ${app.ho_ten} (${app.ma_sv}) về trạng thái "Thẩm định đạt", sẵn sàng kiểm thử quy trình.`,
+    };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Lỗi khi khôi phục hồ sơ',
+    };
+  }
+}
+
+// ==============================================================================
+// HOẠT ĐỘNG NGOẠI LỆ 2: MÔ PHỎNG CÁC SỰ KIỆN LỖI BPMN TO-BE (SECTION B8)
+// - ERR_HO_KHAU: Lỗi hộ khẩu Đà Nẵng (BE1 -> TU_CHOI_BO_TRI)
+// - ERR_KHONG_BO_SUNG: Lỗi quá hạn 48h không nộp bổ sung (BE2 -> KHONG_DUOC_XET)
+// - ERR_HUY_SUAT_72H: Lỗi quá hạn 72h không ký hợp đồng OTP (BE5 -> HUY_SUAT)
+// ==============================================================================
+export async function simulateExceptionAction(
+  studentCode: string,
+  exceptionType: 'ERR_HO_KHAU' | 'ERR_KHONG_BO_SUNG' | 'ERR_HUY_SUAT_72H'
+) {
+  try {
+    const { getAllStoredApplications, saveApplicationToStore, saveNotificationToStore } = await import('@/lib/data/live-store');
+    const stored = getAllStoredApplications();
+    const app = stored.find((x) => x.ma_sv === studentCode || x.id === studentCode);
+
+    if (!app) {
+      return { success: false, message: 'Không tìm thấy hồ sơ sinh viên' };
+    }
+
+    if (exceptionType === 'ERR_HO_KHAU') {
+      app.status = 'TU_CHOI_BO_TRI';
+      app.tinh_thanh = 'Đà Nẵng';
+      app.ghi_chu_ly_do = 'Lỗi nghiệp vụ BE1 (Err_HoKhau): Sinh viên có hộ khẩu thường trú tại TP Đà Nẵng, từ chối bố trí ở KTX theo quy chế.';
+      saveApplicationToStore(app);
+
+      saveNotificationToStore({
+        id: `notif-${Date.now()}`,
+        application_id: app.id,
+        recipient_email: app.email,
+        student_code: app.ma_sv,
+        student_name: app.ho_ten,
+        tieu_de: '[KTX DUE] Thông Báo Từ Chối Bố Trí Ở Ký Túc Xá (Hộ Khẩu Đà Nẵng)',
+        noi_dung: `<p>Chào sinh viên <strong>${app.ho_ten}</strong> (MSSV: <strong>${app.ma_sv}</strong>),</p>
+<p>Ban Quản lý KTX thông báo: Do hộ khẩu thường trú của bạn tại TP Đà Nẵng, căn cứ Quy chế tuyển sinh nội trú KTX DUE, Ký túc xá chỉ ưu tiên tiếp nhận sinh viên ngoại tỉnh và các đối tượng chính sách vùng sâu vùng xa.</p>
+<p>Hồ sơ của bạn đã được chuyển sang trạng thái <strong>TỪ CHỐI BỐ TRÍ</strong> theo sự kiện biên BE1 (Err_HoKhau).</p>`,
+        loai: 'TU_CHOI',
+        status: 'DA_GUI',
+        created_at: new Date().toISOString(),
+      });
+
+      return {
+        success: true,
+        message: 'Đã kích hoạt sự kiện lỗi BE1 (ERR_HO_KHAU_DA_NANG): Từ chối bố trí do hộ khẩu Đà Nẵng.',
+      };
+    } else if (exceptionType === 'ERR_KHONG_BO_SUNG') {
+      app.status = 'KHONG_DUOC_XET';
+      app.ghi_chu_ly_do = 'Lỗi nghiệp vụ BE2 (Err_KhongXet): Quá thời hạn 48 giờ không nhận được minh chứng hợp lệ bổ sung.';
+      saveApplicationToStore(app);
+
+      saveNotificationToStore({
+        id: `notif-${Date.now()}`,
+        application_id: app.id,
+        recipient_email: app.email,
+        student_code: app.ma_sv,
+        student_name: app.ho_ten,
+        tieu_de: '[KTX DUE] Thông Báo Hồ Sơ Không Được Xét (Quá Hạn Bổ Sung 48h)',
+        noi_dung: `<p>Chào sinh viên <strong>${app.ho_ten}</strong> (MSSV: <strong>${app.ma_sv}</strong>),</p>
+<p>Hệ thống KTX DUE thông báo: Đã quá thời hạn 48 giờ kể từ khi Cán bộ QLSV yêu cầu bổ sung minh chứng mà hệ thống không nhận được hồ sơ minh chứng hợp lệ từ bạn.</p>
+<p>Hồ sơ của bạn đã được chuyển sang trạng thái <strong>KHÔNG ĐƯỢC XÉT</strong> theo sự kiện biên BE2 (Err_KhongXet) và bị loại khỏi danh sách xếp hạng đợt 1.</p>`,
+        loai: 'TU_CHOI',
+        status: 'DA_GUI',
+        created_at: new Date().toISOString(),
+      });
+
+      return {
+        success: true,
+        message: 'Đã kích hoạt sự kiện lỗi BE2 (ERR_KHONG_BO_SUNG_KIP): Hồ sơ bị loại khỏi danh sách xét.',
+      };
+    } else if (exceptionType === 'ERR_HUY_SUAT_72H') {
+      app.status = 'HUY_SUAT';
+      app.ghi_chu_ly_do = 'Lỗi nghiệp vụ BE5 (Err_Huy): Quá thời hạn 72 giờ công bố kết quả không hoàn thành ký hợp đồng điện tử.';
+      saveApplicationToStore(app);
+
+      saveNotificationToStore({
+        id: `notif-${Date.now()}`,
+        application_id: app.id,
+        recipient_email: app.email,
+        student_code: app.ma_sv,
+        student_name: app.ho_ten,
+        tieu_de: '[KTX DUE] Thông Báo Hủy Suất Do Quá Hạn Ký Hợp Đồng Điện Tử (72h)',
+        noi_dung: `<p>Chào sinh viên <strong>${app.ho_ten}</strong> (MSSV: <strong>${app.ma_sv}</strong>),</p>
+<p>Căn cứ Quy chế tuyển sinh KTX DUE, sau 72 giờ kể từ thời điểm phát hành thông báo trúng tuyển, sinh viên không hoàn thành ký hợp đồng điện tử OTP sẽ bị thu hồi quyền trúng tuyển.</p>
+<p>Hệ thống đã kích hoạt sự kiện biên BE5 (Err_Huy), chuyển phòng về trạng thái <strong>TRỐNG (AVAILABLE)</strong> và điều chuyển chỉ tiêu cho thí sinh kế tiếp trong danh sách chờ (Đợt 2).</p>`,
+        loai: 'HUY_SUAT',
+        status: 'DA_GUI',
+        created_at: new Date().toISOString(),
+      });
+
+      return {
+        success: true,
+        message: 'Đã kích hoạt sự kiện lỗi BE5 (ERR_HUY_SUAT): Thu hồi phòng và chuyển giao cho thí sinh kế tiếp.',
+      };
+    }
+
+    return { success: false, message: 'Loại ngoại lệ không xác định' };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Lỗi khi mô phỏng ngoại lệ',
     };
   }
 }

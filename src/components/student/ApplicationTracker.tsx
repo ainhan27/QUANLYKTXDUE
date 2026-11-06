@@ -18,6 +18,9 @@ import {
   resetWorkflowAction,
   submitSupplementEvidenceAction,
   declineContractAction,
+  withdrawApplicationByApplicantAction,
+  restoreApplicationAction,
+  simulateExceptionAction,
 } from '@/actions/approval';
 
 interface ApplicationTrackerProps {
@@ -39,6 +42,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
     gioi_tinh: 'Nữ',
     status: 'CHO_THAM_DINH' as AppStatus,
     aiConfidence: 0.35,
+    ghi_chu_ly_do: undefined as string | undefined,
   });
 
   const [studentRank, setStudentRank] = useState<number>(325);
@@ -58,6 +62,14 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
   const [isSubmittingSupplement, setIsSubmittingSupplement] = useState(false);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [declineReason, setDeclineReason] = useState('Không còn nhu cầu ở nội trú KTX');
+
+  // HOẠT ĐỘNG NGOẠI LỆ: HỦY YÊU CẦU TỪ NGƯỜI ĐỀ NGHỊ & MÔ PHỎNG LỖI BPMN TO-BE
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawReason, setWithdrawReason] = useState('Đã thuê được phòng trọ / nhà riêng bên ngoài');
+  const [customWithdrawReason, setCustomWithdrawReason] = useState('');
+  const [otpFailedCount, setOtpFailedCount] = useState(0);
+  const [isOtpLocked, setIsOtpLocked] = useState(false);
+  const [showExceptionTool, setShowExceptionTool] = useState(false);
 
   // TRẠNG THÁI QUY TRÌNH LIÊN THÔNG TỰ ĐỘNG
   const [workflowState, setWorkflowState] = useState<{
@@ -141,6 +153,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
       gioi_tinh: app.gioi_tinh || 'Nữ',
       status: finalStatus,
       aiConfidence: confidence,
+      ghi_chu_ly_do: app.ghi_chu_ly_do,
     };
     setStudentInfo(resolved);
     setStatus(finalStatus);
@@ -324,6 +337,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
           gioi_tinh: 'Nữ',
           status: 'CHO_THAM_DINH',
           aiConfidence: 0.35,
+          ghi_chu_ly_do: undefined,
         });
         setNotifications([]);
         setStatus('CHO_THAM_DINH');
@@ -439,6 +453,10 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
 
   // SINH VIÊN KÝ HỢP ĐỒNG ĐIỆN TỬ BẰNG OTP
   const handleSignContract = async () => {
+    if (isOtpLocked) {
+      alert('🔒 [LỖI BẢO MẬT]: Chức năng ký hợp đồng đã tạm khóa do nhập sai mã OTP quá 3 lần liên tiếp. Vui lòng kiểm tra lại mã OTP chính xác trong Hộp Thư Thông Báo.');
+      return;
+    }
     if (!agreeContract) {
       alert('Vui lòng tích chọn cam kết đồng ý với các điều khoản của Hợp đồng trước khi ký số!');
       return;
@@ -451,6 +469,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
     try {
       const res = await signContractAction(studentInfo.ma_sv, otpInput.trim(), studentInfo.ma_sv);
       if (res.success) {
+        setOtpFailedCount(0);
         await fetch('/api/workflow', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -460,7 +479,14 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
         setStatus('DA_KY');
         setWorkflowNotice('Ký hợp đồng điện tử thành công (SIGNED). Suất nội trú đã chuyển sang trạng thái ĐÃ GIỮ CHỖ và sẵn sàng tiếp nhận phòng.');
       } else {
-        alert(res.message);
+        const nextFailed = otpFailedCount + 1;
+        setOtpFailedCount(nextFailed);
+        if (nextFailed >= 3) {
+          setIsOtpLocked(true);
+          alert('🔒 [LỖI XÁC THỰC BẢO MẬT]: Bạn đã nhập sai mã OTP 3 lần liên tiếp. Chức năng ký hợp đồng tạm khóa để ngăn chặn tấn công dò mã (brute-force). Vui lòng kiểm tra mã OTP trong Hộp Thư Thông Báo.');
+        } else {
+          alert(`Mã OTP không chính xác (${res.message}). Bạn còn ${3 - nextFailed} lần thử lại.`);
+        }
       }
     } catch (e: any) {
       alert('Lỗi ký hợp đồng: ' + e.message);
@@ -495,8 +521,95 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
       );
       if (res.success) {
         setStatus('HUY_SUAT');
+        setStudentInfo((prev) => ({
+          ...prev,
+          status: 'HUY_SUAT',
+          ghi_chu_ly_do: `HỦY THEO YÊU CẦU CỦA NGƯỜI ĐỀ NGHỊ: ${declineReason || 'Từ chối nhận phòng tại bước ký hợp đồng'}`,
+        }));
         setShowDeclineModal(false);
         setWorkflowNotice(res.message);
+        await fetchWorkflow();
+        await fetchNotifications();
+      } else {
+        alert(res.message);
+      }
+    } catch (err: any) {
+      alert('Lỗi: ' + err.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // HOẠT ĐỘNG NGOẠI LỆ: HỦY YÊU CẦU TỪ NGƯỜI ĐỀ NGHỊ (RÚT HỒ SƠ)
+  const handleWithdrawApplication = async () => {
+    if (!studentInfo.ma_sv) return;
+    setIsProcessing(true);
+    const finalReason =
+      withdrawReason === 'Khác' && customWithdrawReason.trim()
+        ? customWithdrawReason.trim()
+        : withdrawReason;
+    try {
+      const res = await withdrawApplicationByApplicantAction(studentInfo.ma_sv, finalReason);
+      if (res.success) {
+        setStatus('HUY_SUAT');
+        setStudentInfo((prev) => ({
+          ...prev,
+          status: 'HUY_SUAT',
+          ghi_chu_ly_do: `HỦY THEO YÊU CẦU CỦA NGƯỜI ĐỀ NGHỊ: ${finalReason}`,
+        }));
+        setShowWithdrawModal(false);
+        setActionMessage(res.message);
+        setWorkflowNotice('Hồ sơ đã được hủy theo đúng nguyện vọng của người đề nghị.');
+        await fetchWorkflow();
+        await fetchNotifications();
+      } else {
+        alert(res.message);
+      }
+    } catch (err: any) {
+      alert('Lỗi: ' + err.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // KHÔI PHỤC HỒ SƠ VỀ TRẠNG THÁI BÌNH THƯỜNG (KIỂM THỬ NGOẠI LỆ)
+  const handleRestoreApplication = async () => {
+    if (!studentInfo.ma_sv) return;
+    setIsProcessing(true);
+    try {
+      const res = await restoreApplicationAction(studentInfo.ma_sv);
+      if (res.success) {
+        setStatus('THAM_DINH_DAT');
+        setStudentInfo((prev) => ({
+          ...prev,
+          status: 'THAM_DINH_DAT',
+          ghi_chu_ly_do: undefined,
+        }));
+        setActionMessage(res.message);
+        setWorkflowNotice('Hồ sơ đã được khôi phục về trạng thái "Thẩm định đạt", sẵn sàng kiểm thử quy trình.');
+        await fetchWorkflow();
+        await fetchNotifications();
+      } else {
+        alert(res.message);
+      }
+    } catch (err: any) {
+      alert('Lỗi: ' + err.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // MÔ PHỎNG SỰ KIỆN LỖI NGOẠI LỆ BPMN TO-BE (B8)
+  const handleSimulateException = async (type: 'ERR_HO_KHAU' | 'ERR_KHONG_BO_SUNG' | 'ERR_HUY_SUAT_72H') => {
+    if (!studentInfo.ma_sv) return;
+    setIsProcessing(true);
+    try {
+      const res = await simulateExceptionAction(studentInfo.ma_sv, type);
+      if (res.success) {
+        if (type === 'ERR_HO_KHAU') setStatus('TU_CHOI_BO_TRI');
+        else if (type === 'ERR_KHONG_BO_SUNG') setStatus('KHONG_DUOC_XET');
+        else if (type === 'ERR_HUY_SUAT_72H') setStatus('HUY_SUAT');
+        setActionMessage(res.message);
         await fetchWorkflow();
         await fetchNotifications();
       } else {
@@ -516,13 +629,24 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
   // ==============================================================================
   const isPendingReview = status === 'CHO_THAM_DINH';
   const isCancelled = status === 'HUY_SUAT';
+  const isCancelledByApplicant =
+    status === 'HUY_SUAT' &&
+    (studentInfo.ghi_chu_ly_do?.includes('HỦY THEO YÊU CẦU') ||
+      studentInfo.ghi_chu_ly_do?.includes('từ chối') ||
+      studentInfo.ghi_chu_ly_do?.includes('rút hồ sơ') ||
+      studentInfo.ghi_chu_ly_do?.includes('Người đề nghị'));
+  const isCancelledByTimeout =
+    status === 'HUY_SUAT' && (studentInfo.ghi_chu_ly_do?.includes('72') || studentInfo.ghi_chu_ly_do?.includes('BE5'));
+  const isDeniedResidence = status === 'TU_CHOI_BO_TRI';
+  const isDisqualified = status === 'KHONG_DUOC_XET';
+  const isExceptionState = isCancelled || isDeniedResidence || isDisqualified;
   const isSupplement = status === 'CAN_BO_SUNG';
   const isApprovedEvidence =
     status === 'THAM_DINH_DAT' ||
     status === 'DA_DUYET' ||
     status === 'DA_PHAT_HANH' ||
     status === 'DA_KY';
-  const isAdmitted = !isPendingReview && !isSupplement && !isCancelled && studentRank > 0 && studentRank <= 120;
+  const isAdmitted = !isPendingReview && !isSupplement && !isCancelled && !isDeniedResidence && !isDisqualified && studentRank > 0 && studentRank <= 120;
 
   // PHÂN BỔ PHÒNG VÀ MÃ OTP CÁ NHÂN DUY NHẤT CHO TỪNG SINH VIÊN (1 NGƯỜI 1 PHÒNG & 1 MÃ OTP)
   const personalRoom = getAssignedRoomForStudent(
@@ -572,7 +696,11 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
 
   // TÍNH TOÁN SỐ THỨ TỰ BƯỚC HIỆN TẠI (TỪ 1 ĐẾN 5 ĐỒNG NHẤT 100% VỚI NỘI DUNG CARD BÊN DƯỚI)
   let currentStepNumber = 2;
-  if (isCancelled) {
+  if (isDeniedResidence) {
+    currentStepNumber = 1; // Bước 1: Tiếp nhận & Sàng lọc (Bị từ chối do HK Đà Nẵng)
+  } else if (isDisqualified) {
+    currentStepNumber = 2; // Bước 2: Thẩm định minh chứng (Bị loại do quá hạn 48h)
+  } else if (isCancelled) {
     currentStepNumber = 5;
   } else if (workflowState.isHandedOver || workflowState.isSigned) {
     currentStepNumber = 5; // Bước 5: Tiếp nhận phòng & bàn giao
@@ -591,6 +719,8 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
   const isContractOrHandoverStep =
     !isPendingReview &&
     !isCancelled &&
+    !isDeniedResidence &&
+    !isDisqualified &&
     status !== 'CAN_BO_SUNG' &&
     workflowState.isRankingsFinalized &&
     isAdmitted &&
@@ -709,9 +839,27 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
             )}
           </button>
 
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-600 text-white shadow">
-            {isCancelled
-              ? 'Đã Từ Chối Nhận Phòng'
+          <span
+            className={`px-3 py-1 rounded-full text-xs font-bold text-white shadow ${
+              isCancelledByApplicant
+                ? 'bg-rose-700'
+                : isCancelled
+                ? 'bg-rose-900'
+                : isDeniedResidence
+                ? 'bg-rose-800'
+                : isDisqualified
+                ? 'bg-amber-700'
+                : 'bg-emerald-600'
+            }`}
+          >
+            {isCancelledByApplicant
+              ? '🚫 Đã Hủy Yêu Cầu (Người Đề Nghị)'
+              : isCancelled
+              ? '⚠️ Đã Hủy Suất (Quá Hạn 72h / BE5)'
+              : isDeniedResidence
+              ? '⛔ Từ Chối Bố Trí (Hộ Khẩu ĐN / BE1)'
+              : isDisqualified
+              ? '⚠️ Không Được Xét (Quá Hạn 48h / BE2)'
               : workflowState.isHandedOver
               ? 'Đã Bàn Giao Phòng (E2)'
               : workflowState.isSigned
@@ -768,6 +916,74 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
             Tìm Kiếm
           </button>
         </form>
+
+        {/* THANH CÔNG CỤ MÔ PHỎNG HOẠT ĐỘNG NGOẠI LỆ (BPMN TO-BE KIỂM THỬ) */}
+        <div className="border border-indigo-200 bg-indigo-50/70 rounded-xl p-3 text-xs shadow-xs">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div className="flex items-center space-x-2">
+              <span className="px-2 py-0.5 bg-indigo-700 text-white text-[10px] font-bold rounded uppercase">
+                Kiểm Thử BPMN To-Be
+              </span>
+              <span className="font-bold text-indigo-950">
+                Mô Phỏng Hoạt Động Ngoại Lệ (Lỗi &amp; Hủy Yêu Cầu Từ Người Đề Nghị)
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowExceptionTool(!showExceptionTool)}
+              className="text-indigo-700 hover:text-indigo-900 font-bold text-[11px] underline cursor-pointer"
+            >
+              {showExceptionTool ? 'Thu gọn ▲' : 'Mở bảng điều khiển mô phỏng ngoại lệ ▼'}
+            </button>
+          </div>
+          {showExceptionTool && (
+            <div className="mt-3 pt-3 border-t border-indigo-200 flex flex-wrap gap-2 items-center">
+              <span className="text-[11px] text-slate-600 font-semibold w-full sm:w-auto">
+                Kích hoạt kịch bản ngoại lệ:
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowWithdrawModal(true)}
+                disabled={isProcessing}
+                className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-[11px] shadow-xs flex items-center space-x-1 transition cursor-pointer"
+              >
+                <span>🚫 [Ngoại lệ] Hủy yêu cầu từ người đề nghị (Rút hồ sơ)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSimulateException('ERR_HO_KHAU')}
+                disabled={isProcessing}
+                className="px-2.5 py-1.5 bg-rose-700 hover:bg-rose-800 text-white rounded-lg font-bold text-[11px] shadow-xs flex items-center space-x-1 transition cursor-pointer"
+              >
+                <span>⛔ [Lỗi BE1] Hộ khẩu Đà Nẵng</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSimulateException('ERR_KHONG_BO_SUNG')}
+                disabled={isProcessing}
+                className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-[11px] shadow-xs flex items-center space-x-1 transition cursor-pointer"
+              >
+                <span>⚠️ [Lỗi BE2] Quá hạn 48h bổ sung</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSimulateException('ERR_HUY_SUAT_72H')}
+                disabled={isProcessing}
+                className="px-2.5 py-1.5 bg-red-800 hover:bg-red-900 text-white rounded-lg font-bold text-[11px] shadow-xs flex items-center space-x-1 transition cursor-pointer"
+              >
+                <span>⚠️ [Lỗi BE5] Quá hạn 72h ký HĐ</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleRestoreApplication}
+                disabled={isProcessing}
+                className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg font-bold text-[11px] shadow-xs flex items-center space-x-1 transition cursor-pointer"
+              >
+                <span>✓ Khôi phục về bình thường (Thẩm định đạt)</span>
+              </button>
+            </div>
+          )}
+        </div>
 
         {actionMessage && (
           <div className="p-3 bg-blue-50 border border-blue-200 text-blue-900 rounded-lg text-xs font-semibold">
@@ -1568,13 +1784,238 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
                 <span>Dữ liệu lưu an toàn trong CSDL KTX DUE.</span>
               </div>
+
+              {/* NÚT HOẠT ĐỘNG NGOẠI LỆ: HỦY YÊU CẦU TỪ NGƯỜI ĐỀ NGHỊ (RÚT HỒ SƠ) */}
+              {!isCancelled && !isDeniedResidence && !isDisqualified && !workflowState.isHandedOver && (
+                <div className="pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowWithdrawModal(true)}
+                    className="w-full py-2 px-3 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-xs"
+                    title="Người đề nghị (sinh viên) chủ động rút hồ sơ / hủy yêu cầu đăng ký nội trú"
+                  >
+                    <span>🚫</span>
+                    <span>Hủy Yêu Cầu / Rút Hồ Sơ (Người Đề Nghị)</span>
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* CỘT PHẢI: BƯỚC 3 - CHỜ TRƯỞNG BAN PHÊ DUYỆT DANH SÁCH (BƯỚC 2 ĐÃ XONG) */}
             {/* CỘT PHẢI: TRẠNG THÁI TIẾN ĐỘ THỰC TẾ CỦA HỒ SƠ */}
-            {isCancelled ? (
-              /* TRƯỜNG HỢP 1: ĐÃ TỪ CHỐI / HỦY SUẤT */
-              <div className="bg-rose-50 rounded-xl border-2 border-rose-300 p-6 flex flex-col justify-between text-center space-y-4 shadow-sm">
+            {isCancelledByApplicant ? (
+              /* TRƯỜNG HỢP 1A: NGOẠI LỆ HỦY YÊU CẦU TỪ NGƯỜI ĐỀ NGHỊ */
+              <div className="bg-rose-50 rounded-xl border-2 border-rose-400 p-6 flex flex-col justify-between text-left space-y-4 shadow-sm animate-in fade-in">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <span className="px-2.5 py-0.5 bg-rose-700 text-white text-[10px] font-bold rounded uppercase">
+                      Hoạt Động Ngoại Lệ
+                    </span>
+                    <span className="px-2 py-0.5 bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-bold rounded-full">
+                      Hủy Yêu Cầu Từ Người Đề Nghị (Cancel Event)
+                    </span>
+                  </div>
+
+                  <h3 className="text-base font-black text-rose-950 uppercase">
+                    HỒ SƠ ĐÃ ĐƯỢC HỦY THEO NGUYỆN VỌNG CỦA SINH VIÊN
+                  </h3>
+
+                  <p className="text-xs text-slate-700 leading-relaxed">
+                    Hệ thống KTX DUE đã tiếp nhận yêu cầu rút hồ sơ từ sinh viên <strong>{studentInfo.ho_ten}</strong> (MSSV: <strong>{studentInfo.ma_sv}</strong>). Hồ sơ đã được chuyển sang trạng thái hủy và giải phóng chỉ tiêu xét tuyển cho thí sinh kế tiếp trong danh sách chờ.
+                  </p>
+
+                  <div className="p-3.5 bg-white rounded-lg border border-rose-200 text-xs space-y-1.5 text-slate-800">
+                    <div>
+                      <span className="text-slate-500">Lý do hủy yêu cầu:</span>{' '}
+                      <strong className="text-rose-700 font-bold">
+                        {studentInfo.ghi_chu_ly_do || 'Người đề nghị chủ động rút hồ sơ / từ chối nhận phòng'}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Mã trạng thái CSDL:</span>{' '}
+                      <strong className="font-mono text-slate-900 font-bold">HUY_SUAT (Đã Hủy Xét Tuyển)</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Cơ chế xử lý:</span>{' '}
+                      <span className="text-slate-700">Tự động hoàn chỉ tiêu phòng và điều chuyển cho sinh viên kế tiếp trên Bảng xếp hạng.</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-rose-200 flex flex-wrap gap-2 items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={handleRestoreApplication}
+                    disabled={isProcessing}
+                    className="py-2 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold transition flex items-center space-x-1 cursor-pointer"
+                    title="Khôi phục hồ sơ về bình thường để kiểm thử tiếp"
+                  >
+                    <span>🔄 Khôi phục hồ sơ (Demo / Test)</span>
+                  </button>
+                  <Link
+                    href={`/ranking?search=${encodeURIComponent(studentInfo.ma_sv)}`}
+                    className="py-2 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition"
+                  >
+                    Xem Bảng Xếp Hạng &rarr;
+                  </Link>
+                </div>
+              </div>
+            ) : isCancelledByTimeout ? (
+              /* TRƯỜNG HỢP 1B: NGOẠI LỆ LỖI QUÁ HẠN 72H KÝ HỢP ĐỒNG (BE5) */
+              <div className="bg-amber-50 rounded-xl border-2 border-amber-400 p-6 flex flex-col justify-between text-left space-y-4 shadow-sm animate-in fade-in">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <span className="px-2.5 py-0.5 bg-amber-700 text-white text-[10px] font-bold rounded uppercase">
+                      Hoạt Động Ngoại Lệ: Lỗi
+                    </span>
+                    <span className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold rounded-full">
+                      Quá Hạn 72H Ký Hợp Đồng (Err_Huy - BE5)
+                    </span>
+                  </div>
+
+                  <h3 className="text-base font-black text-amber-950 uppercase">
+                    SUẤT NỘI TRÚ ĐÃ BỊ THU HỒI DO QUÁ HẠN KÝ HỢP ĐỒNG 72H
+                  </h3>
+
+                  <p className="text-xs text-amber-900 leading-relaxed">
+                    Theo quy chế tuyển sinh KTX DUE, sau 72 giờ kể từ thời điểm công bố kết quả và phát hành hợp đồng, sinh viên không hoàn thành ký số OTP sẽ bị kích hoạt sự kiện biên BE5 (Err_Huy). Hệ thống đã tự động thu hồi phòng về trạng thái <strong>TRỐNG (AVAILABLE)</strong> để chuyển giao cho sinh viên kế tiếp trên danh sách chờ (Mở Đợt 2).
+                  </p>
+
+                  <div className="p-3.5 bg-white rounded-lg border border-amber-200 text-xs space-y-1.5 text-slate-800">
+                    <div>
+                      <span className="text-slate-500">Mã sự kiện lỗi BPMN:</span>{' '}
+                      <strong className="font-mono text-amber-900 font-bold">BE5 - ERR_HUY_SUAT (Timer Boundary 72h)</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Xử lý phòng KTX:</span>{' '}
+                      <strong className="text-emerald-700 font-bold">Phòng đã hoàn về trạng thái TRỐNG &amp; điều chuyển Đợt 2</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-amber-200 flex flex-wrap gap-2 items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={handleRestoreApplication}
+                    disabled={isProcessing}
+                    className="py-2 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold transition flex items-center space-x-1 cursor-pointer"
+                  >
+                    <span>🔄 Khôi phục hồ sơ (Demo / Test)</span>
+                  </button>
+                  <Link
+                    href={`/ranking?search=${encodeURIComponent(studentInfo.ma_sv)}`}
+                    className="py-2 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition"
+                  >
+                    Xem Bảng Xếp Hạng &rarr;
+                  </Link>
+                </div>
+              </div>
+            ) : isDeniedResidence ? (
+              /* TRƯỜNG HỢP 1C: NGOẠI LỆ LỖI HỘ KHẨU ĐÀ NẴNG (BE1) */
+              <div className="bg-rose-50 rounded-xl border-2 border-rose-400 p-6 flex flex-col justify-between text-left space-y-4 shadow-sm animate-in fade-in">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <span className="px-2.5 py-0.5 bg-rose-700 text-white text-[10px] font-bold rounded uppercase">
+                      Hoạt Động Ngoại Lệ: Lỗi
+                    </span>
+                    <span className="px-2 py-0.5 bg-rose-100 text-rose-800 border border-rose-300 text-[10px] font-bold rounded-full">
+                      Hộ Khẩu Thường Trú Đà Nẵng (Err_HoKhau - BE1)
+                    </span>
+                  </div>
+
+                  <h3 className="text-base font-black text-rose-950 uppercase">
+                    TỪ CHỐI BỐ TRÍ CHỖ Ở TẠI KÝ TÚC XÁ
+                  </h3>
+
+                  <p className="text-xs text-rose-900 leading-relaxed">
+                    Hồ sơ đăng ký của bạn có hộ khẩu thường trú tại TP Đà Nẵng. Căn cứ Quy chế tuyển sinh nội trú KTX Đại học Kinh tế – ĐH Đà Nẵng (DUE), Ký túc xá chỉ ưu tiên tiếp nhận sinh viên ngoại tỉnh, vùng sâu vùng xa và các trường hợp chính sách khó khăn về chỗ ở.
+                  </p>
+
+                  <div className="p-3.5 bg-white rounded-lg border border-rose-200 text-xs space-y-1.5 text-slate-800">
+                    <div>
+                      <span className="text-slate-500">Mã lỗi nghiệp vụ BPMN:</span>{' '}
+                      <strong className="font-mono text-rose-800 font-bold">BE1 - ERR_HO_KHAU_DA_NANG</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Kết luận hệ thống:</span>{' '}
+                      <strong className="text-rose-700 font-bold">TU_CHOI_BO_TRI (Đã gửi email thông báo từ chối)</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-rose-200 flex flex-wrap gap-2 items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={handleRestoreApplication}
+                    disabled={isProcessing}
+                    className="py-2 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold transition flex items-center space-x-1 cursor-pointer"
+                  >
+                    <span>🔄 Khôi phục hồ sơ (Demo / Test)</span>
+                  </button>
+                  <Link
+                    href={`/ranking?search=${encodeURIComponent(studentInfo.ma_sv)}`}
+                    className="py-2 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition"
+                  >
+                    Xem Bảng Xếp Hạng &rarr;
+                  </Link>
+                </div>
+              </div>
+            ) : isDisqualified ? (
+              /* TRƯỜNG HỢP 1D: NGOẠI LỆ LỖI QUÁ HẠN 48H BỔ SUNG MINH CHỨNG (BE2) */
+              <div className="bg-amber-50 rounded-xl border-2 border-amber-400 p-6 flex flex-col justify-between text-left space-y-4 shadow-sm animate-in fade-in">
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <span className="px-2.5 py-0.5 bg-amber-700 text-white text-[10px] font-bold rounded uppercase">
+                      Hoạt Động Ngoại Lệ: Lỗi
+                    </span>
+                    <span className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold rounded-full">
+                      Quá Hạn Bổ Sung Minh Chứng 48H (Err_KhongXet - BE2)
+                    </span>
+                  </div>
+
+                  <h3 className="text-base font-black text-amber-950 uppercase">
+                    HỒ SƠ KHÔNG ĐƯỢC XÉT TUYỂN NỘI TRÚ ĐỢT 1
+                  </h3>
+
+                  <p className="text-xs text-amber-900 leading-relaxed">
+                    Đã quá thời hạn 48 giờ quy định kể từ khi Cán bộ QLSV phát hành thông báo yêu cầu bổ sung minh chứng mà hệ thống không nhận được giấy tờ hợp lệ bổ sung. Hệ thống đã kích hoạt sự kiện biên BE2 (Err_KhongXet) và loại hồ sơ khỏi danh sách xếp hạng.
+                  </p>
+
+                  <div className="p-3.5 bg-white rounded-lg border border-amber-200 text-xs space-y-1.5 text-slate-800">
+                    <div>
+                      <span className="text-slate-500">Mã lỗi nghiệp vụ BPMN:</span>{' '}
+                      <strong className="font-mono text-amber-800 font-bold">BE2 - ERR_KHONG_BO_SUNG_KIP</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Trạng thái hồ sơ:</span>{' '}
+                      <strong className="text-rose-700 font-bold">KHONG_DUOC_XET</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Điểm ưu tiên:</span>{' '}
+                      <strong className="text-slate-600">0 điểm (Đã thu hồi điểm ưu tiên dự kiến)</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-amber-200 flex flex-wrap gap-2 items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={handleRestoreApplication}
+                    disabled={isProcessing}
+                    className="py-2 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold transition flex items-center space-x-1 cursor-pointer"
+                  >
+                    <span>🔄 Khôi phục hồ sơ (Demo / Test)</span>
+                  </button>
+                  <Link
+                    href={`/ranking?search=${encodeURIComponent(studentInfo.ma_sv)}`}
+                    className="py-2 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition"
+                  >
+                    Xem Bảng Xếp Hạng &rarr;
+                  </Link>
+                </div>
+              </div>
+            ) : isCancelled ? (
+              /* TRƯỜNG HỢP 1E: HỦY SUẤT THÔNG THƯỜNG */
+              <div className="bg-rose-50 rounded-xl border-2 border-rose-300 p-6 flex flex-col justify-between text-center space-y-4 shadow-sm animate-in fade-in">
                 <div className="space-y-3">
                   <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-700 font-black text-xl flex items-center justify-center mx-auto">
                     ✕
@@ -1586,10 +2027,18 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                     Hệ thống đã ghi nhận bạn từ chối nhận phòng KTX. Suất nội trú này đã được thu hồi và chuyển giao cho sinh viên kế tiếp trên danh sách chờ theo đúng quy chế tuyển sinh KTX DUE.
                   </p>
                 </div>
-                <div className="pt-2 border-t border-rose-200 text-center">
+                <div className="pt-2 border-t border-rose-200 flex flex-wrap gap-2 items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={handleRestoreApplication}
+                    disabled={isProcessing}
+                    className="py-2 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold transition flex items-center space-x-1 cursor-pointer"
+                  >
+                    <span>🔄 Khôi phục hồ sơ</span>
+                  </button>
                   <Link
                     href={`/ranking?search=${encodeURIComponent(studentInfo.ma_sv)}`}
-                    className="inline-block py-2 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition"
+                    className="py-2 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition"
                   >
                     Xem Bảng Xếp Hạng &rarr;
                   </Link>
@@ -2178,6 +2627,90 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                   className="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-xs font-bold shadow transition disabled:opacity-50"
                 >
                   {isProcessing ? 'Đang xử lý...' : 'Xác Nhận Từ Chối Nhận Phòng'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================================== */}
+      {/* MODAL 5: XÁC NHẬN HỦY YÊU CẦU TỪ NGƯỜI ĐỀ NGHỊ (RÚT HỒ SƠ XÉT TUYỂN) */}
+      {/* ============================================================================== */}
+      {showWithdrawModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95">
+            <div className="bg-rose-800 p-4 text-white flex justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">🚫</span>
+                <div>
+                  <h3 className="font-bold text-sm">Hủy Yêu Cầu Từ Người Đề Nghị</h3>
+                  <p className="text-[10px] text-rose-200">Hoạt động ngoại lệ: Rút hồ sơ / Hủy đăng ký nội trú (Cancel Event)</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowWithdrawModal(false)}
+                className="text-rose-200 hover:text-white text-lg font-bold w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-950 space-y-2">
+                <p className="font-bold text-rose-900 text-sm">
+                  Bạn có chắc chắn muốn HỦY YÊU CẦU ĐĂNG KÝ NỘI TRÚ?
+                </p>
+                <p className="text-[11px] text-slate-700 leading-relaxed">
+                  Sinh viên: <strong className="text-slate-900 font-bold">{studentInfo.ho_ten}</strong> (MSSV:{' '}
+                  <span className="font-mono">{studentInfo.ma_sv}</span>)<br />
+                  <strong className="text-rose-700 font-bold">Lưu ý quan trọng:</strong> Khi xác nhận hủy yêu cầu từ người đề nghị, hồ sơ xét tuyển sẽ chuyển sang trạng thái <strong>ĐÃ HỦY (HUY_SUAT)</strong>. Chỉ tiêu xét tuyển sẽ được giải phóng ngay lập tức để hệ thống chuyển giao cho bạn sinh viên kế tiếp trên danh sách chờ theo đúng quy chế tuyển sinh KTX DUE.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Lý do hủy yêu cầu / rút hồ sơ:
+                </label>
+                <select
+                  value={withdrawReason}
+                  onChange={(e) => setWithdrawReason(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none mb-2"
+                >
+                  <option value="Đã thuê được phòng trọ / nhà riêng bên ngoài">Đã thuê được phòng trọ / nhà riêng bên ngoài</option>
+                  <option value="Gia đình đã sắp xếp được phương án ăn ở khác">Gia đình đã sắp xếp được phương án ăn ở khác</option>
+                  <option value="Thay đổi kế hoạch học tập / Không còn nhu cầu nội trú">Thay đổi kế hoạch học tập / Không còn nhu cầu nội trú</option>
+                  <option value="Khác">Lý do khác (tự nhập bên dưới)...</option>
+                </select>
+
+                {withdrawReason === 'Khác' && (
+                  <textarea
+                    rows={2}
+                    value={customWithdrawReason}
+                    onChange={(e) => setCustomWithdrawReason(e.target.value)}
+                    placeholder="Nhập lý do cụ thể của bạn..."
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none"
+                  />
+                )}
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowWithdrawModal(false)}
+                  disabled={isProcessing}
+                  className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-bold cursor-pointer"
+                >
+                  Đóng (Giữ Lại Hồ Sơ)
+                </button>
+                <button
+                  type="button"
+                  onClick={handleWithdrawApplication}
+                  disabled={isProcessing}
+                  className="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-xs font-bold shadow transition disabled:opacity-50 cursor-pointer"
+                >
+                  {isProcessing ? 'Đang xử lý...' : 'Xác Nhận Hủy Yêu Cầu'}
                 </button>
               </div>
             </div>
