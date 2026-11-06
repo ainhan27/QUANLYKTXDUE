@@ -511,7 +511,7 @@ export default function RealtimeRankingTable({ initialData }: RealtimeRankingTab
           <label className="block text-[11px] font-semibold text-slate-500 mb-1">Tìm kiếm sinh viên:</label>
           <input
             type="text"
-            placeholder="Tìm theo Tên, Lớp / MSSV, Tỉnh thành..."
+            placeholder="Tìm theo Mã sinh viên (MSSV), Họ tên, Lớp, Tỉnh thành..."
             value={searchKeyword}
             onChange={(e) => {
               setSearchKeyword(e.target.value);
@@ -584,7 +584,7 @@ export default function RealtimeRankingTable({ initialData }: RealtimeRankingTab
             <thead>
               <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                 <th className="py-3 px-4 text-center w-16">Thứ Hạng</th>
-                <th className="py-3 px-4">Lớp</th>
+                <th className="py-3 px-4">Mã Sinh Viên (MSSV)</th>
                 <th className="py-3 px-4">Họ và Tên</th>
                 <th className="py-3 px-4">Tỉnh / Thành</th>
                 <th className="py-3 px-4">Diện Ưu Tiên</th>

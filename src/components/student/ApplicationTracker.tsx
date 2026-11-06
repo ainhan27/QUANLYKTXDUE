@@ -1735,7 +1735,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                     <strong className="text-slate-900 text-sm font-black">{studentInfo.ho_ten || 'Chưa đăng nhập'}</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Lớp:</span>
+                    <span className="text-slate-500">Mã SV (MSSV):</span>
                     <strong className="text-slate-800 font-mono text-sm">{studentInfo.ma_sv || '---'}</strong>
                   </div>
                   <div className="flex justify-between">

@@ -28,20 +28,40 @@ export async function GET() {
           .order('created_at', { ascending: false });
 
         if (!error && data && data.length > 0) {
+          const localList = getAllStoredApplications();
+          const localMap = new Map<string, any>();
+          localList.forEach((l) => {
+            if (l.id) localMap.set(l.id, l);
+            if (l.ma_sv) localMap.set(l.ma_sv, l);
+            if (l.cccd) localMap.set(l.cccd, l);
+          });
+
           const enriched = data.map((app: any) => {
             let cccdImg = app.cccd_image_base64;
             let priorityImg = app.priority_image_base64;
+            let aiResultObj = app.ai_result || null;
+
             if (app.file_url) {
               try {
                 if (app.file_url.startsWith('{')) {
                   const parsed = JSON.parse(app.file_url);
                   cccdImg = cccdImg || parsed.cccd;
                   priorityImg = priorityImg || parsed.priority;
+                  aiResultObj = aiResultObj || parsed.ai_result;
                 } else if (app.file_url.startsWith('data:')) {
                   cccdImg = cccdImg || app.file_url;
                 }
               } catch {}
             }
+
+            // Đối chiếu với bộ nhớ cục bộ để lấy ảnh thật nếu Supabase chưa có
+            const localMatch = localMap.get(app.id) || localMap.get(app.ma_sv) || localMap.get(app.cccd);
+            if (localMatch) {
+              cccdImg = cccdImg || localMatch.cccd_image_base64;
+              priorityImg = priorityImg || localMatch.priority_image_base64;
+              aiResultObj = aiResultObj || localMatch.ai_result;
+            }
+
             return {
               ...app,
               dien_uu_tien_label:
@@ -52,6 +72,7 @@ export async function GET() {
                   : 'Không thuộc diện ưu tiên chính sách'),
               cccd_image_base64: cccdImg,
               priority_image_base64: priorityImg,
+              ai_result: aiResultObj,
             };
           });
           return NextResponse.json({ success: true, data: enriched, source: 'supabase' });

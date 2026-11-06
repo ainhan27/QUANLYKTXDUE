@@ -396,15 +396,16 @@ export default function ApplicationForm({ onSuccess }: ApplicationFormProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Lớp (DUE) *</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Mã Sinh Viên (MSSV) *</label>
               <input
                 type="text"
                 required
-                placeholder="Nhập Lớp sinh hoạt (ví dụ: 51K11.057 hoặc 48K01)..."
+                placeholder="Ví dụ: 51K36.001 hoặc 251121536108..."
                 value={formData.ma_sv}
                 onChange={(e) => setFormData({ ...formData, ma_sv: e.target.value })}
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
               />
+              <p className="text-[11px] text-slate-500 mt-1">Mã định danh duy nhất từng sinh viên (phân biệt các SV cùng lớp)</p>
             </div>
 
             <div>

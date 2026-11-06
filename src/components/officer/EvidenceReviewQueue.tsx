@@ -223,8 +223,8 @@ export default function EvidenceReviewQueue() {
       diem_uu_tien: 35,
       isSupplemented: false,
       isSupplementReview: false,
-      cccdImageUrl: generateRealisticCccdSvg('Trần Minh Khang', '048204009988', 'Nam'),
-      priorityImageUrl: generateRealisticPrioritySvg('Trần Minh Khang', 'Hộ nghèo, cận nghèo theo chuẩn QG', '251121536108'),
+      cccdImageUrl: '',
+      priorityImageUrl: '',
       aiConfidence: 0.74,
       aiDocType: 'Giấy chứng nhận hộ cận nghèo năm 2025',
       aiExtractedName: 'Trần Minh Khang',
@@ -257,8 +257,8 @@ export default function EvidenceReviewQueue() {
       diem_uu_tien: 30,
       isSupplemented: true,
       isSupplementReview: true,
-      cccdImageUrl: generateRealisticCccdSvg('Nguyễn Thị Thu Thảo', '040204001122', 'Nữ'),
-      priorityImageUrl: generateRealisticPrioritySvg('Nguyễn Thị Thu Thảo', 'Vùng sâu vùng xa, hải đảo', '251121536155'),
+      cccdImageUrl: '',
+      priorityImageUrl: '',
       aiConfidence: 0.68,
       aiDocType: 'Xác nhận thường trú xã đặc biệt khó khăn',
       aiExtractedName: 'Nguyễn Thị Thu Thảo',
@@ -289,8 +289,8 @@ export default function EvidenceReviewQueue() {
       cccd: '046204005544',
       dien_uu_tien: 'Con liệt sĩ, con thương binh',
       diem_uu_tien: 40,
-      cccdImageUrl: generateRealisticCccdSvg('Lê Hoàng Nam', '046204005544', 'Nam'),
-      priorityImageUrl: generateRealisticPrioritySvg('Lê Hoàng Nam', 'Con liệt sĩ, con thương binh', '251121536089'),
+      cccdImageUrl: '',
+      priorityImageUrl: '',
       aiConfidence: 0.97,
       aiDocType: 'Giấy chứng nhận gia đình liệt sĩ',
       aiExtractedName: 'Lê Hoàng Nam',
@@ -461,20 +461,22 @@ export default function EvidenceReviewQueue() {
                   ? `data:image/jpeg;base64,${app.priority_image_base64}`
                   : undefined
               : undefined,
-            aiConfidence: Number(app.ai_result?.confidence) ?? (app.status === 'THAM_DINH_DAT' ? 1.0 : 0.85),
+            aiConfidence: Number.isFinite(Number(app.ai_result?.confidence))
+              ? Number(app.ai_result?.confidence)
+              : (app.status === 'THAM_DINH_DAT' ? 0.96 : 0.70),
             aiDocType: app.ai_result?.document_type || 'Hồ sơ thẩm định trực tuyến',
             aiExtractedName: app.ai_result?.extracted_info?.ho_ten || app.ho_ten,
             aiExtractedCccd: app.ai_result?.extracted_info?.so_dinh_danh || app.cccd,
-            nameMatched: app.ai_result?.extracted_info?.name_matched ?? true,
-            cccdMatched: app.ai_result?.extracted_info?.cccd_matched ?? true,
-            detectedOcrText: app.ai_result?.detected_raw_text || 'Đã đọc văn bản từ ảnh thực tế',
+            nameMatched: app.ai_result?.extracted_info?.name_matched ?? false,
+            cccdMatched: app.ai_result?.extracted_info?.cccd_matched ?? false,
+            detectedOcrText: app.ai_result?.detected_raw_text || (app.file_url ? 'Đã đọc văn bản từ ảnh thực tế' : 'Chưa có ảnh hoặc chưa quét OCR'),
             cccdCheck: {
-              hasKeyword: app.ai_result?.cccd_analysis?.has_cccd_keywords ?? true,
+              hasKeyword: app.ai_result?.cccd_analysis?.has_cccd_keywords ?? false,
               hasPoliceChief: app.ai_result?.cccd_analysis?.has_police_chief_keyword ?? false,
               note: app.ai_result?.cccd_analysis?.notes || 'Xác thực định danh CCCD do Bộ Công An cấp (Không yêu cầu mộc đỏ UBND).',
             },
             priorityCheck: {
-              matchedKeywords: app.ai_result?.priority_analysis?.matched_policy_keywords || [app.dien_uu_tien_label || app.dien_uu_tien],
+              matchedKeywords: app.ai_result?.priority_analysis?.matched_policy_keywords || (app.dien_uu_tien === 'KHONG' ? ['Không thuộc diện ưu tiên'] : [app.dien_uu_tien_label || app.dien_uu_tien]),
               hasOfficialStamp: (app.dien_uu_tien === 'KHONG' || app.diem_uu_tien === 0)
                 ? false
                 : (app.ai_result?.priority_analysis?.has_official_stamp_or_seal ?? false),
@@ -491,24 +493,7 @@ export default function EvidenceReviewQueue() {
             },
           }));
 
-          setQueue((prev) => {
-            const itemMap = new Map<string, QueueItem>();
-            prev.forEach((item) => itemMap.set(item.id, item));
-            newItems.forEach((item) => {
-              const existing = itemMap.get(item.id);
-              if (existing) {
-                itemMap.set(item.id, {
-                  ...existing,
-                  ...item,
-                  cccdImageUrl: item.cccdImageUrl || existing.cccdImageUrl,
-                  priorityImageUrl: item.priorityImageUrl || existing.priorityImageUrl,
-                });
-              } else {
-                itemMap.set(item.id, item);
-              }
-            });
-            return Array.from(itemMap.values());
-          });
+          setQueue(newItems);
         }
       })
       .catch((err) => console.warn('Lỗi nạp danh sách duyệt:', err));
@@ -1506,17 +1491,22 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                     }
 
                     if (activeImageTab === 'cccd') {
-                      const cccdSrc =
-                        currentItem.cccdImageUrl &&
-                        !currentItem.cccdImageUrl.includes('unsplash.com') &&
-                        !currentItem.cccdImageUrl.includes('undefined') &&
-                        currentItem.cccdImageUrl.length > 50
-                          ? currentItem.cccdImageUrl
-                          : generateRealisticCccdSvg(currentItem.ho_ten, currentItem.cccd, 'Nữ');
+                      const cccdSrc = currentItem.cccdImageUrl;
+                      if (!cccdSrc || cccdSrc.includes('undefined') || cccdSrc.length < 50) {
+                        return (
+                          <div className="flex flex-col items-center justify-center p-8 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl text-center space-y-2 w-full h-[320px]">
+                            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-2xl font-bold">
+                              📷
+                            </div>
+                            <h4 className="text-sm font-bold text-slate-700">Chưa có ảnh Căn cước công dân</h4>
+                            <p className="text-xs text-slate-500 max-w-sm">Hồ sơ này chưa tải lên ảnh CCCD hợp lệ hoặc đường dẫn tệp ảnh không khả dụng.</p>
+                          </div>
+                        );
+                      }
                       return (
                         <img
                           src={cccdSrc}
-                          alt="CCCD"
+                          alt="Ảnh chụp CCCD thực tế"
                           onError={() => {
                             setBrokenImages((prev) => ({
                               ...prev,
@@ -1524,22 +1514,31 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                               [currentItem.id]: true,
                             }));
                           }}
-                          className="max-h-[340px] w-auto object-contain rounded-lg shadow-sm"
+                          className="max-h-[340px] w-auto object-contain rounded-lg shadow-sm border border-slate-200"
                         />
                       );
                     }
 
-                    const prioritySrc =
-                      currentItem.priorityImageUrl &&
-                      !currentItem.priorityImageUrl.includes('unsplash.com') &&
-                      !currentItem.priorityImageUrl.includes('undefined') &&
-                      currentItem.priorityImageUrl.length > 50
-                        ? currentItem.priorityImageUrl
-                        : generateRealisticPrioritySvg(currentItem.ho_ten, currentItem.dien_uu_tien, currentItem.ma_sv);
+                    const prioritySrc = currentItem.priorityImageUrl;
+                    if (!prioritySrc || prioritySrc.includes('undefined') || prioritySrc.length < 50) {
+                      return (
+                        <div className="flex flex-col items-center justify-center p-8 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl text-center space-y-2 w-full h-[320px]">
+                          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-2xl font-bold">
+                            📄
+                          </div>
+                          <h4 className="text-sm font-bold text-slate-700">Chưa có ảnh minh chứng ưu tiên</h4>
+                          <p className="text-xs text-slate-500 max-w-sm">
+                            {currentItem.dien_uu_tien === 'KHONG' || currentItem.diem_uu_tien === 0
+                              ? 'Sinh viên không đăng ký diện ưu tiên (0đ), không yêu cầu giấy tờ minh chứng.'
+                              : 'Hồ sơ chưa có tệp ảnh minh chứng diện ưu tiên.'}
+                          </p>
+                        </div>
+                      );
+                    }
                     return (
                       <img
                         src={prioritySrc}
-                        alt="Minh chứng ưu tiên"
+                        alt="Ảnh chụp minh chứng ưu tiên thực tế"
                         onError={() => {
                           setBrokenImages((prev) => ({
                             ...prev,
@@ -1547,7 +1546,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                             [currentItem.id]: true,
                           }));
                         }}
-                        className="max-h-[340px] w-auto object-contain rounded-lg shadow-sm"
+                        className="max-h-[340px] w-auto object-contain rounded-lg shadow-sm border border-slate-200"
                       />
                     );
                   })()}
@@ -1556,7 +1555,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
 
               <div className="text-xs text-slate-500 flex justify-between items-center pt-2 border-t border-slate-100">
                 <span>
-                  Lớp: <strong className="text-slate-800 font-mono">{currentItem.ma_sv}</strong> ({currentItem.khoa})
+                  Mã SV: <strong className="text-slate-800 font-mono">{currentItem.ma_sv}</strong> ({currentItem.khoa})
                 </span>
                 <span>
                   Họ tên: <strong className="text-slate-800">{currentItem.ho_ten}</strong> | CCCD:{' '}
@@ -1591,19 +1590,26 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                             <span>❌ 0% (Ảnh lỗi - Đã chặn tự động duyệt)</span>
                           </span>
                         ) : (
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-black border flex items-center space-x-1 ${
-                              currentItem.aiConfidence >= 0.95
-                                ? 'bg-emerald-100 text-emerald-800 border-emerald-400'
-                                : 'bg-amber-100 text-amber-800 border-amber-400'
-                            }`}
-                          >
-                            <span>{currentItem.aiConfidence >= 0.95 ? '✓' : '⚠️'}</span>
-                            <span>{(currentItem.aiConfidence * 100).toFixed(0)}%</span>
-                            <span className="text-[10px] font-bold">
-                              {currentItem.aiConfidence >= 0.95 ? '(≥ 95% - Tự động cho qua)' : '(< 95% - Con người duyệt lại)'}
-                            </span>
-                          </span>
+                          (() => {
+                            const safeConf = Number.isFinite(currentItem.aiConfidence)
+                              ? currentItem.aiConfidence
+                              : (currentItem.status === 'THAM_DINH_DAT' ? 0.96 : 0.70);
+                            return (
+                              <span
+                                className={`px-3 py-1 rounded-full text-xs font-black border flex items-center space-x-1 ${
+                                  safeConf >= 0.95
+                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-400'
+                                    : 'bg-amber-100 text-amber-800 border-amber-400'
+                                }`}
+                              >
+                                <span>{safeConf >= 0.95 ? '✓' : '⚠️'}</span>
+                                <span>{Math.round(safeConf * 100)}%</span>
+                                <span className="text-[10px] font-bold">
+                                  {safeConf >= 0.95 ? '(≥ 95% - Tự động cho qua)' : '(< 95% - Con người duyệt lại)'}
+                                </span>
+                              </span>
+                            );
+                          })()
                         )}
                       </div>
                     </div>
@@ -1621,13 +1627,13 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                           <span className={`block text-[10px] font-bold mt-1 ${
                             isImageBroken
                               ? 'text-rose-600'
-                              : (currentItem.nameMatched ?? true)
+                              : (currentItem.nameMatched ?? false)
                               ? 'text-emerald-700'
                               : 'text-amber-700'
                           }`}>
                             {isImageBroken
                               ? '❌ Không thể đối chiếu (Ảnh bị lỗi)'
-                              : (currentItem.nameMatched ?? true)
+                              : (currentItem.nameMatched ?? false)
                               ? '✓ Trùng khớp với ảnh'
                               : '⚠️ Cần đối chiếu lại'}
                           </span>
@@ -1638,13 +1644,13 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                           <span className={`block text-[10px] font-bold mt-1 ${
                             isImageBroken
                               ? 'text-rose-600'
-                              : (currentItem.cccdMatched ?? true)
+                              : (currentItem.cccdMatched ?? false)
                               ? 'text-emerald-700'
                               : 'text-amber-700'
                           }`}>
                             {isImageBroken
                               ? '❌ Không thể đối chiếu (Ảnh bị lỗi)'
-                              : (currentItem.cccdMatched ?? true)
+                              : (currentItem.cccdMatched ?? false)
                               ? '✓ Trùng khớp với ảnh'
                               : '⚠️ Cần đối chiếu lại'}
                           </span>
@@ -1656,9 +1662,9 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                     {(() => {
                       const isCccdValid =
                         !isImageBroken &&
-                        (currentItem.cccdCheck?.hasKeyword ?? true) &&
-                        (currentItem.nameMatched ?? true) &&
-                        (currentItem.cccdMatched ?? true);
+                        (currentItem.cccdCheck?.hasKeyword ?? false) &&
+                        (currentItem.nameMatched ?? false) &&
+                        (currentItem.cccdMatched ?? false);
                       return (
                         <div
                           className={`p-3 rounded-lg text-xs space-y-1.5 border ${

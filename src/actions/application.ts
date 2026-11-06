@@ -149,9 +149,15 @@ export async function submitApplicationFullPipeline(payload: SubmitApplicationPa
 
       // Phân loại tự động theo ngưỡng 95% (Quy tắc nghiệp vụ KTX DUE):
       // - Chấm TRÊN 95% (>= 0.95) độ tin cậy VÀ không sai lệch: TỰ ĐỘNG CHO QUA
-      // - Chấm DƯỚI 95% (< 0.95) hoặc sai lệch đối tượng/khu vực: BẮT BUỘC CÁN BỘ QLSV RÀ SOÁT
+      // - Chấm DƯỚI 95% (< 0.95) hoặc sai lệch đối tượng/khu vực/không có tiêu đề CCCD: BẮT BUỘC CÁN BỘ QLSV RÀ SOÁT
       let applicationStatus: AppStatus = 'CHO_THAM_DINH';
-      const isAutoApproved = aiResult.confidence >= 0.95 && aiResult.decision === 'THAM_DINH_DAT';
+      const isAutoApproved =
+        aiResult.confidence >= 0.95 &&
+        aiResult.decision === 'THAM_DINH_DAT' &&
+        Boolean(aiResult.cccd_analysis?.is_valid) &&
+        Boolean(aiResult.cccd_analysis?.has_cccd_keywords) &&
+        Boolean(aiResult.cccd_analysis?.name_matched) &&
+        Boolean(aiResult.cccd_analysis?.cccd_matched);
 
       if (isAutoApproved) {
         applicationStatus = 'THAM_DINH_DAT';
@@ -206,10 +212,11 @@ export async function submitApplicationFullPipeline(payload: SubmitApplicationPa
           !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')
         ) {
           const supabaseAdmin = createAdminClient();
-          const filesPayload = (imageBase64 || priorityImageBase64)
+          const filesPayload = (imageBase64 || priorityImageBase64 || aiResult)
             ? JSON.stringify({
                 cccd: imageBase64 || null,
                 priority: priorityImageBase64 || null,
+                ai_result: aiResult || null,
               })
             : null;
 

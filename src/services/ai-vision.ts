@@ -229,25 +229,34 @@ function verifyNameMatch(inputName: string, ocrText: string): {
   isMatch: boolean;
   extractedName: string;
   matchedRatio: number;
+  errorReason?: string;
 } {
-  if (!inputName || !inputName.trim()) {
-    return { isMatch: true, extractedName: '', matchedRatio: 1 };
+  const cleanName = (inputName || '').trim();
+  if (!cleanName) {
+    return { isMatch: false, extractedName: '', matchedRatio: 0, errorReason: 'Chưa nhập họ và tên' };
   }
 
-  const normInput = normalizeText(inputName);
+  // 1. Kiểm tra tính hợp lệ tối thiểu của Họ và Tên (Ít nhất 2 từ, tối thiểu 4 ký tự chữ, không phải là số)
+  const words = cleanName.split(/\s+/).filter((w) => w.length >= 2);
+  if (words.length < 2 || cleanName.length < 4 || /^\d+$/.test(cleanName)) {
+    return {
+      isMatch: false,
+      extractedName: cleanName,
+      matchedRatio: 0,
+      errorReason: 'Họ và tên không hợp lệ (Phải có ít nhất 2 từ gồm Họ và Tên, không chấp nhận số đơn lẻ)',
+    };
+  }
+
+  const normInput = normalizeText(cleanName);
   const normOcr = normalizeText(ocrText);
 
-  // 1. Khớp nguyên chuỗi họ tên
+  // 2. Khớp nguyên chuỗi họ tên trên văn bản OCR
   if (normOcr.includes(normInput)) {
-    return { isMatch: true, extractedName: inputName.trim(), matchedRatio: 1.0 };
+    return { isMatch: true, extractedName: cleanName, matchedRatio: 1.0 };
   }
 
-  // 2. Tách từ khóa (ví dụ: "Nguyễn Thị Thúy Trinh" -> ["nguyen", "thi", "thuy", "trinh"])
+  // 3. Tách từ khóa (ví dụ: "Nguyễn Văn An" -> ["nguyen", "van", "an"])
   const tokens = normInput.split(/\s+/).filter((t) => t.length >= 2);
-  if (tokens.length === 0) {
-    return { isMatch: true, extractedName: inputName.trim(), matchedRatio: 1.0 };
-  }
-
   let matchedTokens = 0;
   for (const token of tokens) {
     if (normOcr.includes(token)) {
@@ -256,13 +265,14 @@ function verifyNameMatch(inputName: string, ocrText: string): {
   }
 
   const ratio = matchedTokens / tokens.length;
-  // Khớp >= 60% từ khóa hoặc khớp từ tên chính
-  const isMatch = ratio >= 0.6 || (tokens.length >= 2 && normOcr.includes(tokens[tokens.length - 1]));
+  // Bắt buộc khớp tối thiểu 70% các từ trong họ tên hoặc khớp cả Họ và Tên chính
+  const isMatch = ratio >= 0.7 || (tokens.length >= 2 && normOcr.includes(tokens[0]) && normOcr.includes(tokens[tokens.length - 1]));
 
   return {
     isMatch,
-    extractedName: isMatch ? inputName.trim() : (tokens.length > 0 ? tokens[0].toUpperCase() : ''),
+    extractedName: isMatch ? cleanName : (tokens.length > 0 ? tokens[tokens.length - 1].toUpperCase() : ''),
     matchedRatio: ratio,
+    errorReason: isMatch ? undefined : `Không tìm thấy họ tên "${cleanName}" trên văn bản ảnh chụp`,
   };
 }
 
@@ -277,35 +287,38 @@ function verifyCccdMatch(inputCccd: string, ocrText: string): {
   const cleanInput = (inputCccd || '').replace(/\D/g, '').trim();
   const cleanOcrDigits = (ocrText || '').replace(/\D/g, '');
 
-  // 1. Trùng khớp trực tiếp dãy số CCCD
-  if (cleanInput && (cleanOcrDigits.includes(cleanInput) || ocrText.includes(cleanInput))) {
-    return { isMatch: true, extractedCccd: cleanInput };
-  }
-
-  // 2. Tìm dãy 9-12 chữ số trên ảnh
-  const foundDigits = ocrText.match(/\b\d{9,12}\b/g);
-  if (foundDigits && foundDigits.length > 0) {
-    const detected = foundDigits[0];
-    if (detected === cleanInput) {
-      return { isMatch: true, extractedCccd: detected };
-    }
-    // Phát hiện số khác trên ảnh -> Cảnh báo sai lệch
+  // 1. Kiểm tra định dạng số CCCD chuẩn Việt Nam (Bắt buộc 12 chữ số, hoặc 9 chữ số CMND cũ)
+  if (cleanInput.length !== 12 && cleanInput.length !== 9) {
     return {
       isMatch: false,
-      extractedCccd: detected,
-      mismatchNote: `Số CCCD trên ảnh (${detected}) khác số đã nhập (${cleanInput})`,
+      extractedCccd: cleanInput,
+      mismatchNote: `Số CCCD/CMND không hợp lệ (${cleanInput || 'trống'}). Bắt buộc phải là 12 chữ số CCCD gắn chip hoặc 9 số CMND.`,
     };
   }
 
-  // 3. Nếu người dùng nhập mã test ngắn hoặc trùng 6 chữ số
-  if (cleanInput.length >= 6 && cleanOcrDigits.includes(cleanInput.substring(0, 6))) {
+  // 2. Trùng khớp trực tiếp dãy 9-12 chữ số đầy đủ
+  if (ocrText.includes(cleanInput) || cleanOcrDigits.includes(cleanInput)) {
     return { isMatch: true, extractedCccd: cleanInput };
+  }
+
+  // 3. Quét các dãy 9-12 chữ số xuất hiện trên ảnh OCR
+  const foundDigits = ocrText.match(/\b\d{9,12}\b/g);
+  if (foundDigits && foundDigits.length > 0) {
+    if (foundDigits.includes(cleanInput)) {
+      return { isMatch: true, extractedCccd: cleanInput };
+    }
+    // Phát hiện số thẻ khác trên ảnh -> Báo cảnh báo sai lệch
+    return {
+      isMatch: false,
+      extractedCccd: foundDigits[0],
+      mismatchNote: `Số CCCD trên ảnh (${foundDigits[0]}) khác số đã nhập (${cleanInput})`,
+    };
   }
 
   return {
     isMatch: false,
     extractedCccd: '',
-    mismatchNote: `Không tìm thấy số CCCD ${cleanInput} trên ảnh`,
+    mismatchNote: `Không tìm thấy dãy 12 số CCCD ${cleanInput} trên ảnh chụp`,
   };
 }
 
@@ -584,28 +597,55 @@ Trả về JSON: { "is_valid": boolean, "name_matched": boolean, "cccd_matched":
   const normalized = normalizeText(ocrText);
   const lower = ocrText.toLowerCase();
 
-  const hasCccdKw =
-    CCCD_PRIMARY_KEYWORDS.some((kw) => lower.includes(kw) || normalized.includes(normalizeText(kw))) ||
-    (normalized.includes('can cuoc') && normalized.includes('cong dan')) ||
+  // KIỂM TRA TIÊU ĐỀ ĐẶC TRƯNG BẮT BUỘC CỦA CĂN CƯỚC CÔNG DÂN VIỆT NAM
+  // Bắt buộc phải có ít nhất một trong các tiêu đề pháp lý chính quy:
+  const hasStrictCccdTitle =
+    normalized.includes('can cuoc cong dan') ||
     normalized.includes('can cuoc') ||
-    normalized.includes('cong dan') ||
-    normalized.includes('viet nam') ||
-    normalized.includes('socialist republic');
+    normalized.includes('citizen identity card') ||
+    normalized.includes('identity card') ||
+    (normalized.includes('cong hoa xa hoi chu nghia') && normalized.includes('viet nam')) ||
+    normalized.includes('bo cong an') ||
+    normalized.includes('cuc canh sat') ||
+    normalized.includes('cuc truong cuc canh sat');
 
   const hasPoliceKw = CCCD_POLICE_KEYWORDS.some((kw) => lower.includes(kw) || normalized.includes(normalizeText(kw)));
+  const hasCccdKw = hasStrictCccdTitle || hasPoliceKw;
 
-  // ĐỐI CHIẾU DỮ LIỆU THỰC TẾ
-  const nameCheck = verifyNameMatch(studentName, ocrText);
-  const cccdCheck = verifyCccdMatch(citizenId, ocrText);
   const scannedGender = extractGenderFromCccd(citizenId, ocrText);
 
-  const matchedFields: string[] = [];
+  // NẾU ẢNH TẢI LÊN KHÔNG CHỨA TIÊU ĐỀ CCCD / QUỐC HIỆU (VÍ DỤ: SLIDE BÀI GIẢNG, SÁCH VỞ, PHONG CẢNH, TÀI LIỆU KHÁC)
+  // BẮT BUỘC ĐÁNH DẤU KHÔNG HỢP LỆ VÀ KHÔNG BAO GIỜ TỰ ĐỘNG DUYỆT!
+  if (!hasCccdKw) {
+    return {
+      is_valid: false,
+      has_cccd_keywords: false,
+      has_police_chief_keyword: false,
+      extracted_name: '(Không phát hiện tiêu đề CCCD)',
+      extracted_cccd: '(Không phát hiện số CCCD)',
+      extracted_gender: scannedGender,
+      name_matched: false,
+      cccd_matched: false,
+      matched_fields: [],
+      mismatched_fields: ['Ảnh chụp không phải Căn cước công dân hợp lệ (Không phát hiện tiêu đề CCCD / Quốc hiệu Việt Nam / Bộ Công An)'],
+      confidence: 0.05,
+      detected_text: ocrText.substring(0, 300) || '(Ảnh chụp không chứa nội dung định danh CCCD)',
+      requires_red_stamp: false,
+      notes: 'Ảnh tải lên không phải Căn cước công dân hợp lệ (Không phát hiện tiêu đề Căn cước công dân / Quốc hiệu Việt Nam / Bộ Công An). Yêu cầu bổ sung ảnh chụp CCCD thật.',
+    };
+  }
+
+  // ĐỐI CHIẾU DỮ LIỆU THỰC TẾ (HỌ TÊN VÀ SỐ CCCD)
+  const nameCheck = verifyNameMatch(studentName, ocrText);
+  const cccdCheck = verifyCccdMatch(citizenId, ocrText);
+
+  const matchedFields: string[] = ['Phát hiện tiêu đề Căn cước công dân hợp lệ'];
   const mismatchedFields: string[] = [];
 
   if (nameCheck.isMatch) {
     matchedFields.push('Họ và tên trùng khớp với ảnh CCCD');
   } else {
-    mismatchedFields.push(`Họ tên trên ảnh không trùng khớp với họ tên đã nhập (${studentName})`);
+    mismatchedFields.push(nameCheck.errorReason || `Họ tên trên ảnh không trùng khớp với họ tên đã nhập (${studentName})`);
   }
 
   if (cccdCheck.isMatch) {
@@ -614,29 +654,21 @@ Trả về JSON: { "is_valid": boolean, "name_matched": boolean, "cccd_matched":
     mismatchedFields.push(cccdCheck.mismatchNote || `Số CCCD không trùng khớp với số đã nhập (${citizenId})`);
   }
 
-  if (hasCccdKw) {
-    matchedFields.push('Phát hiện từ khóa định danh hợp lệ trên thẻ CCCD');
-  }
-
-  // TÍNH TOÁN ĐỘ TIN CẬY DỰA TRÊN MỨC ĐỘ TRÙNG KHỚP DỮ LIỆU
-  // Trọng số:
-  // - Trùng số CCCD: 40%
-  // - Trùng Họ tên: 38%
-  // - Từ khóa CCCD: 15%
-  // - Thẻ gắn chip / Cục CS: 5%
+  // TÍNH TOÁN ĐỘ TIN CẬY
+  // Chỉ đạt >= 95% khi CẢ HỌ TÊN VÀ SỐ CCCD TRÙNG KHỚP 100% VÀ CÓ TIÊU ĐỀ CCCD
   let calculatedConfidence = 0.20;
-  if (cccdCheck.isMatch) calculatedConfidence += 0.40;
-  if (nameCheck.isMatch) calculatedConfidence += 0.38;
-  if (hasCccdKw) calculatedConfidence += 0.15;
+  if (hasCccdKw) calculatedConfidence += 0.20;
   if (hasPoliceKw) calculatedConfidence += 0.05;
+  if (cccdCheck.isMatch) calculatedConfidence += 0.35;
+  if (nameCheck.isMatch) calculatedConfidence += 0.35;
 
-  // Nếu cả 2 đều lệch -> Giảm độ tin cậy xuống mức thấp
-  if (!nameCheck.isMatch && !cccdCheck.isMatch) {
-    calculatedConfidence = Math.min(0.40, calculatedConfidence);
+  // Nếu lệch họ tên hoặc số CCCD: Khóa dưới 65% để Cán bộ QLSV rà soát
+  if (!nameCheck.isMatch || !cccdCheck.isMatch) {
+    calculatedConfidence = Math.min(0.65, calculatedConfidence);
   }
 
-  const confidence = Number(Math.min(0.98, Math.max(0.30, calculatedConfidence)).toFixed(2));
-  const isValid = hasCccdKw || hasPoliceKw || nameCheck.isMatch || cccdCheck.isMatch || cleanBase64.length > 5000;
+  const confidence = Number(Math.min(0.98, Math.max(0.10, calculatedConfidence)).toFixed(2));
+  const isValid = hasCccdKw && (nameCheck.isMatch || cccdCheck.isMatch);
 
   return {
     is_valid: isValid,
@@ -653,8 +685,8 @@ Trả về JSON: { "is_valid": boolean, "name_matched": boolean, "cccd_matched":
     detected_text: ocrText.substring(0, 300) || '(Đã tiếp nhận và đối chiếu ảnh CCCD)',
     requires_red_stamp: false,
     notes: nameCheck.isMatch && cccdCheck.isMatch
-      ? 'Dữ liệu họ tên và số CCCD trùng khớp 100% với ảnh chụp. Định danh do Bộ Công An cấp (có chip/mã vạch/dấu nổi), không yêu cầu mộc tròn đỏ UBND.'
-      : `${mismatchedFields.join('. ')}. (Lưu ý: CCCD không yêu cầu mộc đỏ UBND).`,
+      ? 'Dữ liệu họ tên và số CCCD trùng khớp 100% với ảnh chụp. Thẻ do Bộ Công An cấp (có chip/mã vạch/dấu nổi), không yêu cầu mộc tròn đỏ UBND.'
+      : `${mismatchedFields.join('. ')}. (Lưu ý: CCCD do Bộ Công An cấp, không yêu cầu mộc đỏ UBND).`,
   };
 }
 
@@ -950,7 +982,7 @@ export async function analyzeEvidenceWithGemini(
   }
 
   const response: AIVisionAnalysisResponse = {
-    is_valid_document: true,
+    is_valid_document: cccdResult.is_valid && (policyKey === 'KHONG' || Boolean(priorityResult?.is_valid)),
     has_cccd_keyword: cccdResult.has_cccd_keywords || cccdResult.has_police_chief_keyword,
     matched_policy_keywords: priorityResult ? priorityResult.matched_policy_keywords : [],
     document_type: docType,
