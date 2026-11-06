@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { UserRole } from '@/types/database';
 import StudentLoginModal from '@/components/student/StudentLoginModal';
+import { DUE_LOGO_DATA_URI } from '@/lib/constants/branding';
 
 interface NavbarProps {
   currentRole?: UserRole;
@@ -201,10 +202,7 @@ export default function Navbar({ currentRole = 'SV', userName = 'Sinh viên DUE'
               {/* Logo DUE Container */}
               <div className="bg-white rounded-lg px-2.5 py-1 shadow-sm flex items-center border border-white/20 transition-transform group-hover:scale-[1.02]">
                 <img
-                  src="/images/due-logo.png"
-                  onError={(e) => {
-                    e.currentTarget.src = 'https://raw.githubusercontent.com/ainhan27/QUANLYKTXDUE/main/public/images/due-logo.png';
-                  }}
+                  src={DUE_LOGO_DATA_URI}
                   alt="Đại học Đà Nẵng - Trường Đại học Kinh tế (DUE)"
                   className="h-8 sm:h-9 w-auto object-contain"
                 />

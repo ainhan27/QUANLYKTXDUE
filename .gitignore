@@ -1,0 +1,10 @@
+node_modules
+.next
+.vercel
+.env.local
+.env*.local
+*.exe
+*.log
+*.traineddata
+*.pptx
+*.docx

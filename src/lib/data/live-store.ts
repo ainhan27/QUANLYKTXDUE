@@ -106,6 +106,38 @@ export function saveApplicationToStore(app: StoredApplication): boolean {
     applicationsCache = list;
     // Ghi bất đồng bộ xuống đĩa (Non-blocking I/O)
     asyncWriteFile(DATA_FILE, JSON.stringify(list));
+
+    // Đồng bộ lên Supabase Cloud ngầm (Non-blocking real-time sync)
+    if (
+      typeof window === 'undefined' &&
+      process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id') &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    ) {
+      import('@/lib/supabase/admin').then(async ({ createAdminClient }) => {
+        try {
+          const supabase = createAdminClient();
+          await supabase.from('applications').upsert({
+            ma_sv: app.ma_sv,
+            ho_ten: app.ho_ten,
+            email: app.email,
+            cccd: app.cccd,
+            ngay_sinh: app.ngay_sinh,
+            gioi_tinh: app.gioi_tinh,
+            tinh_thanh: app.tinh_thanh,
+            dia_chi_thuong_tru: app.dia_chi_thuong_tru,
+            dien_uu_tien: app.dien_uu_tien,
+            diem_uu_tien: app.diem_uu_tien,
+            status: app.status,
+            signature_base64: app.signature_base64 || null,
+            ghi_chu_ly_do: app.ghi_chu_ly_do || app.ai_result?.rejection_reason || null,
+          }, { onConflict: 'ma_sv' });
+        } catch (e) {
+          console.warn('Supabase auto-sync warn:', e);
+        }
+      }).catch(() => {});
+    }
+
     return true;
   } catch (err) {
     console.error('Lỗi khi ghi Database store:', err);
@@ -121,6 +153,22 @@ export function updateApplicationStatusInStore(idOrMaSv: string, status: AppStat
       item.status = status;
       applicationsCache = list;
       asyncWriteFile(DATA_FILE, JSON.stringify(list, null, 2));
+
+      // Đồng bộ trạng thái lên Supabase Cloud ngầm
+      if (
+        typeof window === 'undefined' &&
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id') &&
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      ) {
+        import('@/lib/supabase/admin').then(async ({ createAdminClient }) => {
+          try {
+            const supabase = createAdminClient();
+            await supabase.from('applications').update({ status }).or(`ma_sv.eq.${idOrMaSv},id.eq.${idOrMaSv}`);
+          } catch {}
+        }).catch(() => {});
+      }
+
       return true;
     }
     return false;

@@ -1,7 +1,9 @@
 # DỰ ÁN HỌC PHẦN MIS3047: QUẢN LÝ QUY TRÌNH KINH DOANH (BPM)
 ## ĐẠI HỌC KINH TẾ – ĐẠI HỌC ĐÀ NẴNG (DUE) | NHÓM 4
 ### ĐỀ TÀI: HỆ THỐNG XÉT DUYỆT HỒ SƠ ĐĂNG KÝ NỘI TRÚ KÝ TÚC XÁ (KTX)
+
 ---
+
 ## 1. GIỚI THIỆU TỔNG QUAN & KHUNG PHƯƠNG PHÁP LUẬN IDEA
 
 Hệ thống được xây dựng nhằm hiện thực hóa mô hình nghiệp vụ To-Be đã mô hình hóa bằng chuẩn **BPMN 2.0** (`MohinhTo_be_Nhom4.bpmn`), phục vụ toàn thể sinh viên **mọi khóa (K47, K48, K49, K50, K51+)** với quy mô thực tế lên đến **350 sinh viên xét tuyển / đợt**:

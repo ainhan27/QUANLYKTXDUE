@@ -1,0 +1,1682 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_ToBe_v13" targetNamespace="http://bpmn.io/schema/bpmn" exporter="bpmn-js (https://demo.bpmn.io)" exporterVersion="18.31.0">
+  <bpmn:resource id="Res_TB" name="Trưởng ban quản lý KTX" />
+  <bpmn:resource id="Res_HC" name="Bộ phận hành chính" />
+  <bpmn:resource id="Res_QLSV" name="Bộ phận quản lý sinh viên" />
+  <bpmn:dataStore id="DataStore_HS" name="CSDL hồ sơ đăng ký" />
+  <bpmn:dataStore id="DataStore_PT" name="Portal quản lý nội trú" />
+  <bpmn:message id="Msg_DK" name="Hồ sơ đăng ký online" />
+  <bpmn:message id="Msg_TuChoi" name="Thông báo từ chối bố trí ở KTX" />
+  <bpmn:message id="Msg_YCBS" name="Email yêu cầu bổ sung minh chứng" />
+  <bpmn:message id="Msg_BS" name="Minh chứng bổ sung" />
+  <bpmn:message id="Msg_KhongXet" name="Thông báo hồ sơ không được xét" />
+  <bpmn:message id="Msg_CongBo" name="Kết quả xét kèm hợp đồng điện tử" />
+  <bpmn:message id="Msg_PhanHoi" name="Phản hồi hợp đồng (ký / từ chối)" />
+  <bpmn:message id="Msg_Huy" name="Thông báo hủy suất" />
+  <bpmn:message id="Msg_NhanPhong" name="Email hẹn nhận phòng, bàn giao phòng" />
+  <bpmn:error id="Err_HoKhau" name="Hồ sơ bị từ chối bố trí (hộ khẩu Đà Nẵng)" errorCode="ERR_HO_KHAU_DA_NANG" />
+  <bpmn:error id="Err_KhongXet" name="Hồ sơ không được xét (không bổ sung kịp)" errorCode="ERR_KHONG_BO_SUNG_KIP" />
+  <bpmn:error id="Err_AI" name="Lỗi kết nối / quá tải API AI" errorCode="ERR_AI_API" />
+  <bpmn:error id="Err_Huy" name="Suất bị hủy (từ chối ký / quá hạn ký)" errorCode="ERR_HUY_SUAT" />
+  <bpmn:collaboration id="Collab_ToBe">
+    <bpmn:participant id="Pool_KTX" name="Ban quản lý KTX (Nhà trường) - To Be" processRef="Process_KTX_ToBe" />
+    <bpmn:participant id="Pool_SV" name="Tân sinh viên" processRef="Process_SV_ToBe" />
+    <bpmn:messageFlow id="MF1" sourceRef="SV_T" targetRef="A1" messageRef="Msg_DK" />
+    <bpmn:messageFlow id="MF2" sourceRef="ETC" targetRef="Pool_SV" messageRef="Msg_TuChoi" />
+    <bpmn:messageFlow id="MF3" sourceRef="SP2" targetRef="Pool_SV" messageRef="Msg_YCBS" />
+    <bpmn:messageFlow id="MF4" sourceRef="Pool_SV" targetRef="SP2" messageRef="Msg_BS" />
+    <bpmn:messageFlow id="MF5" sourceRef="EO" targetRef="Pool_SV" messageRef="Msg_KhongXet" />
+    <bpmn:messageFlow id="MF6" sourceRef="SP5" targetRef="Pool_SV" messageRef="Msg_CongBo" />
+    <bpmn:messageFlow id="MF11" sourceRef="Pool_SV" targetRef="SP5" messageRef="Msg_PhanHoi" />
+    <bpmn:messageFlow id="MF13" sourceRef="EA" targetRef="Pool_SV" messageRef="Msg_Huy" />
+    <bpmn:messageFlow id="MF15" sourceRef="SP6" targetRef="Pool_SV" messageRef="Msg_NhanPhong" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_KTX_ToBe" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_1">
+      <bpmn:lane id="Lane_TB" name="Trưởng ban quản lý KTX">
+        <bpmn:flowNodeRef>SP4</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_HC" name="Bộ phận hành chính">
+        <bpmn:flowNodeRef>A1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>SP1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>BE1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>ETC</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_QLSV" name="Bộ phận quản lý sinh viên">
+        <bpmn:flowNodeRef>SP2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>SP3</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>SP5</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>SP6</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EH</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>BE2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EO</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>BE5</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EA</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:dataObject id="DOB_HS" name="Hồ sơ đăng ký" />
+    <bpmn:dataObject id="DOB_MC" name="Minh chứng ưu tiên" />
+    <bpmn:dataObject id="DOB_KQ" name="Kết quả thẩm định AI" />
+    <bpmn:dataObject id="DOB_XH" name="Bảng xếp hạng dự kiến" />
+    <bpmn:dataObject id="DOB_DS" name="Danh sách xét duyệt" />
+    <bpmn:dataObject id="DOB_HD" name="Hợp đồng điện tử" />
+    <bpmn:dataObject id="DOB_BB" name="Biên bản bàn giao phòng" />
+    <bpmn:startEvent id="A1" name="Nhận hồ sơ đăng ký online của sinh viên">
+      <bpmn:documentation>Message Start Event: sinh viên nộp hồ sơ và minh chứng ưu tiên trên Web/App.</bpmn:documentation>
+      <bpmn:outgoing>F01</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="A1_def" messageRef="Msg_DK" />
+    </bpmn:startEvent>
+    <bpmn:subProcess id="SP1" name="1. Tiếp nhận &#38; sàng lọc hồ sơ">
+      <bpmn:documentation>Giai đoạn 1 - Tiếp nhận &amp; sàng lọc. Kích hoạt khi sinh viên nộp hồ sơ online. Hệ thống tự động ghi nhận hồ sơ vào CSDL và loại hồ sơ có hộ khẩu Đà Nẵng (15%). Kết thúc bình thường: hồ sơ hợp lệ chuyển sang thẩm định (85%). Kết thúc lỗi ERR_HO_KHAU_DA_NANG: từ chối bố trí ở KTX.</bpmn:documentation>
+      <bpmn:incoming>F01</bpmn:incoming>
+      <bpmn:outgoing>F02</bpmn:outgoing>
+      <bpmn:dataInputAssociation id="MA01">
+        <bpmn:sourceRef>MD_HS0</bpmn:sourceRef>
+      </bpmn:dataInputAssociation>
+      <bpmn:dataOutputAssociation id="MA02">
+        <bpmn:targetRef>MD_HS1</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+      <bpmn:dataOutputAssociation id="MA03">
+        <bpmn:targetRef>MDS_HS</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+      <bpmn:startEvent id="S1" name="Hồ sơ đã nộp online">
+        <bpmn:outgoing>F101</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="A2" name="Tự động tiếp nhận, ghi nhận hồ sơ và cập nhật danh sách đăng ký">
+        <bpmn:documentation>Hệ thống tự động (luật/RPA). Ghi nhận hồ sơ (mã sinh viên, đường dẫn ảnh minh chứng trên Cloud Storage) vào CSDL hồ sơ đăng ký; trạng thái hồ sơ: PENDING.</bpmn:documentation>
+        <bpmn:incoming>F101</bpmn:incoming>
+        <bpmn:outgoing>F102</bpmn:outgoing>
+        <bpmn:dataInputAssociation id="A101">
+          <bpmn:sourceRef>D1_in</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+        <bpmn:dataOutputAssociation id="A102">
+          <bpmn:targetRef>D1_ok</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:dataOutputAssociation id="A103">
+          <bpmn:targetRef>D1_db</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:performer id="pf_A2" name="Chịu trách nhiệm: Bộ phận hành chính">
+          <bpmn:resourceRef>Res_HC</bpmn:resourceRef>
+        </bpmn:performer>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="A4" name="SV có hộ khẩu Đà Nẵng?">
+        <bpmn:documentation>Có (15%): từ chối bố trí. Không (85%): chuyển thẩm định minh chứng.</bpmn:documentation>
+        <bpmn:incoming>F102</bpmn:incoming>
+        <bpmn:outgoing>F103</bpmn:outgoing>
+        <bpmn:outgoing>F104</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:serviceTask id="R1" name="Cập nhật hồ sơ: từ chối bố trí">
+        <bpmn:documentation>Hệ thống cập nhật trạng thái hồ sơ REJECTED (hộ khẩu Đà Nẵng) và lưu lý do từ chối.</bpmn:documentation>
+        <bpmn:incoming>F103</bpmn:incoming>
+        <bpmn:outgoing>F105</bpmn:outgoing>
+        <bpmn:dataOutputAssociation id="A104">
+          <bpmn:targetRef>D1_rej</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:performer id="pf_R1" name="Chịu trách nhiệm: Bộ phận hành chính">
+          <bpmn:resourceRef>Res_HC</bpmn:resourceRef>
+        </bpmn:performer>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="E1X" name="Từ chối bố trí ở KTX">
+        <bpmn:incoming>F105</bpmn:incoming>
+        <bpmn:errorEventDefinition id="E1X_def" errorRef="Err_HoKhau" />
+      </bpmn:endEvent>
+      <bpmn:endEvent id="E1" name="Hồ sơ hợp lệ, chuyển thẩm định">
+        <bpmn:incoming>F104</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:dataObjectReference id="D1_in" name="Hồ sơ đăng ký&#10;[Đã nộp]" dataObjectRef="DOB_HS">
+        <bpmn:dataState id="D1_in_st" name="Đã nộp" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D1_ok" name="Hồ sơ đăng ký&#10;[Đã tiếp nhận]" dataObjectRef="DOB_HS">
+        <bpmn:dataState id="D1_ok_st" name="Đã tiếp nhận" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataStoreReference id="D1_db" name="CSDL hồ sơ đăng ký" dataStoreRef="DataStore_HS" />
+      <bpmn:dataObjectReference id="D1_rej" name="Hồ sơ đăng ký&#10;[Bị từ chối bố trí]" dataObjectRef="DOB_HS">
+        <bpmn:dataState id="D1_rej_st" name="Bị từ chối bố trí" />
+      </bpmn:dataObjectReference>
+      <bpmn:sequenceFlow id="F101" sourceRef="S1" targetRef="A2" />
+      <bpmn:sequenceFlow id="F102" sourceRef="A2" targetRef="A4" />
+      <bpmn:sequenceFlow id="F103" name="Có (15%)" sourceRef="A4" targetRef="R1" />
+      <bpmn:sequenceFlow id="F104" name="Không (85%)" sourceRef="A4" targetRef="E1" />
+      <bpmn:sequenceFlow id="F105" sourceRef="R1" targetRef="E1X" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="SP2" name="2. Thẩm định minh chứng &#38; xử lý bổ sung">
+      <bpmn:documentation>Giai đoạn 2 - Thẩm định minh chứng. AI đọc và chấm điểm tin cậy; &lt; 0,95 hoặc lỗi API chuyển cán bộ QLSV kiểm tra thủ công; không đạt thì gửi yêu cầu bổ sung và chờ sinh viên tải lại (vòng lặp) hoặc hết hạn đăng ký. Kết thúc bình thường: minh chứng đạt. Kết thúc lỗi ERR_KHONG_BO_SUNG_KIP: hồ sơ không được xét.</bpmn:documentation>
+      <bpmn:incoming>F02</bpmn:incoming>
+      <bpmn:outgoing>F03</bpmn:outgoing>
+      <bpmn:dataInputAssociation id="MA04">
+        <bpmn:sourceRef>MD_HS1</bpmn:sourceRef>
+      </bpmn:dataInputAssociation>
+      <bpmn:dataOutputAssociation id="MA05">
+        <bpmn:targetRef>MD_HS2</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+      <bpmn:startEvent id="S2" name="Hồ sơ chờ thẩm định">
+        <bpmn:outgoing>F201</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="A6" name="[AI] Kiểm tra chất lượng và tính hợp lệ minh chứng">
+        <bpmn:documentation>Hệ thống tự động (AI Vision/OCR/IDP). Đọc con dấu, loại giấy tờ ưu tiên, trích xuất mã quyết định và trả về confidence_score. Multi-instance: mỗi hồ sơ một lượt. Lỗi API (429/500): thử lại tối đa 3 lần, vẫn lỗi thì chuyển xử lý thủ công.</bpmn:documentation>
+        <bpmn:incoming>F201</bpmn:incoming>
+        <bpmn:incoming>F214</bpmn:incoming>
+        <bpmn:outgoing>F202</bpmn:outgoing>
+        <bpmn:dataInputAssociation id="A201">
+          <bpmn:sourceRef>D2_mc</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+        <bpmn:dataOutputAssociation id="A202">
+          <bpmn:targetRef>D2_kq</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:performer id="pf_A6" name="Chịu trách nhiệm: Bộ phận quản lý sinh viên">
+          <bpmn:resourceRef>Res_QLSV</bpmn:resourceRef>
+        </bpmn:performer>
+        <bpmn:multiInstanceLoopCharacteristics id="MI_A6" />
+      </bpmn:serviceTask>
+      <bpmn:boundaryEvent id="EAI" name="Lỗi kết nối / quá tải API" attachedToRef="A6">
+        <bpmn:documentation>Error Boundary Event: API AI sập hoặc quá hạn ngạch (429/500) sau 3 lần thử lại.</bpmn:documentation>
+        <bpmn:outgoing>F203</bpmn:outgoing>
+        <bpmn:errorEventDefinition id="EAI_def" errorRef="Err_AI" />
+      </bpmn:boundaryEvent>
+      <bpmn:userTask id="MAN" name="Chuyển xử lý thủ công">
+        <bpmn:documentation>Hồ sơ lỗi AI được đẩy vào hàng đợi cho cán bộ QLSV.</bpmn:documentation>
+        <bpmn:incoming>F203</bpmn:incoming>
+        <bpmn:outgoing>F206</bpmn:outgoing>
+        <bpmn:humanPerformer id="hp_MAN" name="Thực hiện: Bộ phận quản lý sinh viên">
+          <bpmn:resourceRef>Res_QLSV</bpmn:resourceRef>
+        </bpmn:humanPerformer>
+      </bpmn:userTask>
+      <bpmn:exclusiveGateway id="A7" name="Độ tin cậy ≥ 0,95?">
+        <bpmn:documentation>≥ 0,95: tự động duyệt (straight-through). &lt; 0,95: chuyển cán bộ QLSV.</bpmn:documentation>
+        <bpmn:incoming>F202</bpmn:incoming>
+        <bpmn:outgoing>F204</bpmn:outgoing>
+        <bpmn:outgoing>F205</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:userTask id="A9" name="Cán bộ kiểm tra minh chứng thủ công">
+        <bpmn:documentation>Cán bộ mở Dashboard, đối chiếu ảnh gốc với phần AI nghi vấn, kết luận Đạt hoặc Yêu cầu bổ sung.</bpmn:documentation>
+        <bpmn:incoming>F205</bpmn:incoming>
+        <bpmn:incoming>F206</bpmn:incoming>
+        <bpmn:outgoing>F207</bpmn:outgoing>
+        <bpmn:dataInputAssociation id="A203">
+          <bpmn:sourceRef>D2_kq2</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+        <bpmn:dataOutputAssociation id="A204">
+          <bpmn:targetRef>D2_mc2</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:humanPerformer id="hp_A9" name="Thực hiện: Bộ phận quản lý sinh viên">
+          <bpmn:resourceRef>Res_QLSV</bpmn:resourceRef>
+        </bpmn:humanPerformer>
+      </bpmn:userTask>
+      <bpmn:exclusiveGateway id="MG">
+        <bpmn:incoming>F204</bpmn:incoming>
+        <bpmn:incoming>F207</bpmn:incoming>
+        <bpmn:outgoing>F208</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:exclusiveGateway id="GK" name="Minh chứng đạt?">
+        <bpmn:incoming>F208</bpmn:incoming>
+        <bpmn:outgoing>F209</bpmn:outgoing>
+        <bpmn:outgoing>F210</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="E2OK" name="Thẩm định đạt">
+        <bpmn:incoming>F209</bpmn:incoming>
+        <bpmn:dataInputAssociation id="A205">
+          <bpmn:sourceRef>D2_mcok</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+      </bpmn:endEvent>
+      <bpmn:intermediateThrowEvent id="TR" name="Gửi email yêu cầu SV bổ sung minh chứng">
+        <bpmn:documentation>Gửi email/thông báo đẩy nêu rõ lý do cần chụp lại (ảnh mờ, mất góc, thiếu mộc đỏ) kèm link tải lại.</bpmn:documentation>
+        <bpmn:incoming>F210</bpmn:incoming>
+        <bpmn:outgoing>F211</bpmn:outgoing>
+        <bpmn:dataInputAssociation id="A206">
+          <bpmn:sourceRef>D2_mcbs</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+        <bpmn:messageEventDefinition id="TR_def" messageRef="Msg_YCBS" />
+      </bpmn:intermediateThrowEvent>
+      <bpmn:eventBasedGateway id="EB1">
+        <bpmn:incoming>F211</bpmn:incoming>
+        <bpmn:outgoing>F212</bpmn:outgoing>
+        <bpmn:outgoing>F213</bpmn:outgoing>
+      </bpmn:eventBasedGateway>
+      <bpmn:intermediateCatchEvent id="CO" name="Nhận minh chứng bổ sung từ SV">
+        <bpmn:incoming>F212</bpmn:incoming>
+        <bpmn:outgoing>F214</bpmn:outgoing>
+        <bpmn:dataOutputAssociation id="A207">
+          <bpmn:targetRef>D2_mcbs2</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:messageEventDefinition id="CO_def" messageRef="Msg_BS" />
+      </bpmn:intermediateCatchEvent>
+      <bpmn:intermediateCatchEvent id="TO" name="Hết hạn đăng ký online">
+        <bpmn:documentation>Timer: mốc hết hạn đăng ký online.</bpmn:documentation>
+        <bpmn:incoming>F213</bpmn:incoming>
+        <bpmn:outgoing>F215</bpmn:outgoing>
+        <bpmn:timerEventDefinition id="TO_def" />
+      </bpmn:intermediateCatchEvent>
+      <bpmn:serviceTask id="R2" name="Cập nhật hồ sơ: không được xét">
+        <bpmn:documentation>Hệ thống cập nhật trạng thái hồ sơ REJECTED (không bổ sung kịp).</bpmn:documentation>
+        <bpmn:incoming>F215</bpmn:incoming>
+        <bpmn:outgoing>F216</bpmn:outgoing>
+        <bpmn:dataOutputAssociation id="A208">
+          <bpmn:targetRef>D2_hs</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:performer id="pf_R2" name="Chịu trách nhiệm: Bộ phận quản lý sinh viên">
+          <bpmn:resourceRef>Res_QLSV</bpmn:resourceRef>
+        </bpmn:performer>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="E2X" name="Hồ sơ không được xét">
+        <bpmn:incoming>F216</bpmn:incoming>
+        <bpmn:errorEventDefinition id="E2X_def" errorRef="Err_KhongXet" />
+      </bpmn:endEvent>
+      <bpmn:dataObjectReference id="D2_mc" name="Minh chứng ưu tiên&#10;[Đã tải lên]" dataObjectRef="DOB_MC">
+        <bpmn:dataState id="D2_mc_st" name="Đã tải lên" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D2_kq" name="Kết quả thẩm định AI&#10;[Đã chấm điểm tin cậy]" dataObjectRef="DOB_KQ">
+        <bpmn:dataState id="D2_kq_st" name="Đã chấm điểm tin cậy" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D2_kq2" name="Kết quả thẩm định AI&#10;[Đã chấm điểm tin cậy]" dataObjectRef="DOB_KQ">
+        <bpmn:dataState id="D2_kq2_st" name="Đã chấm điểm tin cậy" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D2_mc2" name="Minh chứng ưu tiên&#10;[Đã rà soát]" dataObjectRef="DOB_MC">
+        <bpmn:dataState id="D2_mc2_st" name="Đã rà soát" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D2_mcok" name="Minh chứng ưu tiên&#10;[Đạt]" dataObjectRef="DOB_MC">
+        <bpmn:dataState id="D2_mcok_st" name="Đạt" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D2_mcbs" name="Minh chứng ưu tiên&#10;[Cần bổ sung]" dataObjectRef="DOB_MC">
+        <bpmn:dataState id="D2_mcbs_st" name="Cần bổ sung" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D2_mcbs2" name="Minh chứng ưu tiên&#10;[Đã bổ sung]" dataObjectRef="DOB_MC">
+        <bpmn:dataState id="D2_mcbs2_st" name="Đã bổ sung" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D2_hs" name="Hồ sơ đăng ký&#10;[Không được xét]" dataObjectRef="DOB_HS">
+        <bpmn:dataState id="D2_hs_st" name="Không được xét" />
+      </bpmn:dataObjectReference>
+      <bpmn:sequenceFlow id="F201" sourceRef="S2" targetRef="A6" />
+      <bpmn:sequenceFlow id="F202" sourceRef="A6" targetRef="A7" />
+      <bpmn:sequenceFlow id="F203" sourceRef="EAI" targetRef="MAN" />
+      <bpmn:sequenceFlow id="F204" name="Có (≥ 0,95)" sourceRef="A7" targetRef="MG" />
+      <bpmn:sequenceFlow id="F205" name="Không (&#60; 0,95)" sourceRef="A7" targetRef="A9" />
+      <bpmn:sequenceFlow id="F206" sourceRef="MAN" targetRef="A9" />
+      <bpmn:sequenceFlow id="F207" sourceRef="A9" targetRef="MG" />
+      <bpmn:sequenceFlow id="F208" sourceRef="MG" targetRef="GK" />
+      <bpmn:sequenceFlow id="F209" name="Đạt" sourceRef="GK" targetRef="E2OK" />
+      <bpmn:sequenceFlow id="F210" name="Không đạt" sourceRef="GK" targetRef="TR" />
+      <bpmn:sequenceFlow id="F211" sourceRef="TR" targetRef="EB1" />
+      <bpmn:sequenceFlow id="F212" sourceRef="EB1" targetRef="CO" />
+      <bpmn:sequenceFlow id="F213" sourceRef="EB1" targetRef="TO" />
+      <bpmn:sequenceFlow id="F214" sourceRef="CO" targetRef="A6" />
+      <bpmn:sequenceFlow id="F215" sourceRef="TO" targetRef="R2" />
+      <bpmn:sequenceFlow id="F216" sourceRef="R2" targetRef="E2X" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="SP3" name="3. Xếp hạng ưu tiên">
+      <bpmn:documentation>Giai đoạn 3 - Xếp hạng. Business Rules Engine xếp hạng ưu tiên theo thời gian thực (dự kiến, chưa công bố) và chờ mốc hết hạn đăng ký online để sinh bảng xếp hạng cuối.</bpmn:documentation>
+      <bpmn:incoming>F03</bpmn:incoming>
+      <bpmn:outgoing>F04</bpmn:outgoing>
+      <bpmn:dataInputAssociation id="MA06">
+        <bpmn:sourceRef>MD_HS2</bpmn:sourceRef>
+      </bpmn:dataInputAssociation>
+      <bpmn:dataOutputAssociation id="MA07">
+        <bpmn:targetRef>MD_XH</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+      <bpmn:startEvent id="S3" name="Hồ sơ đã thẩm định đạt">
+        <bpmn:outgoing>F301</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:businessRuleTask id="BRE" name="Business Rules Engine xếp hạng ưu tiên thời gian thực (dự kiến, chưa công bố)">
+        <bpmn:documentation>Hệ thống tự động (Business Rules Engine). Xếp hạng theo đối tượng ưu tiên, điểm và gắn phòng dự kiến; kết quả chỉ là dự kiến, chưa công bố.</bpmn:documentation>
+        <bpmn:incoming>F301</bpmn:incoming>
+        <bpmn:outgoing>F302</bpmn:outgoing>
+        <bpmn:dataInputAssociation id="A301">
+          <bpmn:sourceRef>D3_in</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+        <bpmn:dataOutputAssociation id="A302">
+          <bpmn:targetRef>D3_out</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:performer id="pf_BRE" name="Chịu trách nhiệm: Bộ phận quản lý sinh viên">
+          <bpmn:resourceRef>Res_QLSV</bpmn:resourceRef>
+        </bpmn:performer>
+      </bpmn:businessRuleTask>
+      <bpmn:intermediateCatchEvent id="TA" name="Hết hạn đăng ký online">
+        <bpmn:documentation>Timer: mốc hết hạn đăng ký online - mở đợt chốt danh sách.</bpmn:documentation>
+        <bpmn:incoming>F302</bpmn:incoming>
+        <bpmn:outgoing>F303</bpmn:outgoing>
+        <bpmn:timerEventDefinition id="TA_def" />
+      </bpmn:intermediateCatchEvent>
+      <bpmn:endEvent id="E3" name="Bảng xếp hạng sẵn sàng chốt">
+        <bpmn:incoming>F303</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:dataObjectReference id="D3_in" name="Hồ sơ đăng ký&#10;[Thẩm định đạt]" dataObjectRef="DOB_HS">
+        <bpmn:dataState id="D3_in_st" name="Thẩm định đạt" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D3_out" name="Bảng xếp hạng&#10;[Dự kiến, chưa công bố]" dataObjectRef="DOB_XH">
+        <bpmn:dataState id="D3_out_st" name="Dự kiến, chưa công bố" />
+      </bpmn:dataObjectReference>
+      <bpmn:sequenceFlow id="F301" sourceRef="S3" targetRef="BRE" />
+      <bpmn:sequenceFlow id="F302" sourceRef="BRE" targetRef="TA" />
+      <bpmn:sequenceFlow id="F303" sourceRef="TA" targetRef="E3" />
+      <bpmn:textAnnotation id="N3">
+        <bpmn:text>Vai trò chịu trách nhiệm: Bộ phận quản lý sinh viên (Business Rules Engine thực hiện tự động).</bpmn:text>
+      </bpmn:textAnnotation>
+    </bpmn:subProcess>
+    <bpmn:subProcess id="SP4" name="4. Chốt &#38; phê duyệt danh sách">
+      <bpmn:documentation>Giai đoạn 4 - Chốt &amp; phê duyệt. Bộ phận QLSV chốt danh sách và kiểm tra ràng buộc; Trưởng ban duyệt 1-click trên Dashboard. Nếu không thông qua (20%) thì QLSV chỉnh sửa rồi chốt lại - vòng lặp được đóng gói hoàn toàn trong sub-process. Kết thúc: danh sách được duyệt.</bpmn:documentation>
+      <bpmn:incoming>F04</bpmn:incoming>
+      <bpmn:outgoing>F05</bpmn:outgoing>
+      <bpmn:dataInputAssociation id="MA08">
+        <bpmn:sourceRef>MD_XH</bpmn:sourceRef>
+      </bpmn:dataInputAssociation>
+      <bpmn:dataOutputAssociation id="MA09">
+        <bpmn:targetRef>MD_DS</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+      <bpmn:startEvent id="S4" name="Bảng xếp hạng sẵn sàng chốt">
+        <bpmn:outgoing>F401</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:userTask id="CHOT" name="Chốt danh sách xét và kiểm tra ràng buộc (chỉ tiêu, trùng lặp, điều kiện)">
+        <bpmn:documentation>Cán bộ QLSV chốt danh sách theo chỉ tiêu, kiểm tra trùng lặp và điều kiện xét.</bpmn:documentation>
+        <bpmn:incoming>F401</bpmn:incoming>
+        <bpmn:incoming>F406</bpmn:incoming>
+        <bpmn:outgoing>F402</bpmn:outgoing>
+        <bpmn:dataInputAssociation id="A401">
+          <bpmn:sourceRef>D4_xh</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+        <bpmn:dataOutputAssociation id="A402">
+          <bpmn:targetRef>D4_ds</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:humanPerformer id="hp_CHOT" name="Thực hiện: Bộ phận quản lý sinh viên">
+          <bpmn:resourceRef>Res_QLSV</bpmn:resourceRef>
+        </bpmn:humanPerformer>
+      </bpmn:userTask>
+      <bpmn:userTask id="B2" name="Trưởng ban duyệt danh sách (Dashboard, 1-click)">
+        <bpmn:documentation>Trưởng ban xem Analytics Dashboard (tỷ lệ lấp đầy, đối tượng chính sách) và bấm Duyệt đợt (1-click).</bpmn:documentation>
+        <bpmn:incoming>F402</bpmn:incoming>
+        <bpmn:outgoing>F403</bpmn:outgoing>
+        <bpmn:dataInputAssociation id="A403">
+          <bpmn:sourceRef>D4_ds</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+        <bpmn:humanPerformer id="hp_B2" name="Thực hiện: Trưởng ban quản lý KTX">
+          <bpmn:resourceRef>Res_TB</bpmn:resourceRef>
+        </bpmn:humanPerformer>
+      </bpmn:userTask>
+      <bpmn:exclusiveGateway id="B3" name="Thông qua?">
+        <bpmn:documentation>Có (80%): duyệt. Không (20%): trả về chỉnh sửa.</bpmn:documentation>
+        <bpmn:incoming>F403</bpmn:incoming>
+        <bpmn:outgoing>F404</bpmn:outgoing>
+        <bpmn:outgoing>F405</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="E4" name="Danh sách được duyệt">
+        <bpmn:incoming>F404</bpmn:incoming>
+        <bpmn:dataInputAssociation id="A405">
+          <bpmn:sourceRef>D4_ok</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+      </bpmn:endEvent>
+      <bpmn:userTask id="CS" name="Chỉnh sửa danh sách hồ sơ">
+        <bpmn:documentation>Cán bộ QLSV điều chỉnh danh sách theo yêu cầu của Trưởng ban rồi chốt lại.</bpmn:documentation>
+        <bpmn:incoming>F405</bpmn:incoming>
+        <bpmn:outgoing>F406</bpmn:outgoing>
+        <bpmn:dataInputAssociation id="A404">
+          <bpmn:sourceRef>D4_tl</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+        <bpmn:humanPerformer id="hp_CS" name="Thực hiện: Bộ phận quản lý sinh viên">
+          <bpmn:resourceRef>Res_QLSV</bpmn:resourceRef>
+        </bpmn:humanPerformer>
+      </bpmn:userTask>
+      <bpmn:dataObjectReference id="D4_xh" name="Bảng xếp hạng&#10;[Dự kiến, chưa công bố]" dataObjectRef="DOB_XH">
+        <bpmn:dataState id="D4_xh_st" name="Dự kiến, chưa công bố" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D4_ds" name="Danh sách xét duyệt&#10;[Đã chốt]" dataObjectRef="DOB_DS">
+        <bpmn:dataState id="D4_ds_st" name="Đã chốt" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D4_tl" name="Danh sách xét duyệt&#10;[Bị trả về]" dataObjectRef="DOB_DS">
+        <bpmn:dataState id="D4_tl_st" name="Bị trả về" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D4_ok" name="Danh sách xét duyệt&#10;[Đã duyệt]" dataObjectRef="DOB_DS">
+        <bpmn:dataState id="D4_ok_st" name="Đã duyệt" />
+      </bpmn:dataObjectReference>
+      <bpmn:sequenceFlow id="F401" sourceRef="S4" targetRef="CHOT" />
+      <bpmn:sequenceFlow id="F402" sourceRef="CHOT" targetRef="B2" />
+      <bpmn:sequenceFlow id="F403" sourceRef="B2" targetRef="B3" />
+      <bpmn:sequenceFlow id="F404" name="Có (80%)" sourceRef="B3" targetRef="E4" />
+      <bpmn:sequenceFlow id="F405" name="Không (20%)" sourceRef="B3" targetRef="CS" />
+      <bpmn:sequenceFlow id="F406" sourceRef="CS" targetRef="CHOT" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="SP5" name="5. Phát hành &#38; ký hợp đồng">
+      <bpmn:documentation>Giai đoạn 5 - Phát hành &amp; ký hợp đồng. Hành chính khóa danh sách và đối soát; hệ thống gửi kết quả kèm hợp đồng điện tử cho từng sinh viên; chờ phản hồi hoặc quá hạn 72 giờ. Ký: giữ phòng. Từ chối/quá hạn: hủy suất, thu hồi phòng (kết thúc lỗi ERR_HUY_SUAT).</bpmn:documentation>
+      <bpmn:incoming>F05</bpmn:incoming>
+      <bpmn:outgoing>F06</bpmn:outgoing>
+      <bpmn:dataInputAssociation id="MA10">
+        <bpmn:sourceRef>MD_DS</bpmn:sourceRef>
+      </bpmn:dataInputAssociation>
+      <bpmn:dataOutputAssociation id="MA11">
+        <bpmn:targetRef>MD_HD</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+      <bpmn:dataOutputAssociation id="MA12">
+        <bpmn:targetRef>MD_PH1</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+      <bpmn:startEvent id="S5" name="Danh sách đã được duyệt">
+        <bpmn:outgoing>F501</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="LK" name="Khóa danh sách và đối soát trước phát hành (số lượng, mẫu thư)">
+        <bpmn:documentation>Hệ thống tự động (luật/RPA). Chịu trách nhiệm: Bộ phận hành chính. Khóa danh sách, đối soát số lượng và mẫu thư trước khi phát hành.</bpmn:documentation>
+        <bpmn:incoming>F501</bpmn:incoming>
+        <bpmn:outgoing>F502</bpmn:outgoing>
+        <bpmn:dataInputAssociation id="A501">
+          <bpmn:sourceRef>D5_ds</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+        <bpmn:dataOutputAssociation id="A502">
+          <bpmn:targetRef>D5_dk</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:performer id="pf_LK" name="Chịu trách nhiệm: Bộ phận hành chính">
+          <bpmn:resourceRef>Res_HC</bpmn:resourceRef>
+        </bpmn:performer>
+      </bpmn:serviceTask>
+      <bpmn:sendTask id="TCB" name="Công bố và gửi email kết quả (đính kèm hợp đồng điện tử)" messageRef="Msg_CongBo">
+        <bpmn:documentation>Send Task (Multi-Instance song song): gửi email cá nhân hóa đến từng sinh viên trúng tuyển kèm link ký hợp đồng điện tử; hợp đồng ở trạng thái WAITING_OTP, hạn ký 72 giờ.</bpmn:documentation>
+        <bpmn:incoming>F502</bpmn:incoming>
+        <bpmn:outgoing>F503</bpmn:outgoing>
+        <bpmn:dataInputAssociation id="A503">
+          <bpmn:sourceRef>D5_dk</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+        <bpmn:dataOutputAssociation id="A504">
+          <bpmn:targetRef>D5_hd</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:performer id="pf_TCB" name="Chịu trách nhiệm: Bộ phận quản lý sinh viên">
+          <bpmn:resourceRef>Res_QLSV</bpmn:resourceRef>
+        </bpmn:performer>
+        <bpmn:multiInstanceLoopCharacteristics id="MI_TCB" />
+      </bpmn:sendTask>
+      <bpmn:eventBasedGateway id="EB4">
+        <bpmn:documentation>Chờ một trong hai sự kiện đến trước: phản hồi của sinh viên hoặc quá hạn ký.</bpmn:documentation>
+        <bpmn:incoming>F503</bpmn:incoming>
+        <bpmn:outgoing>F504</bpmn:outgoing>
+        <bpmn:outgoing>F505</bpmn:outgoing>
+      </bpmn:eventBasedGateway>
+      <bpmn:intermediateCatchEvent id="CK" name="SV phản hồi hợp đồng trên Web/App">
+        <bpmn:documentation>Bắt sự kiện sinh viên ký (nhập đúng OTP) hoặc từ chối hợp đồng trên Web/App.</bpmn:documentation>
+        <bpmn:incoming>F504</bpmn:incoming>
+        <bpmn:outgoing>F506</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="CK_def" messageRef="Msg_PhanHoi" />
+      </bpmn:intermediateCatchEvent>
+      <bpmn:intermediateCatchEvent id="TKY" name="Quá hạn ký hợp đồng (72 giờ)">
+        <bpmn:documentation>Timer duration PT72H tính từ lúc phát hành hợp đồng mà sinh viên chưa phản hồi.</bpmn:documentation>
+        <bpmn:incoming>F505</bpmn:incoming>
+        <bpmn:outgoing>F510</bpmn:outgoing>
+        <bpmn:timerEventDefinition id="TKY_def">
+          <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT72H</bpmn:timeDuration>
+        </bpmn:timerEventDefinition>
+      </bpmn:intermediateCatchEvent>
+      <bpmn:exclusiveGateway id="G2" name="SV đồng ý ký?">
+        <bpmn:incoming>F506</bpmn:incoming>
+        <bpmn:outgoing>F507</bpmn:outgoing>
+        <bpmn:outgoing>F509</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:serviceTask id="KY" name="Ghi nhận hợp đồng đã ký và giữ phòng">
+        <bpmn:documentation>Đóng dấu số vào hợp đồng PDF, cập nhật hợp đồng SIGNED, phòng chuyển trạng thái đã giữ chỗ.</bpmn:documentation>
+        <bpmn:incoming>F507</bpmn:incoming>
+        <bpmn:outgoing>F508</bpmn:outgoing>
+        <bpmn:dataInputAssociation id="A505">
+          <bpmn:sourceRef>D5_hd2</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+        <bpmn:dataOutputAssociation id="A506">
+          <bpmn:targetRef>D5_hdk</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:dataOutputAssociation id="A507">
+          <bpmn:targetRef>D5_phk</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:performer id="pf_KY" name="Chịu trách nhiệm: Bộ phận quản lý sinh viên">
+          <bpmn:resourceRef>Res_QLSV</bpmn:resourceRef>
+        </bpmn:performer>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="E5" name="Hợp đồng đã ký">
+        <bpmn:incoming>F508</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:exclusiveGateway id="MG5">
+        <bpmn:incoming>F509</bpmn:incoming>
+        <bpmn:incoming>F510</bpmn:incoming>
+        <bpmn:outgoing>F511</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:serviceTask id="HUY" name="Hủy suất và thu hồi phòng về trạng thái trống">
+        <bpmn:documentation>Đổi trạng thái hợp đồng thành CANCELED/TIMEOUT_CANCELED, hoàn trả slot phòng về AVAILABLE để xét bổ sung từ danh sách chờ.</bpmn:documentation>
+        <bpmn:incoming>F511</bpmn:incoming>
+        <bpmn:outgoing>F512</bpmn:outgoing>
+        <bpmn:dataInputAssociation id="A508">
+          <bpmn:sourceRef>D5_hd3</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+        <bpmn:dataOutputAssociation id="A509">
+          <bpmn:targetRef>D5_hdh</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:dataOutputAssociation id="A510">
+          <bpmn:targetRef>D5_pht</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:performer id="pf_HUY" name="Chịu trách nhiệm: Bộ phận quản lý sinh viên">
+          <bpmn:resourceRef>Res_QLSV</bpmn:resourceRef>
+        </bpmn:performer>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="E5X" name="Suất bị hủy">
+        <bpmn:incoming>F512</bpmn:incoming>
+        <bpmn:errorEventDefinition id="E5X_def" errorRef="Err_Huy" />
+      </bpmn:endEvent>
+      <bpmn:dataObjectReference id="D5_ds" name="Danh sách xét duyệt&#10;[Đã duyệt]" dataObjectRef="DOB_DS">
+        <bpmn:dataState id="D5_ds_st" name="Đã duyệt" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D5_dk" name="Danh sách xét duyệt&#10;[Đã khóa]" dataObjectRef="DOB_DS">
+        <bpmn:dataState id="D5_dk_st" name="Đã khóa" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D5_hd" name="Hợp đồng điện tử&#10;[Chờ ký]" dataObjectRef="DOB_HD">
+        <bpmn:dataState id="D5_hd_st" name="Chờ ký" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D5_hd2" name="Hợp đồng điện tử&#10;[Chờ ký]" dataObjectRef="DOB_HD">
+        <bpmn:dataState id="D5_hd2_st" name="Chờ ký" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D5_hdk" name="Hợp đồng điện tử&#10;[Đã ký]" dataObjectRef="DOB_HD">
+        <bpmn:dataState id="D5_hdk_st" name="Đã ký" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D5_phk" name="Phòng KTX&#10;[Đã giữ chỗ]" dataObjectRef="DOB_PH">
+        <bpmn:dataState id="D5_phk_st" name="Đã giữ chỗ" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D5_hd3" name="Hợp đồng điện tử&#10;[Chờ ký]" dataObjectRef="DOB_HD">
+        <bpmn:dataState id="D5_hd3_st" name="Chờ ký" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D5_hdh" name="Hợp đồng điện tử&#10;[Đã hủy]" dataObjectRef="DOB_HD">
+        <bpmn:dataState id="D5_hdh_st" name="Đã hủy" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D5_pht" name="Phòng KTX&#10;[Còn trống]" dataObjectRef="DOB_PH">
+        <bpmn:dataState id="D5_pht_st" name="Còn trống" />
+      </bpmn:dataObjectReference>
+      <bpmn:sequenceFlow id="F501" sourceRef="S5" targetRef="LK" />
+      <bpmn:sequenceFlow id="F502" sourceRef="LK" targetRef="TCB" />
+      <bpmn:sequenceFlow id="F503" sourceRef="TCB" targetRef="EB4" />
+      <bpmn:sequenceFlow id="F504" sourceRef="EB4" targetRef="CK" />
+      <bpmn:sequenceFlow id="F505" sourceRef="EB4" targetRef="TKY" />
+      <bpmn:sequenceFlow id="F506" sourceRef="CK" targetRef="G2" />
+      <bpmn:sequenceFlow id="F507" name="Có" sourceRef="G2" targetRef="KY" />
+      <bpmn:sequenceFlow id="F508" sourceRef="KY" targetRef="E5" />
+      <bpmn:sequenceFlow id="F509" name="Không (từ chối ký)" sourceRef="G2" targetRef="MG5" />
+      <bpmn:sequenceFlow id="F510" sourceRef="TKY" targetRef="MG5" />
+      <bpmn:sequenceFlow id="F511" sourceRef="MG5" targetRef="HUY" />
+      <bpmn:sequenceFlow id="F512" sourceRef="HUY" targetRef="E5X" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="SP6" name="6. Bàn giao phòng">
+      <bpmn:documentation>Giai đoạn 6 - Bàn giao phòng. Gửi email hẹn nhận phòng kèm số phòng, bàn giao chìa khóa và kiểm kê cơ sở vật chất, ghi nhận số phòng vào portal nội trú.</bpmn:documentation>
+      <bpmn:incoming>F06</bpmn:incoming>
+      <bpmn:outgoing>F07</bpmn:outgoing>
+      <bpmn:dataInputAssociation id="MA13">
+        <bpmn:sourceRef>MD_HD</bpmn:sourceRef>
+      </bpmn:dataInputAssociation>
+      <bpmn:dataInputAssociation id="MA14">
+        <bpmn:sourceRef>MD_PH1</bpmn:sourceRef>
+      </bpmn:dataInputAssociation>
+      <bpmn:dataOutputAssociation id="MA15">
+        <bpmn:targetRef>MD_PH2</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+      <bpmn:dataOutputAssociation id="MA16">
+        <bpmn:targetRef>MD_BB</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+      <bpmn:dataOutputAssociation id="MA17">
+        <bpmn:targetRef>MDS_PT</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
+      <bpmn:startEvent id="S6" name="Sinh viên đã ký hợp đồng">
+        <bpmn:outgoing>F601</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:intermediateThrowEvent id="GM" name="Gửi email hẹn nhận phòng kèm số phòng">
+        <bpmn:documentation>Gửi email hẹn ngày nhận phòng kèm số phòng và mã QR check-in.</bpmn:documentation>
+        <bpmn:incoming>F601</bpmn:incoming>
+        <bpmn:outgoing>F602</bpmn:outgoing>
+        <bpmn:dataInputAssociation id="A601">
+          <bpmn:sourceRef>D6_hd</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+        <bpmn:dataInputAssociation id="A602">
+          <bpmn:sourceRef>D6_ph</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+        <bpmn:messageEventDefinition id="GM_def" messageRef="Msg_NhanPhong" />
+      </bpmn:intermediateThrowEvent>
+      <bpmn:manualTask id="E2" name="Bàn giao chìa khóa, kiểm kê cơ sở vật chất phòng">
+        <bpmn:documentation>Cán bộ QLSV gặp sinh viên, bàn giao chìa khóa, kiểm kê cơ sở vật chất và lập biên bản.</bpmn:documentation>
+        <bpmn:incoming>F602</bpmn:incoming>
+        <bpmn:outgoing>F603</bpmn:outgoing>
+        <bpmn:dataOutputAssociation id="A603">
+          <bpmn:targetRef>D6_bb</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:humanPerformer id="hp_E2" name="Thực hiện: Bộ phận quản lý sinh viên">
+          <bpmn:resourceRef>Res_QLSV</bpmn:resourceRef>
+        </bpmn:humanPerformer>
+      </bpmn:manualTask>
+      <bpmn:userTask id="GN" name="Ghi nhận số phòng vào hệ thống portal">
+        <bpmn:documentation>Cán bộ cập nhật số phòng, trạng thái phòng và sinh viên vào Portal quản lý nội trú.</bpmn:documentation>
+        <bpmn:incoming>F603</bpmn:incoming>
+        <bpmn:outgoing>F604</bpmn:outgoing>
+        <bpmn:dataInputAssociation id="A604">
+          <bpmn:sourceRef>D6_bb</bpmn:sourceRef>
+        </bpmn:dataInputAssociation>
+        <bpmn:dataOutputAssociation id="A605">
+          <bpmn:targetRef>D6_ph2</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:dataOutputAssociation id="A606">
+          <bpmn:targetRef>D6_db</bpmn:targetRef>
+        </bpmn:dataOutputAssociation>
+        <bpmn:humanPerformer id="hp_GN" name="Thực hiện: Bộ phận quản lý sinh viên">
+          <bpmn:resourceRef>Res_QLSV</bpmn:resourceRef>
+        </bpmn:humanPerformer>
+      </bpmn:userTask>
+      <bpmn:endEvent id="E6" name="Hoàn tất bàn giao">
+        <bpmn:incoming>F604</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:dataObjectReference id="D6_hd" name="Hợp đồng điện tử&#10;[Đã ký]" dataObjectRef="DOB_HD">
+        <bpmn:dataState id="D6_hd_st" name="Đã ký" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D6_ph" name="Phòng KTX&#10;[Đã giữ chỗ]" dataObjectRef="DOB_PH">
+        <bpmn:dataState id="D6_ph_st" name="Đã giữ chỗ" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D6_bb" name="Biên bản bàn giao&#10;[SV đã xác nhận]" dataObjectRef="DOB_BB">
+        <bpmn:dataState id="D6_bb_st" name="SV đã xác nhận" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataObjectReference id="D6_ph2" name="Phòng KTX&#10;[Đang sử dụng]" dataObjectRef="DOB_PH">
+        <bpmn:dataState id="D6_ph2_st" name="Đang sử dụng" />
+      </bpmn:dataObjectReference>
+      <bpmn:dataStoreReference id="D6_db" name="Portal quản lý nội trú" dataStoreRef="DataStore_PT" />
+      <bpmn:sequenceFlow id="F601" sourceRef="S6" targetRef="GM" />
+      <bpmn:sequenceFlow id="F602" sourceRef="GM" targetRef="E2" />
+      <bpmn:sequenceFlow id="F603" sourceRef="E2" targetRef="GN" />
+      <bpmn:sequenceFlow id="F604" sourceRef="GN" targetRef="E6" />
+    </bpmn:subProcess>
+    <bpmn:boundaryEvent id="BE1" name="Hộ khẩu Đà Nẵng" attachedToRef="SP1">
+      <bpmn:documentation>Error Boundary Event: bắt lỗi nghiệp vụ ERR_HO_KHAU_DA_NANG từ SP1.</bpmn:documentation>
+      <bpmn:outgoing>F08</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="BE1_def" errorRef="Err_HoKhau" />
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="ETC" name="Thông báo từ chối bố trí ở KTX">
+      <bpmn:incoming>F08</bpmn:incoming>
+      <bpmn:messageEventDefinition id="ETC_def" messageRef="Msg_TuChoi" />
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EH" name="Hoàn tất">
+      <bpmn:incoming>F07</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:dataObjectReference id="MD_HS0" name="Hồ sơ đăng ký&#10;[Đã nộp]" dataObjectRef="DOB_HS">
+      <bpmn:dataState id="MD_HS0_st" name="Đã nộp" />
+    </bpmn:dataObjectReference>
+    <bpmn:dataStoreReference id="MDS_HS" name="CSDL hồ sơ đăng ký" dataStoreRef="DataStore_HS" />
+    <bpmn:dataObjectReference id="MD_HS1" name="Hồ sơ đăng ký&#10;[Đã tiếp nhận]" dataObjectRef="DOB_HS">
+      <bpmn:dataState id="MD_HS1_st" name="Đã tiếp nhận" />
+    </bpmn:dataObjectReference>
+    <bpmn:dataObjectReference id="MD_HS2" name="Hồ sơ đăng ký&#10;[Thẩm định đạt]" dataObjectRef="DOB_HS">
+      <bpmn:dataState id="MD_HS2_st" name="Thẩm định đạt" />
+    </bpmn:dataObjectReference>
+    <bpmn:dataObjectReference id="MD_XH" name="Bảng xếp hạng&#10;[Dự kiến, chưa công bố]" dataObjectRef="DOB_XH">
+      <bpmn:dataState id="MD_XH_st" name="Dự kiến, chưa công bố" />
+    </bpmn:dataObjectReference>
+    <bpmn:dataObjectReference id="MD_DS" name="Danh sách xét duyệt&#10;[Đã duyệt]" dataObjectRef="DOB_DS">
+      <bpmn:dataState id="MD_DS_st" name="Đã duyệt" />
+    </bpmn:dataObjectReference>
+    <bpmn:dataObjectReference id="MD_HD" name="Hợp đồng điện tử&#10;[Đã ký]" dataObjectRef="DOB_HD">
+      <bpmn:dataState id="MD_HD_st" name="Đã ký" />
+    </bpmn:dataObjectReference>
+    <bpmn:dataObjectReference id="MD_PH1" name="Phòng KTX&#10;[Đã giữ chỗ]" dataObjectRef="DOB_PH">
+      <bpmn:dataState id="MD_PH1_st" name="Đã giữ chỗ" />
+    </bpmn:dataObjectReference>
+    <bpmn:dataObjectReference id="MD_BB" name="Biên bản bàn giao&#10;[SV đã xác nhận]" dataObjectRef="DOB_BB">
+      <bpmn:dataState id="MD_BB_st" name="SV đã xác nhận" />
+    </bpmn:dataObjectReference>
+    <bpmn:sequenceFlow id="F01" sourceRef="A1" targetRef="SP1" />
+    <bpmn:sequenceFlow id="F02" sourceRef="SP1" targetRef="SP2" />
+    <bpmn:sequenceFlow id="F03" sourceRef="SP2" targetRef="SP3" />
+    <bpmn:sequenceFlow id="F04" sourceRef="SP3" targetRef="SP4" />
+    <bpmn:sequenceFlow id="F05" sourceRef="SP4" targetRef="SP5" />
+    <bpmn:sequenceFlow id="F06" sourceRef="SP5" targetRef="SP6" />
+    <bpmn:sequenceFlow id="F07" sourceRef="SP6" targetRef="EH" />
+    <bpmn:sequenceFlow id="F08" sourceRef="BE1" targetRef="ETC" />
+    <bpmn:sequenceFlow id="F09" sourceRef="BE2" targetRef="EO" />
+    <bpmn:sequenceFlow id="F10" sourceRef="BE5" targetRef="EA" />
+    <bpmn:boundaryEvent id="BE2" name="Không bổ sung kịp" attachedToRef="SP2">
+      <bpmn:documentation>Error Boundary Event: bắt lỗi nghiệp vụ ERR_KHONG_BO_SUNG_KIP từ SP2.</bpmn:documentation>
+      <bpmn:outgoing>F09</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="BE2_def" errorRef="Err_KhongXet" />
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="EO" name="Thông báo hồ sơ không được xét (không bổ sung kịp)">
+      <bpmn:incoming>F09</bpmn:incoming>
+      <bpmn:messageEventDefinition id="EO_def" messageRef="Msg_KhongXet" />
+    </bpmn:endEvent>
+    <bpmn:dataStoreReference id="MDS_PT" name="Portal quản lý nội trú" dataStoreRef="DataStore_PT" />
+    <bpmn:dataObjectReference id="MD_PH2" name="Phòng KTX&#10;[Đang sử dụng]" dataObjectRef="DOB_PH">
+      <bpmn:dataState id="MD_PH2_st" name="Đang sử dụng" />
+    </bpmn:dataObjectReference>
+    <bpmn:dataObject id="DOB_PH" name="Phòng KTX" />
+    <bpmn:boundaryEvent id="BE5" name="Từ chối / quá hạn ký" attachedToRef="SP5">
+      <bpmn:documentation>Error Boundary Event: bắt lỗi nghiệp vụ ERR_HUY_SUAT từ SP5.</bpmn:documentation>
+      <bpmn:outgoing>F10</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="BE5_def" errorRef="Err_Huy" />
+    </bpmn:boundaryEvent>
+    <bpmn:endEvent id="EA" name="Thông báo hủy suất cho SV">
+      <bpmn:incoming>F10</bpmn:incoming>
+      <bpmn:messageEventDefinition id="EA_def" messageRef="Msg_Huy" />
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmn:process id="Process_SV_ToBe" name="Quy trình của Tân sinh viên" isExecutable="false">
+    <bpmn:startEvent id="SV_S" name="Sinh viên muốn ở KTX">
+      <bpmn:outgoing>SV_F1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="SV_T" name="Đăng ký, nộp minh chứng và hồ sơ nội trú">
+      <bpmn:incoming>SV_F1</bpmn:incoming>
+      <bpmn:outgoing>SV_F2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="SV_E" name="Kết thúc">
+      <bpmn:incoming>SV_F2</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="SV_F1" sourceRef="SV_S" targetRef="SV_T" />
+    <bpmn:sequenceFlow id="SV_F2" sourceRef="SV_T" targetRef="SV_E" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1" name="Tổng quan - Level 1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collab_ToBe">
+      <bpmndi:BPMNShape id="Pool_KTX_di" bpmnElement="Pool_KTX" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="2100" height="980" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_QLSV_di" bpmnElement="Lane_QLSV" isHorizontal="true">
+        <dc:Bounds x="190" y="660" width="2070" height="400" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_HC_di" bpmnElement="Lane_HC" isHorizontal="true">
+        <dc:Bounds x="190" y="300" width="2070" height="360" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_TB_di" bpmnElement="Lane_TB" isHorizontal="true">
+        <dc:Bounds x="190" y="80" width="2070" height="220" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A1_di" bpmnElement="A1" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="322" y="472" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EO_di" bpmnElement="EO" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="682" y="922" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="588" y="913" width="84" height="53" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="MDS_PT_di" bpmnElement="MDS_PT">
+        <dc:Bounds x="1915" y="615" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1897" y="577.5" width="85" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="MD_PH2_di" bpmnElement="MD_PH2">
+        <dc:Bounds x="2040" y="665" width="36" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2020" y="715" width="76" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EA_di" bpmnElement="EA" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="1422" y="950" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1403" y="912.5" width="74" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SP1_di" bpmnElement="SP1" isExpanded="false" bioc:stroke="#e65100" bioc:fill="#fff3e0">
+        <dc:Bounds x="420" y="440" width="160" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SP2_di" bpmnElement="SP2" isExpanded="false" bioc:stroke="#e65100" bioc:fill="#fff3e0">
+        <dc:Bounds x="700" y="780" width="160" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SP3_di" bpmnElement="SP3" isExpanded="false" bioc:stroke="#e65100" bioc:fill="#fff3e0">
+        <dc:Bounds x="980" y="780" width="160" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SP4_di" bpmnElement="SP4" isExpanded="false" bioc:stroke="#e65100" bioc:fill="#fff3e0">
+        <dc:Bounds x="1260" y="140" width="160" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SP5_di" bpmnElement="SP5" isExpanded="false" bioc:stroke="#e65100" bioc:fill="#fff3e0">
+        <dc:Bounds x="1540" y="780" width="160" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SP6_di" bpmnElement="SP6" isExpanded="false" bioc:stroke="#e65100" bioc:fill="#fff3e0">
+        <dc:Bounds x="1860" y="780" width="160" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ETC_di" bpmnElement="ETC" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="450" y="590" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EH_di" bpmnElement="EH">
+        <dc:Bounds x="2090" y="812" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="MD_HS0_di" bpmnElement="MD_HS0">
+        <dc:Bounds x="430" y="330" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="MDS_HS_di" bpmnElement="MDS_HS">
+        <dc:Bounds x="520" y="330" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="MD_HS1_di" bpmnElement="MD_HS1">
+        <dc:Bounds x="600" y="575" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="MD_HS2_di" bpmnElement="MD_HS2">
+        <dc:Bounds x="902" y="665" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="MD_XH_di" bpmnElement="MD_XH">
+        <dc:Bounds x="1150" y="690" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="MD_DS_di" bpmnElement="MD_DS">
+        <dc:Bounds x="1440" y="330" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="MD_HD_di" bpmnElement="MD_HD">
+        <dc:Bounds x="1710" y="665" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="MD_PH1_di" bpmnElement="MD_PH1">
+        <dc:Bounds x="1810" y="665" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="MD_BB_di" bpmnElement="MD_BB">
+        <dc:Bounds x="2130" y="690" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BE2_di" bpmnElement="BE2" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="682" y="862" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="596.5" y="866" width="75" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BE5_di" bpmnElement="BE5" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="1522" y="862" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1497" y="898" width="87" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BE1_di" bpmnElement="BE1" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="450" y="522" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="F01_di" bpmnElement="F01">
+        <di:waypoint x="358" y="490" />
+        <di:waypoint x="420" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F02_di" bpmnElement="F02">
+        <di:waypoint x="580" y="490" />
+        <di:waypoint x="780" y="490" />
+        <di:waypoint x="780" y="780" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F03_di" bpmnElement="F03">
+        <di:waypoint x="860" y="830" />
+        <di:waypoint x="980" y="830" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F04_di" bpmnElement="F04">
+        <di:waypoint x="1060" y="780" />
+        <di:waypoint x="1060" y="190" />
+        <di:waypoint x="1260" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F05_di" bpmnElement="F05">
+        <di:waypoint x="1420" y="190" />
+        <di:waypoint x="1620" y="190" />
+        <di:waypoint x="1620" y="780" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F06_di" bpmnElement="F06">
+        <di:waypoint x="1700" y="830" />
+        <di:waypoint x="1860" y="830" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F07_di" bpmnElement="F07">
+        <di:waypoint x="2020" y="830" />
+        <di:waypoint x="2090" y="830" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F08_di" bpmnElement="F08">
+        <di:waypoint x="468" y="558" />
+        <di:waypoint x="468" y="590" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F09_di" bpmnElement="F09">
+        <di:waypoint x="700" y="898" />
+        <di:waypoint x="700" y="922" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F10_di" bpmnElement="F10">
+        <di:waypoint x="1532" y="896" />
+        <di:waypoint x="1532" y="968" />
+        <di:waypoint x="1458" y="968" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Pool_SV_di" bpmnElement="Pool_SV" isHorizontal="true">
+        <dc:Bounds x="160" y="1120" width="2100" height="140" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SV_S_di" bpmnElement="SV_S">
+        <dc:Bounds x="215" y="1172" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SV_T_di" bpmnElement="SV_T">
+        <dc:Bounds x="290" y="1150" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SV_E_di" bpmnElement="SV_E">
+        <dc:Bounds x="440" y="1172" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SV_F1_di" bpmnElement="SV_F1">
+        <di:waypoint x="251" y="1190" />
+        <di:waypoint x="290" y="1190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SV_F2_di" bpmnElement="SV_F2">
+        <di:waypoint x="390" y="1190" />
+        <di:waypoint x="440" y="1190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA01_di" bpmnElement="MA01">
+        <di:waypoint x="457.63" y="380" />
+        <di:waypoint x="480.741" y="440" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA02_di" bpmnElement="MA02">
+        <di:waypoint x="553.636" y="540" />
+        <di:waypoint x="600" y="583.22" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA03_di" bpmnElement="MA03">
+        <di:waypoint x="516.667" y="440" />
+        <di:waypoint x="536.667" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA04_di" bpmnElement="MA04">
+        <di:waypoint x="635.609" y="625" />
+        <di:waypoint x="744.783" y="780" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA05_di" bpmnElement="MA05">
+        <di:waypoint x="830" y="780" />
+        <di:waypoint x="902" y="708" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA06_di" bpmnElement="MA06">
+        <di:waypoint x="938" y="708" />
+        <di:waypoint x="1010" y="780" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA07_di" bpmnElement="MA07">
+        <di:waypoint x="1106.96" y="780" />
+        <di:waypoint x="1150" y="734.167" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA08_di" bpmnElement="MA08">
+        <di:waypoint x="1176.19" y="690" />
+        <di:waypoint x="1323.62" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA09_di" bpmnElement="MA09">
+        <di:waypoint x="1375.76" y="240" />
+        <di:waypoint x="1440.12" y="330" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA10_di" bpmnElement="MA10">
+        <di:waypoint x="1466.53" y="380" />
+        <di:waypoint x="1602.95" y="780" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA11_di" bpmnElement="MA11">
+        <di:waypoint x="1658.57" y="780" />
+        <di:waypoint x="1710" y="713.333" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA12_di" bpmnElement="MA12">
+        <di:waypoint x="1694.29" y="780" />
+        <di:waypoint x="1810" y="702.115" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA13_di" bpmnElement="MA13">
+        <di:waypoint x="1746" y="701.887" />
+        <di:waypoint x="1864.29" y="780" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA14_di" bpmnElement="MA14">
+        <di:waypoint x="1846" y="712.5" />
+        <di:waypoint x="1900" y="780" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA15_di" bpmnElement="MA15">
+        <di:waypoint x="1982" y="780" />
+        <di:waypoint x="2040" y="711" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA16_di" bpmnElement="MA16">
+        <di:waypoint x="2020" y="785.769" />
+        <di:waypoint x="2130" y="724.952" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MA17_di" bpmnElement="MA17">
+        <di:waypoint x="1940" y="780" />
+        <di:waypoint x="1940" y="665" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF1_di" bpmnElement="MF1">
+        <di:waypoint x="340" y="1150" />
+        <di:waypoint x="340" y="508" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF2_di" bpmnElement="MF2">
+        <di:waypoint x="468" y="626" />
+        <di:waypoint x="468" y="1120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF3_di" bpmnElement="MF3">
+        <di:waypoint x="780" y="880" />
+        <di:waypoint x="780" y="1120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF4_di" bpmnElement="MF4">
+        <di:waypoint x="920" y="1120" />
+        <di:waypoint x="920" y="860" />
+        <di:waypoint x="860" y="860" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF5_di" bpmnElement="MF5">
+        <di:waypoint x="700" y="958" />
+        <di:waypoint x="700" y="1120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF6_di" bpmnElement="MF6">
+        <di:waypoint x="1580" y="880" />
+        <di:waypoint x="1580" y="1120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF11_di" bpmnElement="MF11">
+        <di:waypoint x="1790" y="1120" />
+        <di:waypoint x="1790" y="860" />
+        <di:waypoint x="1700" y="860" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF13_di" bpmnElement="MF13">
+        <di:waypoint x="1440" y="986" />
+        <di:waypoint x="1440" y="1120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF15_di" bpmnElement="MF15">
+        <di:waypoint x="1940" y="880" />
+        <di:waypoint x="1940" y="1120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="Diagram_SP1" name="1. Tiếp nhận &#38; sàng lọc hồ sơ">
+    <bpmndi:BPMNPlane id="Plane_SP1" bpmnElement="SP1">
+      <bpmndi:BPMNShape id="A2_di" bpmnElement="A2" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="200" y="232" width="120" height="96" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A4_di" bpmnElement="A4" isMarkerVisible="true" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="380" y="255" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R1_di" bpmnElement="R1" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="480" y="100" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E1X_di" bpmnElement="E1X" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="690" y="122" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E1_di" bpmnElement="E1" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="500" y="262" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D1_in_di" bpmnElement="D1_in">
+        <dc:Bounds x="230" y="110" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D1_ok_di" bpmnElement="D1_ok">
+        <dc:Bounds x="215" y="365" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D1_db_di" bpmnElement="D1_db">
+        <dc:Bounds x="300" y="360" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D1_rej_di" bpmnElement="D1_rej">
+        <dc:Bounds x="590" y="20" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S1_di" bpmnElement="S1" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="102" y="262" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="87" y="298" width="67" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A101_di" bpmnElement="A101">
+        <di:waypoint x="250.069" y="160" />
+        <di:waypoint x="256.028" y="232" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A102_di" bpmnElement="A102">
+        <di:waypoint x="248.218" y="328" />
+        <di:waypoint x="239.136" y="365" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A103_di" bpmnElement="A103">
+        <di:waypoint x="289.714" y="328" />
+        <di:waypoint x="309.524" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A104_di" bpmnElement="A104">
+        <di:waypoint x="562.842" y="100" />
+        <di:waypoint x="590" y="66.9231" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F101_di" bpmnElement="F101">
+        <di:waypoint x="138" y="280" />
+        <di:waypoint x="200" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F102_di" bpmnElement="F102">
+        <di:waypoint x="320" y="280" />
+        <di:waypoint x="380" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F103_di" bpmnElement="F103">
+        <di:waypoint x="405" y="255" />
+        <di:waypoint x="405" y="140" />
+        <di:waypoint x="480" y="140" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="411" y="142" width="50" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F104_di" bpmnElement="F104">
+        <di:waypoint x="430" y="280" />
+        <di:waypoint x="500" y="280" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="436" y="262" width="68.2" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F105_di" bpmnElement="F105">
+        <di:waypoint x="580" y="140" />
+        <di:waypoint x="690" y="140" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="Diagram_SP2" name="2. Thẩm định minh chứng &#38; xử lý bổ sung">
+    <bpmndi:BPMNPlane id="Plane_SP2" bpmnElement="SP2">
+      <bpmndi:BPMNShape id="S2_di" bpmnElement="S2" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="100" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A6_di" bpmnElement="A6" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="190" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A7_di" bpmnElement="A7" isMarkerVisible="true" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="360" y="275" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="A9_di" bpmnElement="A9">
+        <dc:Bounds x="470" y="420" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="MG_di" bpmnElement="MG" isMarkerVisible="true" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="640" y="275" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GK_di" bpmnElement="GK" isMarkerVisible="true" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="740" y="275" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E2OK_di" bpmnElement="E2OK" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="870" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TR_di" bpmnElement="TR" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="747" y="442" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EB1_di" bpmnElement="EB1" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="880" y="435" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CO_di" bpmnElement="CO" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="1010" y="342" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TO_di" bpmnElement="TO" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="887" y="570" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="R2_di" bpmnElement="R2" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="990" y="548" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E2X_di" bpmnElement="E2X" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="1150" y="570" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D2_mc_di" bpmnElement="D2_mc">
+        <dc:Bounds x="130" y="170" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D2_kq_di" bpmnElement="D2_kq">
+        <dc:Bounds x="290" y="165" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D2_kq2_di" bpmnElement="D2_kq2">
+        <dc:Bounds x="400" y="520" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D2_mc2_di" bpmnElement="D2_mc2">
+        <dc:Bounds x="560" y="520" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D2_mcok_di" bpmnElement="D2_mcok">
+        <dc:Bounds x="872" y="170" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D2_mcbs_di" bpmnElement="D2_mcbs">
+        <dc:Bounds x="640" y="530" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D2_mcbs2_di" bpmnElement="D2_mcbs2">
+        <dc:Bounds x="1100" y="330" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D2_hs_di" bpmnElement="D2_hs">
+        <dc:Bounds x="1020" y="670" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="MAN_di" bpmnElement="MAN">
+        <dc:Bounds x="140" y="420" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EAI_di" bpmnElement="EAI" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="172" y="322" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="109" y="366" width="78" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A201_di" bpmnElement="A201">
+        <di:waypoint x="166" y="215.543" />
+        <di:waypoint x="204.952" y="260" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A202_di" bpmnElement="A202">
+        <di:waypoint x="264.727" y="260" />
+        <di:waypoint x="292.545" y="215" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A203_di" bpmnElement="A203">
+        <di:waypoint x="436" y="530" />
+        <di:waypoint x="472" y="500" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A204_di" bpmnElement="A204">
+        <di:waypoint x="547.294" y="500" />
+        <di:waypoint x="560.941" y="520" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A205_di" bpmnElement="A205">
+        <di:waypoint x="889.524" y="220" />
+        <di:waypoint x="888.343" y="282" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A206_di" bpmnElement="A206">
+        <di:waypoint x="676" y="539.019" />
+        <di:waypoint x="747" y="475.981" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A207_di" bpmnElement="A207">
+        <di:waypoint x="1046" y="359" />
+        <di:waypoint x="1100" y="356" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A208_di" bpmnElement="A208">
+        <di:waypoint x="1039.25" y="628" />
+        <di:waypoint x="1038.47" y="670" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F201_di" bpmnElement="F201">
+        <di:waypoint x="136" y="300" />
+        <di:waypoint x="190" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F202_di" bpmnElement="F202">
+        <di:waypoint x="290" y="300" />
+        <di:waypoint x="360" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F203_di" bpmnElement="F203">
+        <di:waypoint x="190" y="358" />
+        <di:waypoint x="190" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F204_di" bpmnElement="F204">
+        <di:waypoint x="410" y="300" />
+        <di:waypoint x="640" y="300" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="416" y="282" width="68.2" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F205_di" bpmnElement="F205">
+        <di:waypoint x="385" y="325" />
+        <di:waypoint x="385" y="460" />
+        <di:waypoint x="470" y="460" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="393" y="373" width="74" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F206_di" bpmnElement="F206">
+        <di:waypoint x="240" y="460" />
+        <di:waypoint x="470" y="460" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F207_di" bpmnElement="F207">
+        <di:waypoint x="570" y="460" />
+        <di:waypoint x="665" y="460" />
+        <di:waypoint x="665" y="325" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F208_di" bpmnElement="F208">
+        <di:waypoint x="690" y="300" />
+        <di:waypoint x="740" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F209_di" bpmnElement="F209">
+        <di:waypoint x="790" y="300" />
+        <di:waypoint x="870" y="300" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="796" y="282" width="50" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F210_di" bpmnElement="F210">
+        <di:waypoint x="765" y="325" />
+        <di:waypoint x="765" y="442" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="764" y="363" width="51" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F211_di" bpmnElement="F211">
+        <di:waypoint x="783" y="460" />
+        <di:waypoint x="880" y="460" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F212_di" bpmnElement="F212">
+        <di:waypoint x="905" y="435" />
+        <di:waypoint x="905" y="360" />
+        <di:waypoint x="1010" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F213_di" bpmnElement="F213">
+        <di:waypoint x="905" y="485" />
+        <di:waypoint x="905" y="570" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F214_di" bpmnElement="F214">
+        <di:waypoint x="1028" y="342" />
+        <di:waypoint x="1028" y="120" />
+        <di:waypoint x="240" y="120" />
+        <di:waypoint x="240" y="260" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F215_di" bpmnElement="F215">
+        <di:waypoint x="923" y="588" />
+        <di:waypoint x="990" y="588" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F216_di" bpmnElement="F216">
+        <di:waypoint x="1090" y="588" />
+        <di:waypoint x="1150" y="588" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="Diagram_SP3" name="3. Xếp hạng ưu tiên">
+    <bpmndi:BPMNPlane id="Plane_SP3" bpmnElement="SP3">
+      <bpmndi:BPMNShape id="S3_di" bpmnElement="S3" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="100" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BRE_di" bpmnElement="BRE" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="180" y="252" width="120" height="96" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TA_di" bpmnElement="TA" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="370" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E3_di" bpmnElement="E3" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="470" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D3_in_di" bpmnElement="D3_in">
+        <dc:Bounds x="215" y="130" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D3_out_di" bpmnElement="D3_out">
+        <dc:Bounds x="215" y="400" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="N3_di" bpmnElement="N3">
+        <dc:Bounds x="100" y="500" width="420" height="40" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A301_di" bpmnElement="A301">
+        <di:waypoint x="234.207" y="180" />
+        <di:waypoint x="237.683" y="252" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A302_di" bpmnElement="A302">
+        <di:waypoint x="237.312" y="348" />
+        <di:waypoint x="234.4" y="400" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F301_di" bpmnElement="F301">
+        <di:waypoint x="136" y="300" />
+        <di:waypoint x="180" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F302_di" bpmnElement="F302">
+        <di:waypoint x="300" y="300" />
+        <di:waypoint x="370" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F303_di" bpmnElement="F303">
+        <di:waypoint x="406" y="300" />
+        <di:waypoint x="470" y="300" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="Diagram_SP4" name="4. Chốt &#38; phê duyệt danh sách">
+    <bpmndi:BPMNPlane id="Plane_SP4" bpmnElement="SP4">
+      <bpmndi:BPMNShape id="CHOT_di" bpmnElement="CHOT">
+        <dc:Bounds x="180" y="232" width="120" height="96" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="B2_di" bpmnElement="B2">
+        <dc:Bounds x="370" y="240" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="B3_di" bpmnElement="B3" isMarkerVisible="true">
+        <dc:Bounds x="545" y="255" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E4_di" bpmnElement="E4" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="690" y="262" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CS_di" bpmnElement="CS">
+        <dc:Bounds x="370" y="420" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D4_xh_di" bpmnElement="D4_xh">
+        <dc:Bounds x="150" y="110" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D4_ds_di" bpmnElement="D4_ds">
+        <dc:Bounds x="300" y="110" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D4_tl_di" bpmnElement="D4_tl">
+        <dc:Bounds x="395" y="540" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D4_ok_di" bpmnElement="D4_ok">
+        <dc:Bounds x="700" y="150" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S4_di" bpmnElement="S4" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="100" y="262" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="81" y="298" width="75" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A401_di" bpmnElement="A401">
+        <di:waypoint x="180.414" y="160" />
+        <di:waypoint x="216.166" y="232" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A402_di" bpmnElement="A402">
+        <di:waypoint x="265.821" y="232" />
+        <di:waypoint x="304.552" y="160" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A403_di" bpmnElement="A403">
+        <di:waypoint x="335.586" y="160" />
+        <di:waypoint x="391.862" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A405_di" bpmnElement="A405">
+        <di:waypoint x="715.619" y="200" />
+        <di:waypoint x="709.714" y="262" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A404_di" bpmnElement="A404">
+        <di:waypoint x="414.667" y="540" />
+        <di:waypoint x="417.333" y="500" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F401_di" bpmnElement="F401">
+        <di:waypoint x="136" y="280" />
+        <di:waypoint x="180" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F402_di" bpmnElement="F402">
+        <di:waypoint x="300" y="280" />
+        <di:waypoint x="370" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F403_di" bpmnElement="F403">
+        <di:waypoint x="470" y="280" />
+        <di:waypoint x="545" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F404_di" bpmnElement="F404">
+        <di:waypoint x="595" y="280" />
+        <di:waypoint x="690" y="280" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="601" y="262" width="50" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F405_di" bpmnElement="F405">
+        <di:waypoint x="570" y="305" />
+        <di:waypoint x="570" y="460" />
+        <di:waypoint x="470" y="460" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="576" y="309" width="68.2" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F406_di" bpmnElement="F406">
+        <di:waypoint x="370" y="460" />
+        <di:waypoint x="240" y="460" />
+        <di:waypoint x="240" y="328" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="Diagram_SP5" name="5. Phát hành &#38; ký hợp đồng">
+    <bpmndi:BPMNPlane id="Plane_SP5" bpmnElement="SP5">
+      <bpmndi:BPMNShape id="S5_di" bpmnElement="S5" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="100" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="LK_di" bpmnElement="LK" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="170" y="252" width="120" height="96" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TCB_di" bpmnElement="TCB" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="330" y="252" width="120" height="96" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EB4_di" bpmnElement="EB4" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="510" y="275" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CK_di" bpmnElement="CK" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="640" y="172" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TKY_di" bpmnElement="TKY" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="640" y="408" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G2_di" bpmnElement="G2" isMarkerVisible="true" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="760" y="165" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="KY_di" bpmnElement="KY" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="880" y="150" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E5_di" bpmnElement="E5" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="1050" y="172" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="MG5_di" bpmnElement="MG5" isMarkerVisible="true" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="760" y="401" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="HUY_di" bpmnElement="HUY" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="880" y="386" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E5X_di" bpmnElement="E5X" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="1050" y="408" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D5_ds_di" bpmnElement="D5_ds">
+        <dc:Bounds x="150" y="140" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D5_dk_di" bpmnElement="D5_dk">
+        <dc:Bounds x="215" y="380" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D5_hd_di" bpmnElement="D5_hd">
+        <dc:Bounds x="420" y="400" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D5_hd2_di" bpmnElement="D5_hd2">
+        <dc:Bounds x="880" y="40" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D5_hdk_di" bpmnElement="D5_hdk">
+        <dc:Bounds x="1000" y="40" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D5_phk_di" bpmnElement="D5_phk">
+        <dc:Bounds x="1120" y="40" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D5_hd3_di" bpmnElement="D5_hd3">
+        <dc:Bounds x="800" y="520" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D5_hdh_di" bpmnElement="D5_hdh">
+        <dc:Bounds x="920" y="520" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D5_pht_di" bpmnElement="D5_pht">
+        <dc:Bounds x="1040" y="520" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A501_di" bpmnElement="A501">
+        <di:waypoint x="179.481" y="190" />
+        <di:waypoint x="207.956" y="252" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A502_di" bpmnElement="A502">
+        <di:waypoint x="231.371" y="348" />
+        <di:waypoint x="232.286" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A503_di" bpmnElement="A503">
+        <di:waypoint x="251" y="392.962" />
+        <di:waypoint x="330" y="340.127" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A504_di" bpmnElement="A504">
+        <di:waypoint x="408.432" y="348" />
+        <di:waypoint x="428.4" y="400" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A505_di" bpmnElement="A505">
+        <di:waypoint x="904.4" y="90" />
+        <di:waypoint x="919.76" y="150" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A506_di" bpmnElement="A506">
+        <di:waypoint x="958.16" y="150" />
+        <di:waypoint x="1000.4" y="90" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A507_di" bpmnElement="A507">
+        <di:waypoint x="980" y="159.952" />
+        <di:waypoint x="1120" y="75.8173" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A508_di" bpmnElement="A508">
+        <di:waypoint x="836" y="525.875" />
+        <di:waypoint x="892.353" y="466" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A509_di" bpmnElement="A509">
+        <di:waypoint x="932.689" y="466" />
+        <di:waypoint x="936.319" y="520" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A510_di" bpmnElement="A510">
+        <di:waypoint x="973.025" y="466" />
+        <di:waypoint x="1040" y="528.266" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F501_di" bpmnElement="F501">
+        <di:waypoint x="136" y="300" />
+        <di:waypoint x="170" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F502_di" bpmnElement="F502">
+        <di:waypoint x="290" y="300" />
+        <di:waypoint x="330" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F503_di" bpmnElement="F503">
+        <di:waypoint x="450" y="300" />
+        <di:waypoint x="510" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F504_di" bpmnElement="F504">
+        <di:waypoint x="535" y="275" />
+        <di:waypoint x="535" y="190" />
+        <di:waypoint x="640" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F505_di" bpmnElement="F505">
+        <di:waypoint x="535" y="325" />
+        <di:waypoint x="535" y="426" />
+        <di:waypoint x="640" y="426" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F506_di" bpmnElement="F506">
+        <di:waypoint x="676" y="190" />
+        <di:waypoint x="760" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F507_di" bpmnElement="F507">
+        <di:waypoint x="810" y="190" />
+        <di:waypoint x="880" y="190" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="816" y="172" width="50" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F508_di" bpmnElement="F508">
+        <di:waypoint x="980" y="190" />
+        <di:waypoint x="1050" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F509_di" bpmnElement="F509">
+        <di:waypoint x="785" y="215" />
+        <di:waypoint x="785" y="401" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="791" y="219" width="111.6" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F510_di" bpmnElement="F510">
+        <di:waypoint x="676" y="426" />
+        <di:waypoint x="760" y="426" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F511_di" bpmnElement="F511">
+        <di:waypoint x="810" y="426" />
+        <di:waypoint x="880" y="426" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F512_di" bpmnElement="F512">
+        <di:waypoint x="980" y="426" />
+        <di:waypoint x="1050" y="426" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="Diagram_SP6" name="6. Bàn giao phòng">
+    <bpmndi:BPMNPlane id="Plane_SP6" bpmnElement="SP6">
+      <bpmndi:BPMNShape id="S6_di" bpmnElement="S6" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="100" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GM_di" bpmnElement="GM" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="190" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D6_hd_di" bpmnElement="D6_hd">
+        <dc:Bounds x="110" y="110" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D6_ph_di" bpmnElement="D6_ph">
+        <dc:Bounds x="230" y="110" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D6_bb_di" bpmnElement="D6_bb">
+        <dc:Bounds x="320" y="380" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D6_ph2_di" bpmnElement="D6_ph2">
+        <dc:Bounds x="540" y="380" width="36" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="D6_db_di" bpmnElement="D6_db">
+        <dc:Bounds x="560" y="110" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E2_di" bpmnElement="E2">
+        <dc:Bounds x="300" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="GN_di" bpmnElement="GN">
+        <dc:Bounds x="470" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="E6_di" bpmnElement="E6" bioc:stroke="#1565c0" bioc:fill="#e3f2fd">
+        <dc:Bounds x="640" y="282" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="615" y="318" width="87" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="A601_di" bpmnElement="A601">
+        <di:waypoint x="140.121" y="160" />
+        <di:waypoint x="199.273" y="282" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A602_di" bpmnElement="A602">
+        <di:waypoint x="241.939" y="160" />
+        <di:waypoint x="212.364" y="282" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A603_di" bpmnElement="A603">
+        <di:waypoint x="345" y="340" />
+        <di:waypoint x="341" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A604_di" bpmnElement="A604">
+        <di:waypoint x="356" y="395" />
+        <di:waypoint x="470" y="329" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A605_di" bpmnElement="A605">
+        <di:waypoint x="534" y="340" />
+        <di:waypoint x="549" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="A606_di" bpmnElement="A606">
+        <di:waypoint x="536" y="260" />
+        <di:waypoint x="575" y="160" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F601_di" bpmnElement="F601">
+        <di:waypoint x="136" y="300" />
+        <di:waypoint x="190" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F602_di" bpmnElement="F602">
+        <di:waypoint x="226" y="300" />
+        <di:waypoint x="300" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F603_di" bpmnElement="F603">
+        <di:waypoint x="400" y="300" />
+        <di:waypoint x="470" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F604_di" bpmnElement="F604">
+        <di:waypoint x="570" y="300" />
+        <di:waypoint x="640" y="300" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

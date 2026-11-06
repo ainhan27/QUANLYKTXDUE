@@ -16,16 +16,38 @@ import {
 export async function GET() {
   try {
     const state = getWorkflowState();
-    const { getAllStoredApplications } = await import('@/lib/data/live-store');
-    const storedApps = getAllStoredApplications();
+    let storedApps: any[] = [];
+
+    if (
+      process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id') &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    ) {
+      try {
+        const { createAdminClient } = await import('@/lib/supabase/admin');
+        const supabase = createAdminClient();
+        const { data } = await supabase.from('applications').select('*');
+        if (data && data.length > 0) {
+          storedApps = data;
+        }
+      } catch (err) {
+        console.warn('Lỗi đọc Supabase trong workflow GET:', err);
+      }
+    }
+
+    if (storedApps.length === 0) {
+      const { getAllStoredApplications } = await import('@/lib/data/live-store');
+      storedApps = getAllStoredApplications();
+    }
+
     const pendingApps = storedApps.filter(
-      (a) => a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG'
+      (a: any) => a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG'
     );
     return NextResponse.json({
       success: true,
       workflow: state,
       pendingEvidenceCount: pendingApps.length,
-      pendingStudents: pendingApps.map((a) => ({
+      pendingStudents: pendingApps.map((a: any) => ({
         id: a.id,
         ma_sv: a.ma_sv,
         ho_ten: a.ho_ten,

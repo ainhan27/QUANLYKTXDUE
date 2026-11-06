@@ -5,8 +5,31 @@ import { computeMergedRankings } from '@/lib/data/mock-students';
 
 export const dynamic = 'force-dynamic';
 
-export default function RankingPage() {
-  const storedApps = getAllStoredApplications();
+export default async function RankingPage() {
+  let storedApps = getAllStoredApplications();
+
+  // Đồng bộ thời gian thực từ CSDL Supabase Cloud nếu đã kết nối
+  if (
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id') &&
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  ) {
+    try {
+      const { createAdminClient } = await import('@/lib/supabase/admin');
+      const supabase = createAdminClient();
+      const { data, error } = await supabase
+        .from('applications')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        storedApps = data as any;
+      }
+    } catch (err) {
+      console.warn('Lỗi đọc bảng xếp hạng từ Supabase:', err);
+    }
+  }
+
   const merged = computeMergedRankings(storedApps, 120);
 
   return (

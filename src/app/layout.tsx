@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '@/components/common/Navbar';
+import { DUE_LOGO_DATA_URI } from '@/lib/constants/branding';
 
 export const metadata: Metadata = {
   title: 'Hệ thống Quản lý & Xét duyệt Nội trú KTX - ĐH Kinh tế Đà Nẵng',
@@ -24,7 +25,7 @@ export default function RootLayout({
             <div className="flex items-center space-x-3">
               <div className="bg-white rounded px-2.5 py-1 shadow-sm shrink-0">
                 <img
-                  src="/images/due-logo.png"
+                  src={DUE_LOGO_DATA_URI}
                   alt="Đại học Đà Nẵng - Trường Đại học Kinh tế (DUE)"
                   className="h-7 w-auto object-contain"
                 />

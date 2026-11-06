@@ -1,5 +1,4 @@
 {
-  
   "compilerOptions": {
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
@@ -15,7 +14,6 @@
     "incremental": true,
     "plugins": [
       {
-        
         "name": "next"
       }
     ],

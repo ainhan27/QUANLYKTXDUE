@@ -1,5 +1,29 @@
 [
   {
+    "id": "notif-1793966959685-fblu",
+    "application_id": "app-1793966953481",
+    "recipient_email": "thanhthao@gmail.com",
+    "student_code": "2511251136136",
+    "student_name": "Thanh Thảo",
+    "tieu_de": "[KTX DUE] Xác Nhận Nộp Hồ Sơ Đăng Ký Nội Trú – MSSV: 2511251136136",
+    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px; letter-spacing: 0.5px;\">TRƯỜNG ĐẠI HỌC KINH TẾ – ĐH ĐÀ NẴNG (DUE)</h2>\n            <p style=\"margin: 6px 0 0; font-size: 13px; color: #FFB800; font-weight: bold;\">BAN QUẢN LÝ KÝ TÚC XÁ – XÁC NHẬN TIẾP NHẬN HỒ SƠ</p>\n          </div>\n          <div style=\"padding: 24px; color: #1e293b; line-height: 1.6;\">\n            <p>Kính gửi sinh viên <strong>Thanh Thảo</strong> (Mã SV: <strong>2511251136136</strong>),</p>\n            <p>Hệ thống KTX DUE đã tiếp nhận thành công hồ sơ đăng ký nội trú của bạn vào cơ sở dữ liệu (DataStore_HS).</p>\n            \n            <div style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px; margin: 16px 0;\">\n              <h4 style=\"margin: 0 0 10px; color: #003366; font-size: 14px;\">THÔNG TIN ĐĂNG KÝ:</h4>\n              <p style=\"margin: 4px 0; font-size: 13px;\">• Diện ưu tiên: <strong>Không thuộc diện ưu tiên</strong></p>\n              <p style=\"margin: 4px 0; font-size: 13px;\">• Điểm ưu tiên dự kiến: <strong style=\"color: #1d4ed8;\">0 điểm</strong></p>\n              <p style=\"margin: 4px 0; font-size: 13px;\">• Kết quả quét AI Vision: <strong>Đang chờ đối chiếu rà soát</strong></p>\n            </div>\n\n            <p style=\"font-size: 13px; color: #475569;\">\n              Hồ sơ của bạn đã được chuyển vào <strong>Bảng Xếp Hạng Tạm Thời (SP3)</strong>. Bảng xếp hạng cập nhật liên tục theo thời gian thực (Real-time).\n            </p>\n            <p style=\"margin-top: 20px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 12px;\">\n              Email này được tạo tự động từ Hệ thống Quản lý Quy trình KTX DUE. Vui lòng không phản hồi trực tiếp vào địa chỉ này.\n            </p>\n          </div>\n        </div>\n      ",
+    "loai": "XAC_NHAN_NOP",
+    "status": "DA_GUI",
+    "created_at": "2026-11-06T12:09:19.685Z"
+  },
+  {
+    "id": "notif-1793952588001-j324",
+    "application_id": "app-1793952582841",
+    "recipient_email": "thanhtaho@gmail.com",
+    "student_code": "251121536134",
+    "student_name": "THẢO",
+    "tieu_de": "[KTX DUE] Xác Nhận Nộp Hồ Sơ Đăng Ký Nội Trú – MSSV: 251121536134",
+    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px; letter-spacing: 0.5px;\">TRƯỜNG ĐẠI HỌC KINH TẾ – ĐH ĐÀ NẴNG (DUE)</h2>\n            <p style=\"margin: 6px 0 0; font-size: 13px; color: #FFB800; font-weight: bold;\">BAN QUẢN LÝ KÝ TÚC XÁ – XÁC NHẬN TIẾP NHẬN HỒ SƠ</p>\n          </div>\n          <div style=\"padding: 24px; color: #1e293b; line-height: 1.6;\">\n            <p>Kính gửi sinh viên <strong>THẢO</strong> (Mã SV: <strong>251121536134</strong>),</p>\n            <p>Hệ thống KTX DUE đã tiếp nhận thành công hồ sơ đăng ký nội trú của bạn vào cơ sở dữ liệu (DataStore_HS).</p>\n            \n            <div style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px; margin: 16px 0;\">\n              <h4 style=\"margin: 0 0 10px; color: #003366; font-size: 14px;\">THÔNG TIN ĐĂNG KÝ:</h4>\n              <p style=\"margin: 4px 0; font-size: 13px;\">• Diện ưu tiên: <strong>Không thuộc diện ưu tiên</strong></p>\n              <p style=\"margin: 4px 0; font-size: 13px;\">• Điểm ưu tiên dự kiến: <strong style=\"color: #1d4ed8;\">0 điểm</strong></p>\n              <p style=\"margin: 4px 0; font-size: 13px;\">• Kết quả quét AI Vision: <strong>Đang chờ đối chiếu rà soát</strong></p>\n            </div>\n\n            <p style=\"font-size: 13px; color: #475569;\">\n              Hồ sơ của bạn đã được chuyển vào <strong>Bảng Xếp Hạng Tạm Thời (SP3)</strong>. Bảng xếp hạng cập nhật liên tục theo thời gian thực (Real-time).\n            </p>\n            <p style=\"margin-top: 20px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 12px;\">\n              Email này được tạo tự động từ Hệ thống Quản lý Quy trình KTX DUE. Vui lòng không phản hồi trực tiếp vào địa chỉ này.\n            </p>\n          </div>\n        </div>\n      ",
+    "loai": "XAC_NHAN_NOP",
+    "status": "DA_GUI",
+    "created_at": "2026-11-06T08:09:48.001Z"
+  },
+  {
     "id": "notif-1793530660106-r111",
     "application_id": "app-1793245101382",
     "recipient_email": "ngocvy@gmail.com",
