@@ -191,12 +191,27 @@ export async function directorApproveRoundAction(roundId: string = 'round-k50-do
       }
     }
 
-    saveWorkflowState({
+    const updatedState = saveWorkflowState({
       isRankingsFinalized: true,
       isPublished: false, // CHƯA GỬI: Chờ Cán bộ QLSV kiểm tra email AI soạn sẵn và bấm phát hành!
       assignedRoom: 'Phòng 301 - Khu A (4 người)',
       isSigned: false,
     });
+
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      try {
+        const supabaseAdmin = createAdminClient();
+        await supabaseAdmin.from('notifications').insert({
+          loai: 'SYSTEM_WORKFLOW_STATE',
+          tieu_de: 'round-k50-dot1',
+          noi_dung: JSON.stringify(updatedState),
+          status: 'SYSTEM',
+          recipient_email: 'system@due.edu.vn',
+        });
+      } catch (err) {
+        console.warn('Lỗi lưu workflow state vào Supabase:', err);
+      }
+    }
     return {
       success: true,
       message: 'Trưởng ban Quản lý KTX đã ký duyệt danh sách trúng tuyển chính thức (Quyết định B2)! AI đã soạn sẵn 120 email thông báo. Hồ sơ đã chuyển sang Cán bộ QLSV để kiểm tra và gửi email cho sinh viên.',
@@ -234,7 +249,7 @@ export async function officerSendBatchEmailsAction() {
     const deadline72h = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
     
     // 1. CẬP NHẬT TRẠNG THÁI QUY TRÌNH NGAY LẬP TỨC (< 2MS)
-    saveWorkflowState({
+    const updatedState = saveWorkflowState({
       isRankingsFinalized: true,
       isPublished: true, // ĐÃ GỬI CHÍNH THỨC
       publishedAt: new Date().toISOString(),
@@ -242,6 +257,21 @@ export async function officerSendBatchEmailsAction() {
       assignedRoom: 'Phòng 301 - Khu A (4 người)',
       isSigned: false,
     });
+
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      try {
+        const supabaseAdmin = createAdminClient();
+        await supabaseAdmin.from('notifications').insert({
+          loai: 'SYSTEM_WORKFLOW_STATE',
+          tieu_de: 'round-k50-dot1',
+          noi_dung: JSON.stringify(updatedState),
+          status: 'SYSTEM',
+          recipient_email: 'system@due.edu.vn',
+        });
+      } catch (err) {
+        console.warn('Lỗi lưu workflow state vào Supabase:', err);
+      }
+    }
 
     // 2. CẬP NHẬT TRẠNG THÁI CÁC HỒ SƠ TOP 120 TRÚNG TUYỂN
     const { computeMergedRankings } = await import('@/lib/data/mock-students');
@@ -536,7 +566,21 @@ export async function cancelAndReallocateAction(applicationId: string, studentEm
 export async function resetWorkflowAction() {
   try {
     const { resetWorkflowState } = await import('@/lib/data/live-store');
-    resetWorkflowState();
+    const reset = resetWorkflowState();
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      try {
+        const supabaseAdmin = createAdminClient();
+        await supabaseAdmin.from('notifications').insert({
+          loai: 'SYSTEM_WORKFLOW_STATE',
+          tieu_de: 'round-k50-dot1',
+          noi_dung: JSON.stringify(reset),
+          status: 'SYSTEM',
+          recipient_email: 'system@due.edu.vn',
+        });
+      } catch (err) {
+        console.warn('Lỗi lưu reset workflow state vào Supabase:', err);
+      }
+    }
     return { success: true, message: 'Đã thiết lập lại quy trình về Bước 3 (Bảng xếp hạng Tạm thời).' };
   } catch (err: unknown) {
     return { success: false, message: err instanceof Error ? err.message : 'Lỗi reset' };

@@ -64,14 +64,36 @@ export default function ApprovalDashboard() {
       const wfJson = await wfRes.json();
       if (wfJson.workflow) {
         setWorkflowState((prev) => {
+          // Anti-flapping guard: chống serverless container lệch nhau gây nhảy giật giao diện
+          const isLocallyFinalized =
+            typeof window !== 'undefined' && localStorage.getItem('ktx_director_finalized') === 'true';
+          const isLocallyPublished =
+            typeof window !== 'undefined' && localStorage.getItem('ktx_director_published') === 'true';
+
+          const resolvedFinalized = isLocallyFinalized || Boolean(wfJson.workflow.isRankingsFinalized);
+          const resolvedPublished = isLocallyPublished || Boolean(wfJson.workflow.isPublished);
+
+          if (wfJson.workflow.isRankingsFinalized && typeof window !== 'undefined') {
+            localStorage.setItem('ktx_director_finalized', 'true');
+          }
+          if (wfJson.workflow.isPublished && typeof window !== 'undefined') {
+            localStorage.setItem('ktx_director_published', 'true');
+          }
+
+          const merged = {
+            ...wfJson.workflow,
+            isRankingsFinalized: resolvedFinalized,
+            isPublished: resolvedPublished,
+          };
+
           if (
-            prev.currentStep === wfJson.workflow.currentStep &&
-            prev.isRankingsFinalized === wfJson.workflow.isRankingsFinalized &&
-            prev.isPublished === wfJson.workflow.isPublished
+            prev.currentStep === merged.currentStep &&
+            prev.isRankingsFinalized === merged.isRankingsFinalized &&
+            prev.isPublished === merged.isPublished
           ) {
             return prev;
           }
-          return wfJson.workflow;
+          return merged;
         });
       }
 
@@ -178,6 +200,11 @@ export default function ApprovalDashboard() {
   // SAU KHI DUYỆT: CHUYỂN TIẾP CHO CÁN BỘ QLSV ĐỂ PHÁT HÀNH EMAIL (AI SOẠN SẴN)
   const handleApproveAndPublish = async () => {
     setIsProcessing(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ktx_director_finalized', 'true');
+    }
+    setWorkflowState((prev) => ({ ...prev, isRankingsFinalized: true }));
+
     try {
       const res = await directorApproveRoundAction('round-k50-dot1');
       if (!res.success) {
@@ -211,6 +238,12 @@ export default function ApprovalDashboard() {
   // TRƯỞNG BAN PHÁT HÀNH & GỬI NGAY THÔNG BÁO TRÚNG TUYỂN (TASK TCB)
   const handleSendBatchNow = async () => {
     setIsProcessing(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ktx_director_finalized', 'true');
+      localStorage.setItem('ktx_director_published', 'true');
+    }
+    setWorkflowState((prev) => ({ ...prev, isRankingsFinalized: true, isPublished: true }));
+
     try {
       const res = await officerSendBatchEmailsAction();
       if (!res.success) {
@@ -275,6 +308,16 @@ export default function ApprovalDashboard() {
   // THIẾT LẬP LẠI QUY TRÌNH VỀ BƯỚC 3 ĐỂ DEMO LẠI
   const handleResetWorkflow = async () => {
     try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('ktx_director_finalized');
+        localStorage.removeItem('ktx_director_published');
+      }
+      setWorkflowState((prev) => ({
+        ...prev,
+        isRankingsFinalized: false,
+        isPublished: false,
+        currentStep: 3,
+      }));
       await resetWorkflowAction();
       await fetch('/api/workflow', {
         method: 'POST',
@@ -293,6 +336,15 @@ export default function ApprovalDashboard() {
       return;
     }
     setIsProcessing(true);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('ktx_director_finalized');
+      localStorage.removeItem('ktx_director_published');
+    }
+    setWorkflowState((prev) => ({
+      ...prev,
+      isRankingsFinalized: false,
+      isPublished: false,
+    }));
     try {
       await fetch('/api/workflow', {
         method: 'POST',

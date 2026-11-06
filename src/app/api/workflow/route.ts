@@ -16,9 +16,31 @@ import {
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+async function syncWorkflowStateToSupabase(state: any) {
+  if (
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id') &&
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  ) {
+    try {
+      const { createAdminClient } = await import('@/lib/supabase/admin');
+      const supabase = createAdminClient();
+      await supabase.from('notifications').insert({
+        loai: 'SYSTEM_WORKFLOW_STATE',
+        tieu_de: 'round-k50-dot1',
+        noi_dung: JSON.stringify(state),
+        status: 'SYSTEM',
+        recipient_email: 'system@due.edu.vn',
+      });
+    } catch (e) {
+      console.warn('Lỗi sync workflow state to Supabase:', e);
+    }
+  }
+}
+
 export async function GET() {
   try {
-    const state = getWorkflowState();
+    let state = getWorkflowState();
     let storedApps: any[] = [];
 
     if (
@@ -29,6 +51,22 @@ export async function GET() {
       try {
         const { createAdminClient } = await import('@/lib/supabase/admin');
         const supabase = createAdminClient();
+
+        // 1. Đọc trạng thái workflow từ CSDL tập trung Supabase (chống lệch state giữa các serverless container)
+        const { data: wfRows } = await supabase
+          .from('notifications')
+          .select('noi_dung')
+          .eq('loai', 'SYSTEM_WORKFLOW_STATE')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (wfRows && wfRows.length > 0 && wfRows[0].noi_dung) {
+          try {
+            const parsed = JSON.parse(wfRows[0].noi_dung);
+            state = { ...state, ...parsed };
+          } catch {}
+        }
+
         const { data } = await supabase.from('applications').select('*');
         if (data && data.length > 0) {
           storedApps = data;
@@ -81,6 +119,7 @@ export async function POST(request: Request) {
 
     if (action === 'reset') {
       const reset = resetWorkflowState();
+      await syncWorkflowStateToSupabase(reset);
       return NextResponse.json({ success: true, workflow: reset });
     }
 
@@ -163,10 +202,11 @@ export async function POST(request: Request) {
         message: reason,
         sender: 'ThS. Nguyễn Văn Quản – Trưởng Ban Quản lý KTX',
       });
-      saveWorkflowState({
+      const wfState = saveWorkflowState({
         isRankingsFinalized: false,
         isPublished: false,
       });
+      await syncWorkflowStateToSupabase(wfState);
       return NextResponse.json({ success: true, workflow: getWorkflowState() });
     }
 
@@ -179,9 +219,25 @@ export async function POST(request: Request) {
     if (action === 'approve_by_director') {
       // KIỂM TRA ĐIỀU KIỆN TIÊN QUYẾT: CÁN BỘ QLSV PHẢI DUYỆT XONG TẤT CẢ MINH CHỨNG
       const { getAllStoredApplications } = await import('@/lib/data/live-store');
-      const storedApps = getAllStoredApplications();
+      let storedApps: any[] = [];
+      if (
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id') &&
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      ) {
+        try {
+          const { createAdminClient } = await import('@/lib/supabase/admin');
+          const supabase = createAdminClient();
+          const { data } = await supabase.from('applications').select('*');
+          if (data && data.length > 0) storedApps = data;
+        } catch {}
+      }
+      if (storedApps.length === 0) {
+        storedApps = getAllStoredApplications();
+      }
+
       const pendingApps = storedApps.filter(
-        (a) => a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG'
+        (a: any) => a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG'
       );
       if (pendingApps.length > 0) {
         return NextResponse.json(
@@ -208,6 +264,7 @@ export async function POST(request: Request) {
         assignedRoom: 'Phòng 301 - Khu A (4 người)',
         isSigned: false,
       });
+      await syncWorkflowStateToSupabase(updated);
       return NextResponse.json({ success: true, workflow: updated });
     }
 
@@ -222,15 +279,32 @@ export async function POST(request: Request) {
         assignedRoom: 'Phòng 301 - Khu A (4 người)',
         isSigned: false,
       });
+      await syncWorkflowStateToSupabase(updated);
       return NextResponse.json({ success: true, workflow: updated });
     }
 
     if (action === 'finalize') {
       // KIỂM TRA ĐIỀU KIỆN TIÊN QUYẾT: CÁN BỘ QLSV PHẢI DUYỆT XONG TẤT CẢ MINH CHỨNG
       const { getAllStoredApplications } = await import('@/lib/data/live-store');
-      const storedApps = getAllStoredApplications();
+      let storedApps: any[] = [];
+      if (
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id') &&
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      ) {
+        try {
+          const { createAdminClient } = await import('@/lib/supabase/admin');
+          const supabase = createAdminClient();
+          const { data } = await supabase.from('applications').select('*');
+          if (data && data.length > 0) storedApps = data;
+        } catch {}
+      }
+      if (storedApps.length === 0) {
+        storedApps = getAllStoredApplications();
+      }
+
       const pendingApps = storedApps.filter(
-        (a) => a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG'
+        (a: any) => a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG'
       );
       if (pendingApps.length > 0) {
         return NextResponse.json(
@@ -253,6 +327,7 @@ export async function POST(request: Request) {
         assignedRoom: 'Phòng 301 - Khu A (4 người)',
         isSigned: false,
       });
+      await syncWorkflowStateToSupabase(updated);
       return NextResponse.json({ success: true, workflow: updated });
     }
 
@@ -263,6 +338,7 @@ export async function POST(request: Request) {
         isSigned: true,
         signedAt: new Date().toISOString(),
       });
+      await syncWorkflowStateToSupabase(updated);
       return NextResponse.json({ success: true, workflow: updated });
     }
 
@@ -272,6 +348,7 @@ export async function POST(request: Request) {
         currentStep: 9,
         isHandedOver: true,
       });
+      await syncWorkflowStateToSupabase(updated);
       return NextResponse.json({ success: true, workflow: updated });
     }
 
@@ -281,12 +358,14 @@ export async function POST(request: Request) {
         currentStep: 10,
         isCancelled: true,
       });
+      await syncWorkflowStateToSupabase(updated);
       return NextResponse.json({ success: true, workflow: updated });
     }
 
     // Default patch
     if (body.patch) {
       const updated = saveWorkflowState(body.patch);
+      await syncWorkflowStateToSupabase(updated);
       return NextResponse.json({ success: true, workflow: updated });
     }
 
