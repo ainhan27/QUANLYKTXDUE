@@ -201,7 +201,7 @@ export default function Navbar({ currentRole = 'SV', userName = 'Sinh viên DUE'
               {/* Logo DUE Container */}
               <div className="bg-white rounded-lg px-2.5 py-1 shadow-sm flex items-center border border-white/20 transition-transform group-hover:scale-[1.02]">
                 <img
-                  src="/images/due-logo.png"
+                  src="/images/due-logo-transparent.png"
                   alt="Đại học Đà Nẵng - Trường Đại học Kinh tế (DUE)"
                   className="h-8 sm:h-9 w-auto object-contain"
                 />
