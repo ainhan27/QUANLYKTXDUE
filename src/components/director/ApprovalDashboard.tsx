@@ -6,14 +6,13 @@
 // THẨM QUYỀN PHÊ DUYỆT VÀ CÔNG BỐ DANH SÁCH TRÚNG TUYỂN (BƯỚC 6 & BƯỚC 7)
 // ==============================================================================
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { generate350Students, computeMergedRankings } from '@/lib/data/mock-students';
 import { RankingRow } from '@/components/ranking/RealtimeRankingTable';
 import {
   approveRoundAndPublishAction,
   directorApproveRoundAction,
-  officerSendBatchEmailsAction,
   cancelAndReallocateAction,
   resetWorkflowAction,
 } from '@/actions/approval';
@@ -54,8 +53,8 @@ export default function ApprovalDashboard() {
   const [approvedEvidenceCount, setApprovedEvidenceCount] = useState<number>(0);
   const [pendingStudents, setPendingStudents] = useState<Array<{ id: string; ma_sv: string; ho_ten: string; status: string }>>([]);
 
-  // ĐỒNG BỘ DỮ LIỆU TỪ WORKFLOW VÀ CƠ SỞ DỮ LIỆU
-  const fetchWorkflowAndApplications = async () => {
+  // ĐỒNG BỘ DỮ LIỆU TỪ WORKFLOW VÀ CƠ SỞ DỮ LIỆU (TỐI ƯU HÓA HOOKS, CHỐNG RE-RENDER LIÊN TỤC)
+  const fetchWorkflowAndApplications = useCallback(async () => {
     try {
       const [wfRes, appRes] = await Promise.all([
         fetch('/api/workflow'),
@@ -80,20 +79,18 @@ export default function ApprovalDashboard() {
             localStorage.setItem('ktx_director_published', 'true');
           }
 
-          const merged = {
+          if (
+            prev.currentStep === wfJson.workflow.currentStep &&
+            prev.isRankingsFinalized === resolvedFinalized &&
+            prev.isPublished === resolvedPublished
+          ) {
+            return prev;
+          }
+          return {
             ...wfJson.workflow,
             isRankingsFinalized: resolvedFinalized,
             isPublished: resolvedPublished,
           };
-
-          if (
-            prev.currentStep === merged.currentStep &&
-            prev.isRankingsFinalized === merged.isRankingsFinalized &&
-            prev.isPublished === merged.isPublished
-          ) {
-            return prev;
-          }
-          return merged;
         });
       }
 
@@ -110,15 +107,36 @@ export default function ApprovalDashboard() {
             a.status === 'DA_PHAT_HANH' ||
             a.status === 'DA_KY'
         );
-        setPendingEvidenceCount(pending.length);
-        setApprovedEvidenceCount(approved.length);
-        setPendingStudents(
-          pending.map((a) => ({ id: a.id, ma_sv: a.ma_sv, ho_ten: a.ho_ten, status: a.status }))
-        );
+
+        setPendingEvidenceCount((prev) => (prev === pending.length ? prev : pending.length));
+        setApprovedEvidenceCount((prev) => (prev === approved.length ? prev : approved.length));
+
+        setPendingStudents((prev) => {
+          if (
+            prev.length === pending.length &&
+            prev.every((p, idx) => p.id === pending[idx].id && p.status === pending[idx].status)
+          ) {
+            return prev;
+          }
+          return pending.map((a) => ({ id: a.id, ma_sv: a.ma_sv, ho_ten: a.ho_ten, status: a.status }));
+        });
+
         const merged = computeMergedRankings(storedList, 120);
         setAllCandidates((prev) => {
-          if (prev.length === merged.length && JSON.stringify(prev) === JSON.stringify(merged)) {
-            return prev;
+          if (prev.length === merged.length) {
+            let isDiff = false;
+            for (let i = 0; i < prev.length; i++) {
+              if (
+                prev[i].id !== merged[i].id ||
+                prev[i].status !== merged[i].status ||
+                prev[i].diem_uu_tien !== merged[i].diem_uu_tien ||
+                prev[i].thu_hang !== merged[i].thu_hang
+              ) {
+                isDiff = true;
+                break;
+              }
+            }
+            if (!isDiff) return prev;
           }
           return merged;
         });
@@ -126,7 +144,7 @@ export default function ApprovalDashboard() {
     } catch (e) {
       console.warn('Lỗi đồng bộ Trưởng ban:', e);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchWorkflowAndApplications();
@@ -139,12 +157,12 @@ export default function ApprovalDashboard() {
       };
     }
 
-    const interval = setInterval(fetchWorkflowAndApplications, 2500);
+    const interval = setInterval(fetchWorkflowAndApplications, 5000);
     return () => {
       clearInterval(interval);
       if (bc) bc.close();
     };
-  }, []);
+  }, [fetchWorkflowAndApplications]);
 
   // Lọc theo khóa
   const filteredCandidates = useMemo(() => {
@@ -230,45 +248,6 @@ export default function ApprovalDashboard() {
       }
     } catch (e: any) {
       alert('Lỗi phê duyệt: ' + (e.message || ''));
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // TRƯỞNG BAN PHÁT HÀNH & GỬI NGAY THÔNG BÁO TRÚNG TUYỂN (TASK TCB)
-  const handleSendBatchNow = async () => {
-    setIsProcessing(true);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ktx_director_finalized', 'true');
-      localStorage.setItem('ktx_director_published', 'true');
-    }
-    setWorkflowState((prev) => ({ ...prev, isRankingsFinalized: true, isPublished: true }));
-
-    try {
-      const res = await officerSendBatchEmailsAction();
-      if (!res.success) {
-        alert(res.message);
-        return;
-      }
-      await fetch('/api/workflow', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'send_by_officer' }),
-      });
-      await fetchWorkflowAndApplications();
-      setStatusMessage(
-        res.message ||
-          '✓ Đã phát hành chính thức 120 thông báo trúng tuyển và mở cổng ký hợp đồng điện tử 72 giờ cho sinh viên thành công!'
-      );
-
-      // Đồng bộ cross-tab tức thì 0ms
-      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-        const bc = new BroadcastChannel('ktx_sync');
-        bc.postMessage({ type: 'ROUND_PUBLISHED', timestamp: Date.now() });
-        setTimeout(() => bc.close(), 100);
-      }
-    } catch (e: any) {
-      alert('Lỗi phát hành thông báo: ' + (e.message || ''));
     } finally {
       setIsProcessing(false);
     }
@@ -393,10 +372,8 @@ export default function ApprovalDashboard() {
             <span className="text-xs text-indigo-200">
               Tiến độ:{' '}
               <strong className="text-white">
-                {workflowState.isPublished
-                  ? 'BƯỚC 4: ĐÃ PHÁT HÀNH EMAIL VÀ HỢP ĐỒNG 72H'
-                  : workflowState.isRankingsFinalized
-                  ? 'BƯỚC 3 ĐÃ XONG: TRƯỞNG BAN ĐÃ PHÊ DUYỆT CHÍNH THỨC – CHỜ CÁN BỘ QLSV GỬI EMAIL'
+                {workflowState.isRankingsFinalized
+                  ? 'BƯỚC 3 ĐÃ HOÀN TẤT: TRƯỞNG BAN ĐÃ KÝ PHÊ DUYỆT DANH SÁCH CHÍNH THỨC'
                   : pendingCount > 0
                   ? `BƯỚC 2: CHỜ QLSV THẨM ĐỊNH (${pendingCount} HỒ SƠ CHƯA DUYỆT)`
                   : 'BƯỚC 3: SẴN SÀNG – 100% MINH CHỨNG ĐÃ HỢP LỆ'}
@@ -405,20 +382,16 @@ export default function ApprovalDashboard() {
           </div>
 
           <h2 className="text-lg font-black text-white">
-            {workflowState.isPublished
-              ? 'Danh Sách Tuyển Sinh Đã Được Công Bố & Đang Mở Cổng Ký Hợp Đồng'
-              : workflowState.isRankingsFinalized
-              ? 'Trưởng Ban Đã Ký Quyết Định Phê Duyệt – Đang Chờ Cán Bộ QLSV Gửi Email Thông Báo'
+            {workflowState.isRankingsFinalized
+              ? 'Trưởng Ban Đã Ký Quyết Định Phê Duyệt Danh Sách Tuyển Sinh (Đợt 1)'
               : pendingCount > 0
               ? `Chưa Thể Công Bố: Đang Chờ Cán Bộ QLSV Thẩm Định Xong Minh Chứng (Còn ${pendingCount} Hồ Sơ)`
               : 'Quyết Định Phê Duyệt Danh Sách Tuyển Sinh Chính Thức (Đợt 1)'}
           </h2>
 
           <p className="text-xs text-slate-200 max-w-2xl leading-relaxed">
-            {workflowState.isPublished
-              ? 'Trưởng ban đã phê duyệt quyết định tuyển sinh và Cán bộ QLSV đã hoàn tất phát hành email thông báo. Sinh viên trúng tuyển đang thực hiện ký hợp đồng điện tử 72 giờ.'
-              : workflowState.isRankingsFinalized
-              ? 'Trưởng ban đã ký quyết định phê duyệt chính thức. AI đã soạn sẵn 120 email trúng tuyển kèm Hợp đồng điện tử. Cán bộ Quản lý Sinh viên (QLSV) sẽ thực hiện kiểm tra và gửi email đến cho sinh viên.'
+            {workflowState.isRankingsFinalized
+              ? 'Trưởng ban Quản lý KTX đã ký quyết định phê duyệt chính thức 120 thí sinh trúng tuyển. Quyết định đã được chuyển sang Ban Quản lý (Cán bộ QLSV) để thực hiện gửi thông báo và hướng dẫn ký hợp đồng.'
               : pendingCount > 0
               ? 'Theo Quy chế KTX DUE, Cán bộ QLSV phải thẩm định và duyệt xong 100% minh chứng trước khi công bố. Khi số hồ sơ còn lại bằng 0, Trưởng ban mới có thể ký duyệt danh sách trúng tuyển.'
               : '100% hồ sơ minh chứng đã được Cán bộ QLSV duyệt đạt chuẩn. Trưởng ban Quản lý KTX thực hiện ký quyết định phê duyệt danh sách chính thức.'}
@@ -427,7 +400,7 @@ export default function ApprovalDashboard() {
 
         <div className="flex flex-col items-start md:items-end gap-3">
           {/* CẢNH BÁO ĐIỀU KIỆN TIÊN QUYẾT: CHỈ KHI QLSV DUYỆT HẾT THÌ MỚI ĐƯỢC CÔNG BỐ DANH SÁCH */}
-          {!workflowState.isRankingsFinalized && (
+          {!workflowState.isRankingsFinalized ? (
             pendingCount > 0 ? (
               <div className="p-4 bg-amber-500/20 border-2 border-amber-400 text-amber-200 rounded-xl text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 max-w-2xl shadow-lg animate-in fade-in">
                 <div className="flex items-center space-x-3">
@@ -465,6 +438,11 @@ export default function ApprovalDashboard() {
                 <span className="font-semibold">100% hồ sơ minh chứng đã được QLSV hoàn tất thẩm định. Đủ điều kiện ký phê duyệt chính thức.</span>
               </div>
             )
+          ) : (
+            <div className="p-2.5 bg-emerald-500/20 border border-emerald-400 text-emerald-300 rounded-xl text-xs flex items-center space-x-2">
+              <span className="text-emerald-400 text-base font-bold">✓</span>
+              <span className="font-semibold">Đã hoàn tất phê duyệt danh sách chính thức. Thẩm quyền gửi email thuộc về Ban Quản lý (QLSV).</span>
+            </div>
           )}
 
           <div className="flex flex-wrap items-center gap-2">
@@ -502,56 +480,36 @@ export default function ApprovalDashboard() {
                   )}
                 </button>
               </>
-            ) : !workflowState.isPublished ? (
+            ) : (
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={handleSendBatchNow}
+                  onClick={() => setIsReturnModalOpen(true)}
                   disabled={isProcessing}
-                  className="px-5 py-3 rounded-xl text-xs font-black shadow-lg transition flex items-center space-x-2 bg-[#FFB800] hover:bg-amber-400 text-[#003366] cursor-pointer"
-                  title="Phát hành chính thức 120 thông báo trúng tuyển"
+                  className="px-4 py-2.5 border border-rose-300 text-rose-200 hover:bg-rose-500/20 rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer"
                 >
-                  <span>✉</span>
-                  <span>
-                    {isProcessing
-                      ? 'Đang phát hành 120 email...'
-                      : 'TRƯỞNG BAN: PHÁT HÀNH & GỬI NGAY THÔNG BÁO TRÚNG TUYỂN (120 THÍ SINH)'}
-                  </span>
+                  Trả Về Cho Cán Bộ Thẩm Định Lại
                 </button>
                 <Link
                   href="/officer"
-                  className="px-4 py-3 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
+                  className="px-5 py-3 bg-[#FFB800] hover:bg-amber-400 text-[#003366] font-black rounded-xl text-xs shadow-lg transition flex items-center space-x-1.5 cursor-pointer"
+                  title="Chuyển sang Cổng Ban Quản lý (QLSV) để thực hiện kiểm tra và gửi email thông báo trúng tuyển"
                 >
-                  <span>Chuyển Sang Cổng QLSV (/officer) &rarr;</span>
+                  <span>Chuyển Sang Cổng Ban Quản Lý (QLSV) Để Gửi Email &rarr;</span>
                 </Link>
+                <button
+                  type="button"
+                  onClick={handleResetWorkflow}
+                  disabled={isProcessing}
+                  className="px-3.5 py-2.5 bg-slate-700/80 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer"
+                  title="Thiết lập lại trạng thái về Bước 3 để kiểm thử"
+                >
+                  🔄 Reset Về Chưa Duyệt
+                </button>
               </div>
-            ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-3 py-1.5 bg-emerald-500/20 border border-emerald-400 text-emerald-300 rounded-xl text-xs font-bold flex items-center space-x-1.5">
-                <span>✓</span>
-                <span>ĐÃ CÔNG BỐ CHÍNH THỨC</span>
-              </span>
-              <button
-                type="button"
-                onClick={handleTriggerCancelStep10}
-                disabled={isProcessing}
-                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow transition flex items-center space-x-1.5 disabled:opacity-50"
-              >
-                <span>⚠️</span>
-                <span>Kích Hoạt Thu Hồi 72h &amp; Mở Đợt 2 (Bước 10)</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleResetWorkflow}
-                disabled={isProcessing}
-                className="px-3.5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-bold shadow transition disabled:opacity-50"
-              >
-                🔄 Reset Về Bước 3
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
       </div>
 
       {/* THẺ THỐNG KÊ CHỈ SỐ KPI */}
@@ -605,7 +563,7 @@ export default function ApprovalDashboard() {
                   : 'bg-amber-100 text-amber-800'
               }`}
             >
-              {workflowState.isRankingsFinalized ? 'ĐÃ PHÊ DUYỆT & CÔNG BỐ' : 'CHỜ TRƯỞNG BAN DUYỆT'}
+              {workflowState.isRankingsFinalized ? 'ĐÃ PHÊ DUYỆT CHÍNH THỨC' : 'CHỜ TRƯỞNG BAN DUYỆT'}
             </span>
           </div>
         </div>

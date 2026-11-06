@@ -97,7 +97,7 @@ export function generate350Students(quota = 120): RankingRow[] {
       diem_uu_tien,
       is_trung_tuyen: i <= quota,
       status: 'DA_XEP_HANG',
-      updated_at: new Date(Date.now() - (400 - i) * 60000).toISOString(),
+      updated_at: new Date(1730000000000 - (400 - i) * 60000).toISOString(),
     });
   }
 
@@ -152,7 +152,7 @@ export function computeMergedRankings(storedApps: any[] = [], quota = 120): Rank
       diem_uu_tien: activePoints,
       is_trung_tuyen: false,
       status: s.status || 'CHO_THAM_DINH',
-      updated_at: s.created_at || new Date().toISOString(),
+      updated_at: s.created_at || '2026-11-01T08:00:00.000Z',
     };
 
     if (existingIdx >= 0) {

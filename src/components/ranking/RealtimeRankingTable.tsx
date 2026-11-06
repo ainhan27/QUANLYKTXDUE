@@ -180,12 +180,13 @@ export default function RealtimeRankingTable({ initialData }: RealtimeRankingTab
         const pending = storedList.filter(
           (a) => a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG'
         ).length;
-        setPendingCount(pending);
+        setPendingCount((prev) => (prev === pending ? prev : pending));
         const merged = computeMergedRankings(storedList, 120);
+        let hasChanged = false;
         setAllRankings((prev) => {
           if (prev.length === merged.length) {
             let isIdentical = true;
-            for (let i = 0; i < Math.min(30, prev.length); i++) {
+            for (let i = 0; i < prev.length; i++) {
               if (
                 prev[i].ma_sv !== merged[i].ma_sv ||
                 prev[i].diem_uu_tien !== merged[i].diem_uu_tien ||
@@ -198,9 +199,12 @@ export default function RealtimeRankingTable({ initialData }: RealtimeRankingTab
             }
             if (isIdentical) return prev; // Tránh re-render giật lag bảng xếp hạng
           }
+          hasChanged = true;
           return merged;
         });
-        setLastUpdated(new Date().toLocaleTimeString('vi-VN'));
+        if (hasChanged) {
+          setLastUpdated(new Date().toLocaleTimeString('vi-VN'));
+        }
       }
     } catch (err) {
       console.warn('Lỗi đồng bộ BXH:', err);
