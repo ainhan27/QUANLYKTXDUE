@@ -9,6 +9,7 @@ import { getAllStoredApplications } from '@/lib/data/live-store';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
   try {

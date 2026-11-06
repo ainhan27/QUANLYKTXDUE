@@ -13,6 +13,9 @@ import {
   dismissDirectorDirectiveInStore,
 } from '@/lib/data/live-store';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   try {
     const state = getWorkflowState();
@@ -82,6 +85,24 @@ export async function POST(request: Request) {
           saveApplicationToStore(a);
         }
       });
+
+      if (
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id') &&
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      ) {
+        try {
+          const { createAdminClient } = await import('@/lib/supabase/admin');
+          const supabase = createAdminClient();
+          await supabase
+            .from('applications')
+            .update({ status: 'THAM_DINH_DAT', diem_uu_tien: 35 })
+            .in('status', ['CHO_THAM_DINH', 'CAN_BO_SUNG']);
+        } catch (e) {
+          console.warn('Lỗi cập nhật Supabase trong approve_all_pending:', e);
+        }
+      }
+
       return NextResponse.json({ success: true, count: apps.length });
     }
 

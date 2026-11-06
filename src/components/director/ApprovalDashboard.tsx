@@ -132,6 +132,38 @@ export default function ApprovalDashboard() {
     pendingStudents.length
   );
 
+  // TRƯỞNG BAN PHÊ DUYỆT NHANH TẤT CẢ MINH CHỨNG CÒN LẠI ĐỂ MỞ KHÓA KÝ QUYẾT ĐỊNH
+  const handleApproveAllPendingQuick = async () => {
+    setIsProcessing(true);
+    try {
+      await fetch('/api/workflow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve_all_pending' }),
+      });
+      setPendingEvidenceCount(0);
+      setPendingStudents([]);
+      setAllCandidates((prev) =>
+        prev.map((c) =>
+          c.status === 'CHO_THAM_DINH' || c.status === 'CAN_BO_SUNG'
+            ? { ...c, status: 'THAM_DINH_DAT', diem_uu_tien: c.diem_uu_tien > 0 ? c.diem_uu_tien : 35 }
+            : c
+        )
+      );
+      setStatusMessage('✓ Đã thẩm định đạt 100% minh chứng! Hệ thống đã mở khóa để Trưởng ban ký Quyết định B2.');
+      await fetchWorkflowAndApplications();
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('ktx_sync');
+        bc.postMessage({ type: 'ALL_EVIDENCE_APPROVED', timestamp: Date.now() });
+        setTimeout(() => bc.close(), 100);
+      }
+    } catch (e: any) {
+      alert('Lỗi phê duyệt: ' + (e.message || ''));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // TRƯỞNG BAN KÝ DUYỆT DANH SÁCH CHÍNH THỨC (QUYẾT ĐỊNH B2)
   // SAU KHI DUYỆT: CHUYỂN TIẾP CHO CÁN BỘ QLSV ĐỂ PHÁT HÀNH EMAIL (AI SOẠN SẴN)
   const handleApproveAndPublish = async () => {
@@ -341,12 +373,23 @@ export default function ApprovalDashboard() {
                     </div>
                   </div>
                 </div>
-                <Link
-                  href="/officer"
-                  className="px-3.5 py-2 bg-[#FFB800] hover:bg-amber-400 text-[#003366] font-black rounded-lg text-xs whitespace-nowrap shadow transition flex items-center space-x-1 shrink-0"
-                >
-                  <span>👉 Sang Cổng QLSV Duyệt ({pendingCount}) &rarr;</span>
-                </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleApproveAllPendingQuick}
+                    disabled={isProcessing}
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs whitespace-nowrap shadow transition flex items-center space-x-1 shrink-0"
+                    title="Cán bộ / Trưởng ban phê duyệt nhanh tất cả để mở khóa ký quyết định"
+                  >
+                    <span>✓ Duyệt Đạt Tất Cả ({pendingCount})</span>
+                  </button>
+                  <Link
+                    href="/officer"
+                    className="px-3.5 py-2 bg-[#FFB800] hover:bg-amber-400 text-[#003366] font-black rounded-lg text-xs whitespace-nowrap shadow transition flex items-center space-x-1 shrink-0"
+                  >
+                    <span>👉 Cổng QLSV &rarr;</span>
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="p-2.5 bg-emerald-500/20 border border-emerald-400 text-emerald-300 rounded-xl text-xs flex items-center space-x-2">

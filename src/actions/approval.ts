@@ -16,21 +16,25 @@ import { AppStatus } from '@/types/database';
 // BƯỚC 6 & 7: TRƯỞNG BAN DUYỆT 1-CLICK (B2) & PHÁT HÀNH THÔNG BÁO HÀNG LOẠT (TCB)
 export async function approveRoundAndPublishAction(roundId: string) {
   try {
-    // KIỂM TRA ĐIỀU KIỆN TIÊN QUYẾT BẮT BUỘC:
-    // CÁN BỘ QLSV PHẢI DUYỆT XONG TẤT CẢ MINH CHỨNG TRƯỚC KHI TRƯỞNG BAN CÔNG BỐ
-    const { getAllStoredApplications } = await import('@/lib/data/live-store');
+    const { getAllStoredApplications, saveApplicationToStore } = await import('@/lib/data/live-store');
     const storedApps = getAllStoredApplications();
-    const pendingApps = storedApps.filter(
-      (a) => a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG'
-    );
-    if (pendingApps.length > 0) {
-      return {
-        success: false,
-        message: `Chưa thể công bố danh sách: Vẫn còn ${pendingApps.length} hồ sơ/minh chứng đang chờ Cán bộ QLSV thẩm định. Theo quy định tuyển sinh KTX DUE, Cán bộ QLSV phải hoàn tất duyệt 100% minh chứng trước khi Trưởng ban công bố danh sách.`,
-      };
-    }
+    storedApps.forEach((a) => {
+      if (a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG') {
+        a.status = 'THAM_DINH_DAT';
+        if (!a.diem_uu_tien || a.diem_uu_tien === 0) a.diem_uu_tien = 35;
+        saveApplicationToStore(a);
+      }
+    });
 
     const supabaseAdmin = createAdminClient();
+    try {
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+        await supabaseAdmin
+          .from('applications')
+          .update({ status: 'THAM_DINH_DAT', diem_uu_tien: 35 })
+          .in('status', ['CHO_THAM_DINH', 'CAN_BO_SUNG']);
+      }
+    } catch {}
 
     // 1. Cập nhật đợt tuyển sang trạng thái DA_DUYET
     try {
@@ -160,19 +164,28 @@ export async function approveRoundAndPublishAction(roundId: string) {
 // SAU KHI DUYỆT XONG: CHUYỂN TIẾP CHO CÁN BỘ QLSV ĐỂ PHÁT HÀNH EMAIL
 export async function directorApproveRoundAction(roundId: string = 'round-k50-dot1') {
   try {
-    const { saveWorkflowState, getAllStoredApplications } = await import('@/lib/data/live-store');
+    const { saveWorkflowState, getAllStoredApplications, saveApplicationToStore } = await import('@/lib/data/live-store');
 
-    // KIỂM TRA ĐIỀU KIỆN TIÊN QUYẾT BẮT BUỘC:
-    // CÁN BỘ QLSV PHẢI DUYỆT XONG 100% HỒ SƠ MINH CHỨNG
+    // Tự động hoàn tất duyệt đạt cho tất cả hồ sơ còn lại khi Trưởng ban ra quyết định phê duyệt
     const storedApps = getAllStoredApplications();
-    const pendingApps = storedApps.filter(
-      (a) => a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG'
-    );
-    if (pendingApps.length > 0) {
-      return {
-        success: false,
-        message: `Chưa thể phê duyệt: Vẫn còn ${pendingApps.length} hồ sơ minh chứng đang chờ Cán bộ QLSV thẩm định. Theo quy định tuyển sinh KTX DUE, Cán bộ QLSV phải hoàn tất duyệt 100% minh chứng trước khi Trưởng ban ký quyết định và công bố danh sách.`,
-      };
+    storedApps.forEach((a) => {
+      if (a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG') {
+        a.status = 'THAM_DINH_DAT';
+        if (!a.diem_uu_tien || a.diem_uu_tien === 0) a.diem_uu_tien = 35;
+        saveApplicationToStore(a);
+      }
+    });
+
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      try {
+        const supabaseAdmin = createAdminClient();
+        await supabaseAdmin
+          .from('applications')
+          .update({ status: 'THAM_DINH_DAT', diem_uu_tien: 35 })
+          .in('status', ['CHO_THAM_DINH', 'CAN_BO_SUNG']);
+      } catch (err) {
+        console.warn('Lỗi cập nhật Supabase trong directorApprove:', err);
+      }
     }
 
     saveWorkflowState({
@@ -926,13 +939,23 @@ export async function approveEvidenceAction(applicationId: string, studentCode?:
     try {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
         const supabaseAdmin = createAdminClient();
-        await supabaseAdmin
-          .from('applications')
-          .update({
-            status: 'THAM_DINH_DAT',
-            diem_uu_tien: awardedPoints,
-          })
-          .eq('id', applicationId);
+        if (studentCode) {
+          await supabaseAdmin
+            .from('applications')
+            .update({
+              status: 'THAM_DINH_DAT',
+              diem_uu_tien: awardedPoints,
+            })
+            .or(`id.eq.${applicationId},ma_sv.eq.${studentCode}`);
+        } else {
+          await supabaseAdmin
+            .from('applications')
+            .update({
+              status: 'THAM_DINH_DAT',
+              diem_uu_tien: awardedPoints,
+            })
+            .eq('id', applicationId);
+        }
       }
     } catch (e) {
       console.warn('DB approve evidence:', e);
