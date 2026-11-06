@@ -170,13 +170,13 @@ export default function HomePage() {
           Tra Cứu Nhanh Kết Quả Hồ Sơ KTX
         </h3>
         <p className="text-[11px] text-slate-500 text-center mb-3">
-          Nhập Mã sinh viên hoặc Số CCCD để xem trạng thái tức thì
+          Nhập Lớp / MSSV hoặc Số CCCD để xem trạng thái tức thì
         </p>
 
         <form onSubmit={handleSearch} className="flex gap-2">
           <input
             type="text"
-            placeholder="Nhập MSSV (ví dụ: 251121536135) hoặc Số CCCD..."
+            placeholder="Nhập Lớp / MSSV (ví dụ: 51K11.057) hoặc Số CCCD..."
             value={searchCode}
             onChange={(e) => setSearchCode(e.target.value)}
             className="flex-1 px-3.5 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#125FA9] focus:outline-none"

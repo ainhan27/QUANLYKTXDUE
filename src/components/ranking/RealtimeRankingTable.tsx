@@ -106,7 +106,11 @@ export default function RealtimeRankingTable({ initialData }: RealtimeRankingTab
     let bc: BroadcastChannel | null = null;
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       bc = new BroadcastChannel('ktx_sync');
-      bc.onmessage = () => {
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'APPLICATION_SUBMITTED' && event.data?.student?.ma_sv) {
+          setHighlightId(event.data.student.ma_sv);
+          setSearchKeyword(event.data.student.ma_sv);
+        }
         syncStoredApplications();
         fetchWorkflow();
       };
@@ -255,6 +259,9 @@ export default function RealtimeRankingTable({ initialData }: RealtimeRankingTab
 
     const channel = supabase
       .channel('realtime_rankings_350_channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => {
+        syncStoredApplications();
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rankings' }, () => {
         syncStoredApplications();
       })
@@ -500,7 +507,7 @@ export default function RealtimeRankingTable({ initialData }: RealtimeRankingTab
           <label className="block text-[11px] font-semibold text-slate-500 mb-1">Tìm kiếm sinh viên:</label>
           <input
             type="text"
-            placeholder="Tìm theo Tên, MSSV, Tỉnh thành..."
+            placeholder="Tìm theo Tên, Lớp / MSSV, Tỉnh thành..."
             value={searchKeyword}
             onChange={(e) => {
               setSearchKeyword(e.target.value);
@@ -511,7 +518,7 @@ export default function RealtimeRankingTable({ initialData }: RealtimeRankingTab
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Lọc theo Khóa học:</label>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Lọc theo Khóa / Lớp:</label>
           <select
             value={selectedCohort}
             onChange={(e) => {
@@ -573,7 +580,7 @@ export default function RealtimeRankingTable({ initialData }: RealtimeRankingTab
             <thead>
               <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                 <th className="py-3 px-4 text-center w-16">Thứ Hạng</th>
-                <th className="py-3 px-4">Mã Sinh Viên</th>
+                <th className="py-3 px-4">Lớp</th>
                 <th className="py-3 px-4">Họ và Tên</th>
                 <th className="py-3 px-4">Tỉnh / Thành</th>
                 <th className="py-3 px-4">Diện Ưu Tiên</th>

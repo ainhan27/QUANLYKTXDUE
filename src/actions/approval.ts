@@ -1241,3 +1241,23 @@ export async function submitSupplementEvidenceAction(params: {
     };
   }
 }
+
+// XÓA HỒ SƠ RÁC / HỒ SƠ HỎNG KHỎI SUPABASE VÀ LOCAL STORE
+export async function deleteApplicationAction(studentCodeOrId: string) {
+  try {
+    const isUuid = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      const supabaseAdmin = createAdminClient();
+      if (isUuid(studentCodeOrId)) {
+        await supabaseAdmin.from('applications').delete().eq('id', studentCodeOrId);
+      } else {
+        await supabaseAdmin.from('applications').delete().or(`ma_sv.eq.${studentCodeOrId},cccd.eq.${studentCodeOrId}`);
+      }
+    }
+    const { deleteApplicationFromStore } = await import('@/lib/data/live-store');
+    deleteApplicationFromStore(studentCodeOrId);
+    return { success: true, message: 'Đã xóa hồ sơ thành công.' };
+  } catch (err: any) {
+    return { success: false, message: 'Lỗi xóa hồ sơ: ' + (err.message || '') };
+  }
+}

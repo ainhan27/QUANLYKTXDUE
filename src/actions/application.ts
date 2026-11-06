@@ -206,6 +206,13 @@ export async function submitApplicationFullPipeline(payload: SubmitApplicationPa
           !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')
         ) {
           const supabaseAdmin = createAdminClient();
+          const filesPayload = (imageBase64 || priorityImageBase64)
+            ? JSON.stringify({
+                cccd: imageBase64 || null,
+                priority: priorityImageBase64 || null,
+              })
+            : null;
+
           await supabaseAdmin.from('applications').insert({
             ma_sv,
             ho_ten,
@@ -218,17 +225,20 @@ export async function submitApplicationFullPipeline(payload: SubmitApplicationPa
             dien_uu_tien,
             diem_uu_tien: finalPoints,
             status: applicationStatus,
+            file_url: filesPayload,
             signature_base64: signatureBase64 || null,
             ghi_chu_ly_do: aiResult.rejection_reason || aiResult.raw_reasoning,
           });
 
-          await supabaseAdmin.from('rankings').insert({
-            application_id: createdAppId,
-            diem_uu_tien: finalPoints,
-            thu_hang: 1,
-            is_trung_tuyen: isTrungTuyen,
-            status: 'DU_KIEN',
-          });
+          try {
+            await supabaseAdmin.from('rankings').insert({
+              application_id: createdAppId,
+              diem_uu_tien: finalPoints,
+              thu_hang: 1,
+              is_trung_tuyen: isTrungTuyen,
+              status: 'DU_KIEN',
+            });
+          } catch {}
         }
       } catch (dbErr) {
         console.warn('DB Supabase Insert:', dbErr);

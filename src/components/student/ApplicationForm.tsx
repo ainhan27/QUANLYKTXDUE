@@ -277,6 +277,17 @@ export default function ApplicationForm({ onSuccess }: ApplicationFormProps) {
         localStorage.setItem('active_student_session_code', formData.ma_sv.trim());
         localStorage.setItem('student_page_tab', 'tracker');
         window.dispatchEvent(new CustomEvent('student_application_submitted', { detail: studentPayload }));
+
+        // Phát tín hiệu Real-time liên tab (BroadcastChannel) để Bảng Xếp Hạng cập nhật tức thì 0ms
+        if ('BroadcastChannel' in window) {
+          const bc = new BroadcastChannel('ktx_sync');
+          bc.postMessage({
+            type: 'APPLICATION_SUBMITTED',
+            student: studentPayload,
+            timestamp: Date.now(),
+          });
+          setTimeout(() => bc.close(), 100);
+        }
       }
 
       // Chuyển trang mượt mà
@@ -385,11 +396,11 @@ export default function ApplicationForm({ onSuccess }: ApplicationFormProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Mã Sinh Viên (DUE) *</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Lớp (DUE) *</label>
               <input
                 type="text"
                 required
-                placeholder="Nhập Mã sinh viên (MSSV)..."
+                placeholder="Nhập Lớp sinh hoạt (ví dụ: 51K11.057 hoặc 48K01)..."
                 value={formData.ma_sv}
                 onChange={(e) => setFormData({ ...formData, ma_sv: e.target.value })}
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"

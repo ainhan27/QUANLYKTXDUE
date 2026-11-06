@@ -620,6 +620,34 @@ export default function EvidenceReviewQueue() {
     }
   };
 
+  // XÓA HỒ SƠ RÁC / HỒ SƠ HỎNG / TEST THEO YÊU CẦU CÁN BỘ
+  const handleDeleteApplication = async (item: QueueItem) => {
+    if (!confirm(`Xác nhận xóa hồ sơ của sinh viên "${item.ho_ten}" (Lớp / MSSV: ${item.ma_sv}) khỏi hệ thống?`)) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/applications', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, ma_sv: item.ma_sv, cccd: item.cccd }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setQueue((prev) => prev.filter((q) => q.id !== item.id && q.ma_sv !== item.ma_sv));
+        setActionNotice(`✓ Đã xóa thành công hồ sơ của sinh viên ${item.ho_ten} (${item.ma_sv}).`);
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          const bc = new BroadcastChannel('ktx_sync');
+          bc.postMessage({ type: 'APPLICATION_DELETED', id: item.id, timestamp: Date.now() });
+          setTimeout(() => bc.close(), 100);
+        }
+      } else {
+        alert('Lỗi xóa hồ sơ: ' + (json.error || ''));
+      }
+    } catch (e: any) {
+      alert('Lỗi khi xóa hồ sơ: ' + (e.message || ''));
+    }
+  };
+
   // DANH SÁCH SINH VIÊN PHỤC VỤ RÀ SOÁT CÁ NHÂN HÓA DỰ THẢO EMAIL AI (TASK TCB / SP4)
   const defaultSampleStudents = [
     {
@@ -1285,6 +1313,15 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                   <span>✓</span>
                   <span>{isRoundClosed ? 'ĐÃ CHỐT ĐỢT 1' : 'TỰ ĐỘNG THÔNG QUA (ĐÃ LÊN BXH)'}</span>
                 </span>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteApplication(currentItem)}
+                  className="px-2.5 py-1.5 border border-rose-400 text-rose-700 hover:bg-rose-50 rounded-lg text-xs font-bold transition flex items-center space-x-1 cursor-pointer"
+                  title="Xóa hồ sơ khỏi hệ thống"
+                >
+                  <span>🗑️</span>
+                  <span>Xóa Hồ Sơ</span>
+                </button>
               </div>
             </div>
           ) : currentItem.isSupplementReview || currentItem.isSupplemented ? (
@@ -1332,6 +1369,15 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                   <span>✓</span>
                   <span>{isApproving ? 'Đang duyệt...' : 'Duyệt Đạt Bổ Sung (+Điểm)'}</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteApplication(currentItem)}
+                  className="px-2.5 py-1.5 border border-rose-400 text-rose-700 hover:bg-rose-50 rounded-lg text-xs font-bold transition flex items-center space-x-1 cursor-pointer"
+                  title="Xóa hồ sơ khỏi hệ thống"
+                >
+                  <span>🗑️</span>
+                  <span>Xóa Hồ Sơ</span>
+                </button>
               </div>
             </div>
           ) : (
@@ -1371,6 +1417,15 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                 >
                   <span>✓</span>
                   <span>{isApproving ? 'Đang duyệt...' : 'Duyệt Đạt (+Điểm)'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteApplication(currentItem)}
+                  className="px-2.5 py-1.5 border border-rose-400 text-rose-700 hover:bg-rose-50 rounded-lg text-xs font-bold transition flex items-center space-x-1 cursor-pointer"
+                  title="Xóa hồ sơ khỏi hệ thống"
+                >
+                  <span>🗑️</span>
+                  <span>Xóa Hồ Sơ</span>
                 </button>
               </div>
             </div>
@@ -1501,7 +1556,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
 
               <div className="text-xs text-slate-500 flex justify-between items-center pt-2 border-t border-slate-100">
                 <span>
-                  MSSV: <strong className="text-slate-800 font-mono">{currentItem.ma_sv}</strong> ({currentItem.khoa})
+                  Lớp: <strong className="text-slate-800 font-mono">{currentItem.ma_sv}</strong> ({currentItem.khoa})
                 </span>
                 <span>
                   Họ tên: <strong className="text-slate-800">{currentItem.ho_ten}</strong> | CCCD:{' '}

@@ -117,6 +117,13 @@ export function saveApplicationToStore(app: StoredApplication): boolean {
       import('@/lib/supabase/admin').then(async ({ createAdminClient }) => {
         try {
           const supabase = createAdminClient();
+          const filesPayload = (app.cccd_image_base64 || app.priority_image_base64)
+            ? JSON.stringify({
+                cccd: app.cccd_image_base64 || null,
+                priority: app.priority_image_base64 || null,
+              })
+            : null;
+
           await supabase.from('applications').upsert({
             ma_sv: app.ma_sv,
             ho_ten: app.ho_ten,
@@ -129,6 +136,7 @@ export function saveApplicationToStore(app: StoredApplication): boolean {
             dien_uu_tien: app.dien_uu_tien,
             diem_uu_tien: app.diem_uu_tien,
             status: app.status,
+            file_url: filesPayload,
             signature_base64: app.signature_base64 || null,
             ghi_chu_ly_do: app.ghi_chu_ly_do || app.ai_result?.rejection_reason || null,
           }, { onConflict: 'ma_sv' });
@@ -141,6 +149,19 @@ export function saveApplicationToStore(app: StoredApplication): boolean {
     return true;
   } catch (err) {
     console.error('Lỗi khi ghi Database store:', err);
+    return false;
+  }
+}
+
+export function deleteApplicationFromStore(idOrCode: string): boolean {
+  try {
+    const list = getAllStoredApplications();
+    const nextList = list.filter((x) => x.id !== idOrCode && x.ma_sv !== idOrCode && x.cccd !== idOrCode);
+    applicationsCache = nextList;
+    asyncWriteFile(DATA_FILE, JSON.stringify(nextList, null, 2));
+    return true;
+  } catch (err) {
+    console.error('Lỗi khi xóa trong Store:', err);
     return false;
   }
 }

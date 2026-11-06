@@ -602,7 +602,7 @@ export default function ApprovalDashboard() {
             <thead className="bg-slate-100 text-slate-700 uppercase font-bold tracking-wider border-b border-slate-200">
               <tr>
                 <th className="py-2.5 px-4 text-center">Thứ Hạng</th>
-                <th className="py-2.5 px-4">Mã SV</th>
+                <th className="py-2.5 px-4">Lớp</th>
                 <th className="py-2.5 px-4">Họ và Tên</th>
                 <th className="py-2.5 px-4">Tỉnh / Thành</th>
                 <th className="py-2.5 px-4">Diện Ưu Tiên</th>

@@ -1408,7 +1408,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-slate-700 text-xs">
                     <div>Họ và tên sinh viên: <strong className="text-slate-900 uppercase">{studentInfo.ho_ten}</strong></div>
-                    <div>Mã số sinh viên (MSSV): <strong className="font-mono text-slate-900">{studentInfo.ma_sv}</strong></div>
+                    <div>Lớp / MSSV: <strong className="font-mono text-slate-900">{studentInfo.ma_sv}</strong></div>
                     <div>Số Căn cước công dân: <strong className="font-mono text-slate-900">{studentInfo.cccd}</strong></div>
                     <div>Khóa đào tạo / Lớp: <strong>{studentInfo.khoa}</strong></div>
                     <div>Hộ khẩu thường trú: <strong>{studentInfo.dia_chi_thuong_tru}</strong></div>
@@ -1735,7 +1735,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                     <strong className="text-slate-900 text-sm font-black">{studentInfo.ho_ten || 'Chưa đăng nhập'}</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Mã sinh viên:</span>
+                    <span className="text-slate-500">Lớp:</span>
                     <strong className="text-slate-800 font-mono text-sm">{studentInfo.ma_sv || '---'}</strong>
                   </div>
                   <div className="flex justify-between">

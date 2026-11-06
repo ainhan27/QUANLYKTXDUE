@@ -107,6 +107,25 @@ export function generate350Students(quota = 120): RankingRow[] {
 // ==============================================================================
 // HÀM HỢP NHẤT DỮ LIỆU VÀ TÍNH THỨ HẠNG CHÍNH XÁC (DÙNG CHUNG SERVER & CLIENT)
 // ==============================================================================
+const POLICY_LABEL_DICTIONARY: Record<string, string> = {
+  CON_THUONG_BINH_LIET_SI: 'Con liệt sĩ, con thương binh, con bệnh binh',
+  HO_NGHEO_CAN_NGHEO: 'Hộ nghèo, hộ cận nghèo theo chuẩn quốc gia',
+  VUNG_SAU_XA_HAI_DAO: 'Hộ khẩu thường trú tại vùng sâu, vùng xa, hải đảo (Khu vực 1)',
+  DAN_TOC_THIEU_SO: 'Người dân tộc thiểu số vùng khó khăn',
+  NGOAI_TINH_XA: 'Sinh viên ngoại tỉnh cự ly di chuyển > 200km',
+  KHONG: 'Không thuộc diện ưu tiên chính sách',
+};
+
+export function getFullPolicyLabel(key?: string, existingLabel?: string): string {
+  if (existingLabel && existingLabel !== 'Không thuộc diện ưu tiên' && existingLabel !== 'KHONG') {
+    return existingLabel;
+  }
+  if (!key || key === 'KHONG') {
+    return 'Không thuộc diện ưu tiên chính sách';
+  }
+  return POLICY_LABEL_DICTIONARY[key] || key;
+}
+
 export function computeMergedRankings(storedApps: any[] = [], quota = 120): RankingRow[] {
   const baseline = generate350Students(quota);
   let merged: RankingRow[] = [...baseline];
@@ -129,7 +148,7 @@ export function computeMergedRankings(storedApps: any[] = [], quota = 120): Rank
       ma_sv: s.ma_sv,
       ho_ten: s.ho_ten,
       tinh_thanh: s.tinh_thanh,
-      dien_uu_tien: s.dien_uu_tien_label || 'Không thuộc diện ưu tiên',
+      dien_uu_tien: getFullPolicyLabel(s.dien_uu_tien, s.dien_uu_tien_label),
       diem_uu_tien: activePoints,
       is_trung_tuyen: false,
       status: s.status || 'CHO_THAM_DINH',
