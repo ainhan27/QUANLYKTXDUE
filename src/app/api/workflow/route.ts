@@ -46,10 +46,19 @@ export async function GET() {
     const pendingApps = storedApps.filter(
       (a: any) => a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG'
     );
+    const approvedApps = storedApps.filter(
+      (a: any) =>
+        a.status === 'THAM_DINH_DAT' ||
+        a.status === 'DA_XEP_HANG' ||
+        a.status === 'DA_PHAT_HANH' ||
+        a.status === 'DA_KY'
+    );
     return NextResponse.json({
       success: true,
       workflow: state,
       pendingEvidenceCount: pendingApps.length,
+      approvedEvidenceCount: approvedApps.length,
+      totalEvidenceCount: storedApps.length,
       pendingStudents: pendingApps.map((a: any) => ({
         id: a.id,
         ma_sv: a.ma_sv,

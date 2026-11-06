@@ -542,9 +542,13 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
 
   // HOẠT ĐỘNG NGOẠI LỆ: HỦY YÊU CẦU TỪ NGƯỜI ĐỀ NGHỊ (RÚT HỒ SƠ)
   const handleWithdrawApplication = async () => {
-    const studentCode = studentInfo.ma_sv || (typeof window !== 'undefined' ? localStorage.getItem('active_student_session_code') : '') || '';
+    const studentCode =
+      studentInfo.ma_sv ||
+      studentInfo.cccd ||
+      (typeof window !== 'undefined' ? localStorage.getItem('active_student_session_code') : '') ||
+      '';
     if (!studentCode) {
-      alert('Không xác định được mã sinh viên để hủy hồ sơ');
+      alert('Không xác định được mã sinh viên hoặc số CCCD để hủy hồ sơ');
       return;
     }
     setIsProcessing(true);
@@ -595,6 +599,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
       setActionMessage('Đã ghi nhận yêu cầu hủy hồ sơ.');
     } finally {
       setIsProcessing(false);
+      setShowWithdrawModal(false);
     }
   };
 

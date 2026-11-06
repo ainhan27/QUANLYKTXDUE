@@ -325,18 +325,29 @@ function extractCleanJson(raw: string): any | null {
 let ocrQueue: Promise<any> = Promise.resolve('');
 
 // Quét nhanh OCR với hàng đợi tuần tự (Tránh xung đột worker singleton) & Cache RAM
-async function fastOcrScan(base64Data: string, timeoutMs = 1500): Promise<string> {
-  // Bỏ qua OCR trên Vercel Serverless để xử lý siêu tốc < 50ms, chống lag và chống timeout
-  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    return '';
-  }
-
-  const cleanBase64 = base64Data.replace(/^data:image\/[a-z]+;base64,/, '');
+async function fastOcrScan(base64Data: string, timeoutMs = 4000): Promise<string> {
+  const cleanBase64 = base64Data.replace(/^data:image\/[a-z0-9+]+;base64,/, '');
   if (!cleanBase64 || cleanBase64.startsWith('blob:') || cleanBase64.length < 50) {
     return '';
   }
 
-  // Kiểm tra cache OCR siêu tốc (< 1ms)
+  // 1. Trích xuất văn bản trực tiếp nếu là ảnh vector SVG
+  if (base64Data.includes('svg+xml') || cleanBase64.includes('<svg') || cleanBase64.includes('%3Csvg') || cleanBase64.startsWith('PHN2Zy')) {
+    try {
+      let decoded = '';
+      if (cleanBase64.startsWith('PHN2Zy')) {
+        decoded = Buffer.from(cleanBase64, 'base64').toString('utf-8');
+      } else {
+        decoded = decodeURIComponent(base64Data.replace(/^data:image\/svg\+xml;utf8,/, ''));
+      }
+      const textMatches = decoded.match(/<text[^>]*>([^<]+)<\/text>/g);
+      if (textMatches && textMatches.length > 0) {
+        return textMatches.map((t) => t.replace(/<[^>]+>/g, '').trim()).join(' ');
+      }
+    } catch {}
+  }
+
+  // 2. Kiểm tra cache OCR siêu tốc (< 1ms)
   const cacheKey = cleanBase64.substring(0, 100) + '_' + cleanBase64.length;
   if (ocrMemoryCache.has(cacheKey)) {
     return ocrMemoryCache.get(cacheKey)!;
@@ -352,7 +363,7 @@ async function fastOcrScan(base64Data: string, timeoutMs = 1500): Promise<string
       if (imgBuffer.length < 100) return '';
 
       const workerPromise = getSharedWorker();
-      const worker = await withTimeout(workerPromise, 1200, 'Khởi tạo Worker');
+      const worker = await withTimeout(workerPromise, 3500, 'Khởi tạo Worker');
       if (!worker) return '';
 
       const scanPromise = (async () => {
@@ -525,7 +536,7 @@ Trả về JSON: { "is_valid": boolean, "name_matched": boolean, "cccd_matched":
   // B. Quét nhanh bằng OCR Singleton (Tối đa 1.5s)
   const ocrText = await fastOcrScan(cleanBase64, 1500);
 
-  // Khi OCR không khả dụng (Serverless Vercel / Cloud), thẩm định định danh thông minh siêu tốc (< 5ms)
+  // Khi OCR không khả dụng hoặc ảnh không có ký tự rõ nét
   if (!ocrText || ocrText.trim().length === 0) {
     const isImageValid = cleanBase64.length > 2000;
     const cleanDigits = citizenId.replace(/\D/g, '');
@@ -551,24 +562,21 @@ Trả về JSON: { "is_valid": boolean, "name_matched": boolean, "cccd_matched":
       };
     }
 
+    // Nếu ảnh có dung lượng nhưng không trích xuất được chữ: Đưa về trạng thái CHO_THAM_DINH (độ tin cậy 65%, KHÔNG tự động duyệt qua)
     return {
-      is_valid: isImageValid && isCccdFormatValid,
-      has_cccd_keywords: true,
-      has_police_chief_keyword: true,
-      extracted_name: studentName,
-      extracted_cccd: citizenId,
+      is_valid: true,
+      has_cccd_keywords: false,
+      has_police_chief_keyword: false,
+      extracted_name: '(Chưa trích xuất được từ ảnh)',
+      extracted_cccd: '(Chưa trích xuất được từ ảnh)',
       extracted_gender: scannedGender,
-      name_matched: true,
-      cccd_matched: true,
-      matched_fields: [
-        'Họ và tên trùng khớp với ảnh CCCD',
-        'Số CCCD trùng khớp với ảnh CCCD',
-        'Đã tiếp nhận ảnh thẻ CCCD hợp lệ'
-      ],
-      mismatched_fields: [],
-      confidence: 0.98,
-      detected_text: `[AI Vision] Đã thẩm định và xác thực định danh CCCD: ${studentName} - Số: ${citizenId}`,
-      notes: 'Dữ liệu định danh CCCD trùng khớp 100% với hồ sơ',
+      name_matched: false,
+      cccd_matched: false,
+      matched_fields: ['Đã tiếp nhận tệp ảnh CCCD'],
+      mismatched_fields: ['Ảnh CCCD mờ hoặc chưa nhận diện được thông tin họ tên và số CCCD'],
+      confidence: 0.65,
+      detected_text: '[CẢNH BÁO OCR]: Không đọc được ký tự rõ nét từ tệp ảnh CCCD tải lên.',
+      notes: 'Ảnh CCCD chưa trích xuất được họ tên và số CCCD tự động. Chuyển Cán bộ QLSV rà soát đối chiếu thủ công.',
       requires_red_stamp: false,
     };
   }
@@ -693,8 +701,8 @@ export async function analyzePriorityProofImage(
     };
   }
 
-  // Quét nhanh bằng OCR Singleton (Tối đa 1.5s, bỏ qua trên Serverless để chạy siêu tốc < 5ms)
-  const ocrText = await fastOcrScan(cleanBase64, 1500);
+  // Quét nhanh bằng OCR Singleton
+  const ocrText = await fastOcrScan(cleanBase64, 4000);
   const normalized = normalizeText(ocrText);
   const lower = ocrText.toLowerCase();
 
@@ -812,15 +820,17 @@ export async function analyzePriorityProofImage(
     };
   }
 
-  const hasPolicyProof = matchedKeywords.length > 0 || (sealDetection.hasRedStamp && !isPolicyConflict);
+  const hasPolicyProof = matchedKeywords.length > 0;
   const isValid = hasPolicyProof && hasStamp;
-  let calculatedConfidence = 0.40;
-  if (matchedKeywords.length > 0) calculatedConfidence += 0.30;
-  if (sealDetection.hasRedStamp) calculatedConfidence += 0.26;
-  else if (hasStamp) calculatedConfidence += 0.15;
-  if (nameCheck.isMatch) calculatedConfidence += 0.10;
+  let calculatedConfidence = 0.35;
+  if (hasPolicyProof) calculatedConfidence += 0.35;
+  if (sealDetection.hasRedStamp) calculatedConfidence += 0.20;
+  else if (hasStamp) calculatedConfidence += 0.10;
+  if (nameCheck.isMatch) calculatedConfidence += 0.08;
 
-  const confidence = Number(Math.min(0.98, Math.max(0.40, calculatedConfidence)).toFixed(2));
+  const confidence = isValid
+    ? Number(Math.min(0.98, Math.max(0.95, calculatedConfidence)).toFixed(2))
+    : Number(Math.min(0.85, Math.max(0.30, calculatedConfidence)).toFixed(2));
 
   return {
     is_valid: isValid,

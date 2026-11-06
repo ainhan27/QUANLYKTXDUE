@@ -51,6 +51,7 @@ export default function ApprovalDashboard() {
   const pageSize = 15;
 
   const [pendingEvidenceCount, setPendingEvidenceCount] = useState<number>(0);
+  const [approvedEvidenceCount, setApprovedEvidenceCount] = useState<number>(0);
   const [pendingStudents, setPendingStudents] = useState<Array<{ id: string; ma_sv: string; ho_ten: string; status: string }>>([]);
 
   // ĐỒNG BỘ DỮ LIỆU TỪ WORKFLOW VÀ CƠ SỞ DỮ LIỆU
@@ -62,11 +63,16 @@ export default function ApprovalDashboard() {
       ]);
       const wfJson = await wfRes.json();
       if (wfJson.workflow) {
-        setWorkflowState(wfJson.workflow);
-      }
-      if (typeof wfJson.pendingEvidenceCount === 'number') {
-        setPendingEvidenceCount(wfJson.pendingEvidenceCount);
-        if (wfJson.pendingStudents) setPendingStudents(wfJson.pendingStudents);
+        setWorkflowState((prev) => {
+          if (
+            prev.currentStep === wfJson.workflow.currentStep &&
+            prev.isRankingsFinalized === wfJson.workflow.isRankingsFinalized &&
+            prev.isPublished === wfJson.workflow.isPublished
+          ) {
+            return prev;
+          }
+          return wfJson.workflow;
+        });
       }
 
       const appJson = await appRes.json();
@@ -75,12 +81,25 @@ export default function ApprovalDashboard() {
         const pending = storedList.filter(
           (a) => a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG'
         );
+        const approved = storedList.filter(
+          (a) =>
+            a.status === 'THAM_DINH_DAT' ||
+            a.status === 'DA_XEP_HANG' ||
+            a.status === 'DA_PHAT_HANH' ||
+            a.status === 'DA_KY'
+        );
         setPendingEvidenceCount(pending.length);
+        setApprovedEvidenceCount(approved.length);
         setPendingStudents(
           pending.map((a) => ({ id: a.id, ma_sv: a.ma_sv, ho_ten: a.ho_ten, status: a.status }))
         );
         const merged = computeMergedRankings(storedList, 120);
-        setAllCandidates(merged);
+        setAllCandidates((prev) => {
+          if (prev.length === merged.length && JSON.stringify(prev) === JSON.stringify(merged)) {
+            return prev;
+          }
+          return merged;
+        });
       }
     } catch (e) {
       console.warn('Lỗi đồng bộ Trưởng ban:', e);
@@ -121,16 +140,7 @@ export default function ApprovalDashboard() {
   }, [filteredCandidates, currentPage]);
 
   // KIỂM TRA ĐIỀU KIỆN TIÊN QUYẾT: CHỈ KHI QLSV PHÊ DUYỆT HẾT MINH CHỨNG THÌ TRƯỞNG BAN MỚI ĐƯỢC DUYỆT
-  const pendingEvidenceApps = useMemo(() => {
-    return allCandidates.filter(
-      (c) => c.status === 'CHO_THAM_DINH' || c.status === 'CAN_BO_SUNG'
-    );
-  }, [allCandidates]);
-  const pendingCount = Math.max(
-    pendingEvidenceCount,
-    pendingEvidenceApps.length,
-    pendingStudents.length
-  );
+  const pendingCount = pendingEvidenceCount;
 
   // TRƯỞNG BAN PHÊ DUYỆT NHANH TẤT CẢ MINH CHỨNG CÒN LẠI ĐỂ MỞ KHÓA KÝ QUYẾT ĐỊNH
   const handleApproveAllPendingQuick = async () => {
@@ -335,7 +345,9 @@ export default function ApprovalDashboard() {
                   ? 'BƯỚC 4: ĐÃ PHÁT HÀNH EMAIL VÀ HỢP ĐỒNG 72H'
                   : workflowState.isRankingsFinalized
                   ? 'BƯỚC 3 ĐÃ XONG: TRƯỞNG BAN ĐÃ PHÊ DUYỆT CHÍNH THỨC – CHỜ CÁN BỘ QLSV GỬI EMAIL'
-                  : 'BƯỚC 3: CHỜ TRƯỞNG BAN PHÊ DUYỆT DANH SÁCH CHÍNH THỨC'}
+                  : pendingCount > 0
+                  ? `BƯỚC 2: CHỜ QLSV THẨM ĐỊNH (${pendingCount} HỒ SƠ CHƯA DUYỆT)`
+                  : 'BƯỚC 3: SẴN SÀNG – 100% MINH CHỨNG ĐÃ HỢP LỆ'}
               </strong>
             </span>
           </div>
@@ -345,6 +357,8 @@ export default function ApprovalDashboard() {
               ? 'Danh Sách Tuyển Sinh Đã Được Công Bố & Đang Mở Cổng Ký Hợp Đồng'
               : workflowState.isRankingsFinalized
               ? 'Trưởng Ban Đã Ký Quyết Định Phê Duyệt – Đang Chờ Cán Bộ QLSV Gửi Email Thông Báo'
+              : pendingCount > 0
+              ? `Chưa Thể Công Bố: Đang Chờ Cán Bộ QLSV Thẩm Định Xong Minh Chứng (Còn ${pendingCount} Hồ Sơ)`
               : 'Quyết Định Phê Duyệt Danh Sách Tuyển Sinh Chính Thức (Đợt 1)'}
           </h2>
 
@@ -353,7 +367,9 @@ export default function ApprovalDashboard() {
               ? 'Trưởng ban đã phê duyệt quyết định tuyển sinh và Cán bộ QLSV đã hoàn tất phát hành email thông báo. Sinh viên trúng tuyển đang thực hiện ký hợp đồng điện tử 72 giờ.'
               : workflowState.isRankingsFinalized
               ? 'Trưởng ban đã ký quyết định phê duyệt chính thức. AI đã soạn sẵn 120 email trúng tuyển kèm Hợp đồng điện tử. Cán bộ Quản lý Sinh viên (QLSV) sẽ thực hiện kiểm tra và gửi email đến cho sinh viên.'
-              : 'Theo Quy chế Tuyển sinh Ký túc xá Trường Đại học Kinh tế (DUE), Trưởng Ban Quản lý KTX là người có thẩm quyền ký quyết định phê duyệt danh sách chính thức.'}
+              : pendingCount > 0
+              ? 'Theo Quy chế KTX DUE, Cán bộ QLSV phải thẩm định và duyệt xong 100% minh chứng trước khi công bố. Khi số hồ sơ còn lại bằng 0, Trưởng ban mới có thể ký duyệt danh sách trúng tuyển.'
+              : '100% hồ sơ minh chứng đã được Cán bộ QLSV duyệt đạt chuẩn. Trưởng ban Quản lý KTX thực hiện ký quyết định phê duyệt danh sách chính thức.'}
           </p>
         </div>
 
@@ -439,24 +455,14 @@ export default function ApprovalDashboard() {
                 <button
                   type="button"
                   onClick={handleSendBatchNow}
-                  disabled={isProcessing || pendingCount > 0}
-                  className={`px-5 py-3 rounded-xl text-xs font-black shadow-lg transition flex items-center space-x-2 ${
-                    pendingCount > 0
-                      ? 'bg-slate-700 text-slate-300 border border-slate-600 cursor-not-allowed opacity-75'
-                      : 'bg-[#FFB800] hover:bg-amber-400 text-[#003366]'
-                  }`}
-                  title={
-                    pendingCount > 0
-                      ? `Khóa: Còn ${pendingCount} minh chứng chưa được QLSV duyệt.`
-                      : 'Phát hành chính thức 120 thông báo trúng tuyển'
-                  }
+                  disabled={isProcessing}
+                  className="px-5 py-3 rounded-xl text-xs font-black shadow-lg transition flex items-center space-x-2 bg-[#FFB800] hover:bg-amber-400 text-[#003366] cursor-pointer"
+                  title="Phát hành chính thức 120 thông báo trúng tuyển"
                 >
-                  <span>{pendingCount > 0 ? '🔒' : '✉'}</span>
+                  <span>✉</span>
                   <span>
                     {isProcessing
                       ? 'Đang phát hành 120 email...'
-                      : pendingCount > 0
-                      ? `KHÓA: CẦN CÁN BỘ QLSV DUYỆT XONG MINH CHỨNG (${pendingCount})`
                       : 'TRƯỞNG BAN: PHÁT HÀNH & GỬI NGAY THÔNG BÁO TRÚNG TUYỂN (120 THÍ SINH)'}
                   </span>
                 </button>
@@ -521,15 +527,19 @@ export default function ApprovalDashboard() {
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Chờ QLSV Thẩm Định</span>
-          <div className="text-2xl font-black mt-1 flex items-baseline space-x-1">
-            <span className={pendingCount === 0 ? 'text-emerald-600' : 'text-amber-600'}>
-              {pendingCount}
-            </span>
-            <span className="text-xs font-normal text-slate-500">hồ sơ</span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Thẩm Định Minh Chứng (QLSV)</span>
+          <div className="mt-1 flex items-baseline justify-between">
+            <div>
+              <span className="text-xl font-black text-emerald-600">{approvedEvidenceCount}</span>
+              <span className="text-[10px] text-slate-500 ml-1 font-semibold">đã duyệt</span>
+            </div>
+            <div>
+              <span className={`text-xl font-black ${pendingCount === 0 ? 'text-emerald-600' : 'text-amber-600'}`}>{pendingCount}</span>
+              <span className="text-[10px] text-slate-500 ml-1 font-semibold">chờ duyệt</span>
+            </div>
           </div>
-          <span className={`text-[11px] font-bold mt-1 inline-block ${pendingCount === 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
-            {pendingCount === 0 ? '✓ Đã duyệt xong 100%' : 'Đang chờ thẩm định'}
+          <span className={`text-[11px] font-bold mt-1.5 inline-block ${pendingCount === 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
+            {pendingCount === 0 ? '✓ Đã duyệt xong 100% (Đủ điều kiện)' : `Còn ${pendingCount} hồ sơ cần QLSV duyệt`}
           </span>
         </div>
 

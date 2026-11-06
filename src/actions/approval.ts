@@ -13,6 +13,9 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWorkflowEmail } from '@/services/email';
 import { AppStatus } from '@/types/database';
 
+const isUuid = (val: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
 // BƯỚC 6 & 7: TRƯỞNG BAN DUYỆT 1-CLICK (B2) & PHÁT HÀNH THÔNG BÁO HÀNG LOẠT (TCB)
 export async function approveRoundAndPublishAction(roundId: string) {
   try {
@@ -626,11 +629,11 @@ export async function withdrawApplicationByApplicantAction(studentCode: string, 
       try {
         const { createAdminClient } = await import('@/lib/supabase/admin');
         const supabaseAdmin = createAdminClient();
-        const { data: dbApp } = await supabaseAdmin
-          .from('applications')
-          .select('*')
-          .or(`ma_sv.eq.${studentCode},id.eq.${studentCode}`)
-          .maybeSingle();
+        const query = supabaseAdmin.from('applications').select('*');
+        const { data: dbApp } = await (isUuid(studentCode)
+          ? query.eq('id', studentCode)
+          : query.or(`ma_sv.eq.${studentCode},cccd.eq.${studentCode}`)
+        ).maybeSingle();
         if (dbApp) {
           app = dbApp;
         }
@@ -653,13 +656,15 @@ export async function withdrawApplicationByApplicantAction(studentCode: string, 
       try {
         const { createAdminClient } = await import('@/lib/supabase/admin');
         const supabaseAdmin = createAdminClient();
-        await supabaseAdmin
-          .from('applications')
-          .update({
-            status: 'HUY_SUAT',
-            ghi_chu_ly_do: `HỦY THEO YÊU CẦU CỦA NGƯỜI ĐỀ NGHỊ: ${cancelReason}`,
-          })
-          .or(`ma_sv.eq.${studentCode},id.eq.${studentCode}`);
+        const updateBuilder = supabaseAdmin.from('applications').update({
+          status: 'HUY_SUAT',
+          ghi_chu_ly_do: `HỦY THEO YÊU CẦU CỦA NGƯỜI ĐỀ NGHỊ: ${cancelReason}`,
+        });
+        if (isUuid(studentCode)) {
+          await updateBuilder.eq('id', studentCode);
+        } else {
+          await updateBuilder.or(`ma_sv.eq.${studentCode},cccd.eq.${studentCode}`);
+        }
       } catch (sbErr) {
         console.warn('Lỗi cập nhật Supabase trong withdraw action:', sbErr);
       }
@@ -701,10 +706,25 @@ export async function restoreApplicationAction(studentCode: string) {
   try {
     const { getAllStoredApplications, saveApplicationToStore } = await import('@/lib/data/live-store');
     const stored = getAllStoredApplications();
-    const app = stored.find((x) => x.ma_sv === studentCode || x.id === studentCode);
+    let app = stored.find((x) => x.ma_sv === studentCode || x.id === studentCode);
+
+    if (!app && process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      try {
+        const { createAdminClient } = await import('@/lib/supabase/admin');
+        const supabaseAdmin = createAdminClient();
+        const query = supabaseAdmin.from('applications').select('*');
+        const { data: dbApp } = await (isUuid(studentCode)
+          ? query.eq('id', studentCode)
+          : query.or(`ma_sv.eq.${studentCode},cccd.eq.${studentCode}`)
+        ).maybeSingle();
+        if (dbApp) app = dbApp;
+      } catch (err) {
+        console.warn('Lỗi đọc Supabase trong restore:', err);
+      }
+    }
 
     if (!app) {
-      return { success: false, message: 'Không tìm thấy hồ sơ sinh viên' };
+      return { success: false, message: 'Không tìm thấy hồ sơ sinh viên: ' + studentCode };
     }
 
     app.status = 'THAM_DINH_DAT';
@@ -739,10 +759,25 @@ export async function simulateExceptionAction(
   try {
     const { getAllStoredApplications, saveApplicationToStore, saveNotificationToStore } = await import('@/lib/data/live-store');
     const stored = getAllStoredApplications();
-    const app = stored.find((x) => x.ma_sv === studentCode || x.id === studentCode);
+    let app = stored.find((x) => x.ma_sv === studentCode || x.id === studentCode);
+
+    if (!app && process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      try {
+        const { createAdminClient } = await import('@/lib/supabase/admin');
+        const supabaseAdmin = createAdminClient();
+        const query = supabaseAdmin.from('applications').select('*');
+        const { data: dbApp } = await (isUuid(studentCode)
+          ? query.eq('id', studentCode)
+          : query.or(`ma_sv.eq.${studentCode},cccd.eq.${studentCode}`)
+        ).maybeSingle();
+        if (dbApp) app = dbApp;
+      } catch (err) {
+        console.warn('Lỗi đọc Supabase trong simulateException:', err);
+      }
+    }
 
     if (!app) {
-      return { success: false, message: 'Không tìm thấy hồ sơ sinh viên' };
+      return { success: false, message: 'Không tìm thấy hồ sơ sinh viên: ' + studentCode };
     }
 
     if (exceptionType === 'ERR_HO_KHAU') {
@@ -930,11 +965,14 @@ export async function approveEvidenceAction(applicationId: string, studentCode?:
       try {
         const { createAdminClient } = await import('@/lib/supabase/admin');
         const supabaseAdmin = createAdminClient();
-        const { data: dbApp } = await supabaseAdmin
-          .from('applications')
-          .select('*')
-          .or(`id.eq.${applicationId},ma_sv.eq.${studentCode || applicationId}`)
-          .maybeSingle();
+        const query = supabaseAdmin.from('applications').select('*');
+        const target = studentCode || applicationId;
+        const { data: dbApp } = await (isUuid(applicationId)
+          ? query.eq('id', applicationId)
+          : isUuid(target)
+          ? query.eq('id', target)
+          : query.or(`ma_sv.eq.${target},cccd.eq.${target}`)
+        ).maybeSingle();
         if (dbApp) {
           app = dbApp;
         }
@@ -993,22 +1031,17 @@ export async function approveEvidenceAction(applicationId: string, studentCode?:
     try {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
         const supabaseAdmin = createAdminClient();
-        if (studentCode) {
-          await supabaseAdmin
-            .from('applications')
-            .update({
-              status: 'THAM_DINH_DAT',
-              diem_uu_tien: awardedPoints,
-            })
-            .or(`id.eq.${applicationId},ma_sv.eq.${studentCode}`);
+        const updateBuilder = supabaseAdmin.from('applications').update({
+          status: 'THAM_DINH_DAT',
+          diem_uu_tien: awardedPoints,
+        });
+        if (isUuid(applicationId)) {
+          await updateBuilder.eq('id', applicationId);
+        } else if (studentCode && isUuid(studentCode)) {
+          await updateBuilder.eq('id', studentCode);
         } else {
-          await supabaseAdmin
-            .from('applications')
-            .update({
-              status: 'THAM_DINH_DAT',
-              diem_uu_tien: awardedPoints,
-            })
-            .eq('id', applicationId);
+          const target = studentCode || applicationId;
+          await updateBuilder.or(`ma_sv.eq.${target},cccd.eq.${target}`);
         }
       }
     } catch (e) {
@@ -1048,11 +1081,11 @@ export async function submitSupplementEvidenceAction(params: {
       try {
         const { createAdminClient } = await import('@/lib/supabase/admin');
         const supabaseAdmin = createAdminClient();
-        const { data: dbApp } = await supabaseAdmin
-          .from('applications')
-          .select('*')
-          .or(`ma_sv.eq.${studentCode},id.eq.${studentCode}`)
-          .maybeSingle();
+        const query = supabaseAdmin.from('applications').select('*');
+        const { data: dbApp } = await (isUuid(studentCode)
+          ? query.eq('id', studentCode)
+          : query.or(`ma_sv.eq.${studentCode},cccd.eq.${studentCode}`)
+        ).maybeSingle();
         if (dbApp) {
           app = dbApp;
         }
