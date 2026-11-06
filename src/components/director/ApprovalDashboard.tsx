@@ -61,45 +61,15 @@ export default function ApprovalDashboard() {
         fetch('/api/applications'),
       ]);
       const wfJson = await wfRes.json();
-      if (wfJson.workflow) {
-        setWorkflowState((prev) => {
-          // Anti-flapping guard: chống serverless container lệch nhau gây nhảy giật giao diện
-          const isLocallyFinalized =
-            typeof window !== 'undefined' && localStorage.getItem('ktx_director_finalized') === 'true';
-          const isLocallyPublished =
-            typeof window !== 'undefined' && localStorage.getItem('ktx_director_published') === 'true';
-
-          const resolvedFinalized = isLocallyFinalized || Boolean(wfJson.workflow.isRankingsFinalized);
-          const resolvedPublished = isLocallyPublished || Boolean(wfJson.workflow.isPublished);
-
-          if (wfJson.workflow.isRankingsFinalized && typeof window !== 'undefined') {
-            localStorage.setItem('ktx_director_finalized', 'true');
-          }
-          if (wfJson.workflow.isPublished && typeof window !== 'undefined') {
-            localStorage.setItem('ktx_director_published', 'true');
-          }
-
-          if (
-            prev.currentStep === wfJson.workflow.currentStep &&
-            prev.isRankingsFinalized === resolvedFinalized &&
-            prev.isPublished === resolvedPublished
-          ) {
-            return prev;
-          }
-          return {
-            ...wfJson.workflow,
-            isRankingsFinalized: resolvedFinalized,
-            isPublished: resolvedPublished,
-          };
-        });
-      }
-
       const appJson = await appRes.json();
+
+      let pendingLength = 0;
       if (appJson.success && Array.isArray(appJson.data)) {
         const storedList = appJson.data as StoredApplication[];
         const pending = storedList.filter(
           (a) => a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG'
         );
+        pendingLength = pending.length;
         const approved = storedList.filter(
           (a) =>
             a.status === 'THAM_DINH_DAT' ||
@@ -139,6 +109,43 @@ export default function ApprovalDashboard() {
             if (!isDiff) return prev;
           }
           return merged;
+        });
+      }
+
+      if (wfJson.workflow) {
+        setWorkflowState((prev) => {
+          // Anti-flapping guard: Khi còn hồ sơ chưa duyệt (pendingLength > 0), bắt buộc Trưởng ban CHƯA ký duyệt
+          const isLocallyFinalized =
+            pendingLength === 0 &&
+            typeof window !== 'undefined' &&
+            localStorage.getItem('ktx_director_finalized') === 'true';
+          const isLocallyPublished =
+            pendingLength === 0 &&
+            typeof window !== 'undefined' &&
+            localStorage.getItem('ktx_director_published') === 'true';
+
+          const resolvedFinalized =
+            pendingLength === 0 && (isLocallyFinalized || Boolean(wfJson.workflow.isRankingsFinalized));
+          const resolvedPublished =
+            pendingLength === 0 && (isLocallyPublished || Boolean(wfJson.workflow.isPublished));
+
+          if (pendingLength > 0 && typeof window !== 'undefined') {
+            localStorage.removeItem('ktx_director_finalized');
+            localStorage.removeItem('ktx_director_published');
+          }
+
+          if (
+            prev.currentStep === wfJson.workflow.currentStep &&
+            prev.isRankingsFinalized === resolvedFinalized &&
+            prev.isPublished === resolvedPublished
+          ) {
+            return prev;
+          }
+          return {
+            ...wfJson.workflow,
+            isRankingsFinalized: resolvedFinalized,
+            isPublished: resolvedPublished,
+          };
         });
       }
     } catch (e) {
