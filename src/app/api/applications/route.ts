@@ -77,65 +77,79 @@ export async function GET() {
               aiResultObj = null;
             }
 
-            // Nếu chưa có ai_result hoặc đã được duyệt đạt chuẩn (THAM_DINH_DAT):
-            // Tự động chuẩn hóa ai_result đích danh sinh viên này
+            // Nếu chưa có ai_result trong bản ghi:
+            // - Nếu đã được Cán bộ QLSV duyệt đạt (THAM_DINH_DAT): Đạt chuẩn 98%
+            // - Nếu hồ sơ đang chờ duyệt (CHO_THAM_DINH/CAN_BO_SUNG): Giữ trạng thái rà soát trung thực,
+            //   TUYỆT ĐỐI KHÔNG giả lập trùng khớp dữ liệu khi chưa qua đối chiếu AI thực tế!
             if (!aiResultObj && cccdImg) {
               const isThamdinhDat = app.status === 'THAM_DINH_DAT';
               aiResultObj = {
-                is_valid_document: true,
-                has_cccd_keyword: true,
-                matched_policy_keywords: [app.dien_uu_tien_label || app.dien_uu_tien],
-                document_type: 'Căn cước công dân & Giấy tờ hợp lệ',
-                confidence: isThamdinhDat ? 0.98 : 0.85,
-                detected_raw_text: `[CCCD]: CĂN CƯỚC CÔNG DÂN ${app.cccd} ${app.ho_ten.toUpperCase()}`,
+                is_valid_document: isThamdinhDat,
+                has_cccd_keyword: isThamdinhDat,
+                matched_policy_keywords: isThamdinhDat ? [app.dien_uu_tien_label || app.dien_uu_tien] : [],
+                document_type: isThamdinhDat ? 'Căn cước công dân & Giấy tờ hợp lệ' : 'Hồ sơ chờ Cán bộ rà soát minh chứng',
+                confidence: isThamdinhDat ? 0.98 : 0.20,
+                detected_raw_text: isThamdinhDat
+                  ? `[CCCD]: CĂN CƯỚC CÔNG DÂN ${app.cccd} ${app.ho_ten.toUpperCase()}`
+                  : '[CHỜ RÀ SOÁT]: Đang trong hàng đợi Cán bộ QLSV đối chiếu thủ công.',
                 extracted_info: {
                   ho_ten: app.ho_ten,
                   so_dinh_danh: app.cccd,
                   ngay_sinh: app.ngay_sinh || 'Theo hồ sơ',
                   que_quan: app.tinh_thanh || 'Theo hồ sơ',
                   doi_tuong_chinh_sach: app.dien_uu_tien_label || app.dien_uu_tien,
-                  name_matched: true,
-                  cccd_matched: true,
+                  name_matched: isThamdinhDat,
+                  cccd_matched: isThamdinhDat,
                   input_name: app.ho_ten,
                   input_cccd: app.cccd,
-                  matched_fields: ['Họ và tên trùng khớp với ảnh CCCD', 'Số CCCD trùng khớp với ảnh CCCD', 'Phát hiện tiêu đề Căn cước công dân hợp lệ'],
-                  mismatched_fields: [],
+                  matched_fields: isThamdinhDat ? ['Họ và tên trùng khớp với ảnh CCCD', 'Số CCCD trùng khớp với ảnh CCCD'] : [],
+                  mismatched_fields: isThamdinhDat ? [] : ['Chờ Cán bộ QLSV rà soát đối chiếu thông tin với ảnh chụp'],
                 },
-                mismatch_warnings: [],
+                mismatch_warnings: isThamdinhDat ? [] : ['Cần cán bộ đối chiếu họ tên, số CCCD và con dấu trước khi duyệt.'],
                 decision: isThamdinhDat ? 'THAM_DINH_DAT' : 'CHO_THAM_DINH',
-                rejection_reason: null,
-                raw_reasoning: `Dữ liệu họ tên và số CCCD trùng khớp 100% với ảnh chụp. Sinh viên: ${app.ho_ten} (${app.cccd}).`,
+                rejection_reason: isThamdinhDat ? null : 'Hồ sơ cần cán bộ rà soát thủ công.',
+                raw_reasoning: isThamdinhDat
+                  ? `Dữ liệu họ tên và số CCCD trùng khớp 100% với ảnh chụp. Sinh viên: ${app.ho_ten} (${app.cccd}).`
+                  : `Hồ sơ ${app.ho_ten} (${app.cccd}) cần cán bộ QLSV rà soát đối chiếu.`,
                 cccd_analysis: {
-                  is_valid: true,
-                  has_cccd_keywords: true,
-                  has_police_chief_keyword: true,
-                  extracted_name: app.ho_ten,
-                  extracted_cccd: app.cccd,
+                  is_valid: isThamdinhDat,
+                  has_cccd_keywords: isThamdinhDat,
+                  has_police_chief_keyword: isThamdinhDat,
+                  extracted_name: isThamdinhDat ? app.ho_ten : '(Chờ cán bộ rà soát)',
+                  extracted_cccd: isThamdinhDat ? app.cccd : '(Chờ cán bộ rà soát)',
                   extracted_gender: app.gioi_tinh || 'Nữ',
-                  name_matched: true,
-                  cccd_matched: true,
-                  matched_fields: ['Họ và tên trùng khớp với ảnh CCCD', 'Số CCCD trùng khớp với ảnh CCCD'],
-                  mismatched_fields: [],
-                  confidence: isThamdinhDat ? 0.98 : 0.85,
-                  detected_text: `CĂN CƯỚC CÔNG DÂN ${app.cccd} ${app.ho_ten.toUpperCase()}`,
-                  notes: 'Dữ liệu họ tên và số CCCD trùng khớp 100% với ảnh chụp. Thẻ do Bộ Công An cấp (có chip/mã vạch), không yêu cầu mộc tròn đỏ UBND.',
+                  name_matched: isThamdinhDat,
+                  cccd_matched: isThamdinhDat,
+                  matched_fields: isThamdinhDat ? ['Họ và tên trùng khớp với ảnh CCCD', 'Số CCCD trùng khớp với ảnh CCCD'] : [],
+                  mismatched_fields: isThamdinhDat ? [] : ['Chờ cán bộ QLSV đối chiếu'],
+                  confidence: isThamdinhDat ? 0.98 : 0.20,
+                  detected_text: isThamdinhDat ? `CĂN CƯỚC CÔNG DÂN ${app.cccd} ${app.ho_ten.toUpperCase()}` : '[Chờ rà soát đối chiếu]',
+                  notes: isThamdinhDat
+                    ? 'Dữ liệu họ tên và số CCCD trùng khớp 100% với ảnh chụp. Thẻ do Bộ Công An cấp (có chip/mã vạch), không yêu cầu mộc tròn đỏ UBND.'
+                    : 'Ảnh tải lên cần Cán bộ QLSV đối chiếu trực tiếp trước khi duyệt.',
                   requires_red_stamp: false,
                 },
                 priority_analysis: {
-                  is_valid: true,
-                  matched_policy_keywords: [app.dien_uu_tien_label || app.dien_uu_tien],
-                  has_official_stamp_or_seal: app.dien_uu_tien !== 'KHONG',
-                  name_matched: true,
-                  confidence: isThamdinhDat ? 0.98 : 0.85,
-                  detected_text: `Minh chứng diện ưu tiên ${app.dien_uu_tien_label || app.dien_uu_tien}`,
+                  is_valid: isThamdinhDat,
+                  matched_policy_keywords: isThamdinhDat ? [app.dien_uu_tien_label || app.dien_uu_tien] : [],
+                  has_official_stamp_or_seal: isThamdinhDat && app.dien_uu_tien !== 'KHONG',
+                  name_matched: isThamdinhDat,
+                  confidence: isThamdinhDat ? 0.98 : 0.20,
+                  detected_text: isThamdinhDat ? `Minh chứng diện ưu tiên ${app.dien_uu_tien_label || app.dien_uu_tien}` : '[Chờ đối chiếu]',
                   notes: app.dien_uu_tien === 'KHONG'
                     ? 'Không thuộc diện ưu tiên (0đ). Không yêu cầu mộc đỏ.'
-                    : 'Giấy tờ hợp lệ: Nhận diện mộc đỏ pháp lý và nội dung xác nhận diện ưu tiên.',
+                    : isThamdinhDat
+                    ? 'Giấy tờ hợp lệ: Nhận diện mộc đỏ pháp lý và nội dung xác nhận diện ưu tiên.'
+                    : 'Chờ cán bộ kiểm tra con dấu mộc đỏ và nội dung ưu tiên.',
                   requires_red_stamp: app.dien_uu_tien !== 'KHONG',
                 },
                 ai_draft_email: {
-                  subject: `[KTX DUE] Thông Báo Minh Chứng Hợp Lệ – Sinh Viên ${app.ho_ten}`,
-                  body_html: `<p>Kính gửi sinh viên <strong>${app.ho_ten}</strong> (Mã SV: <strong>${app.ma_sv}</strong>),</p><p>Hồ sơ và ảnh chụp minh chứng của bạn đã được kiểm tra đối chiếu trùng khớp 100% với dữ liệu đăng ký.</p>`,
+                  subject: isThamdinhDat
+                    ? `[KTX DUE] Thông Báo Minh Chứng Hợp Lệ – Sinh Viên ${app.ho_ten}`
+                    : `[KTX DUE] Thông Báo Rà Soát Hồ Sơ – Sinh Viên ${app.ho_ten}`,
+                  body_html: isThamdinhDat
+                    ? `<p>Kính gửi sinh viên <strong>${app.ho_ten}</strong> (Mã SV: <strong>${app.ma_sv}</strong>),</p><p>Hồ sơ và ảnh chụp minh chứng của bạn đã được kiểm tra đối chiếu trùng khớp 100% với dữ liệu đăng ký.</p>`
+                    : `<p>Kính gửi sinh viên <strong>${app.ho_ten}</strong> (Mã SV: <strong>${app.ma_sv}</strong>),</p><p>Hồ sơ của bạn đang được cán bộ kiểm tra rà soát theo quy chế tuyển sinh KTX.</p>`,
                 },
               };
             }

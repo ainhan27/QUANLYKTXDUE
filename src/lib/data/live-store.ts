@@ -117,10 +117,11 @@ export function saveApplicationToStore(app: StoredApplication): boolean {
       import('@/lib/supabase/admin').then(async ({ createAdminClient }) => {
         try {
           const supabase = createAdminClient();
-          const filesPayload = (app.cccd_image_base64 || app.priority_image_base64)
+          const filesPayload = (app.cccd_image_base64 || app.priority_image_base64 || app.ai_result)
             ? JSON.stringify({
                 cccd: app.cccd_image_base64 || null,
                 priority: app.priority_image_base64 || null,
+                ai_result: app.ai_result || null,
               })
             : null;
 

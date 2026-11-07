@@ -443,22 +443,31 @@ export default function EvidenceReviewQueue() {
             const aiExtracted = app.ai_result?.extracted_info;
             const cccdAnalysis = app.ai_result?.cccd_analysis;
 
-            // Nếu ảnh không phải CCCD (hoặc AI báo không khớp), tuyệt đối không ép true!
-            const nameMatches = hasAiResult
-              ? Boolean(aiExtracted?.name_matched ?? cccdAnalysis?.name_matched)
-              : (isApproved && isNameValidFormat);
+            // Bắt buộc đối chiếu dựa trên AI OCR thực tế (Nếu ảnh không phải CCCD hoặc dữ liệu sai lệch, TUYỆT ĐỐI không ép true)
+            const nameMatches = isApproved
+              ? isNameValidFormat
+              : Boolean(aiExtracted?.name_matched ?? cccdAnalysis?.name_matched);
 
-            const cccdMatches = hasAiResult
-              ? Boolean(aiExtracted?.cccd_matched ?? cccdAnalysis?.cccd_matched)
-              : (isApproved && isCccdValidFormat);
+            const cccdMatches = isApproved
+              ? isCccdValidFormat
+              : Boolean(aiExtracted?.cccd_matched ?? cccdAnalysis?.cccd_matched);
 
-            const hasKeywords = hasAiResult
-              ? Boolean(cccdAnalysis?.has_cccd_keywords ?? app.ai_result?.has_cccd_keyword)
-              : (isApproved && isNameValidFormat && isCccdValidFormat);
+            const hasKeywords = isApproved
+              ? (isNameValidFormat && isCccdValidFormat)
+              : Boolean(cccdAnalysis?.has_cccd_keywords ?? app.ai_result?.has_cccd_keyword);
 
-            if (!hasKeywords || !nameMatches || !cccdMatches) {
-              if (safeConf >= 0.95 && !isApproved) {
-                safeConf = 0.20;
+            const priorityAnalysis = app.ai_result?.priority_analysis;
+            const hasPriorityStamp = isApproved || Boolean(priorityAnalysis?.has_official_stamp_or_seal);
+            const hasPriorityKw = (priorityAnalysis?.matched_policy_keywords?.length ?? 0) > 0 &&
+              !priorityAnalysis?.matched_policy_keywords?.includes('Không thuộc diện ưu tiên');
+
+            // NẾU ẢNH SAI LOẠI, DỮ LIỆU KHÔNG KHỚP HOẶC KHÔNG PHẢI GIẤY TỜ:
+            // BẮT BUỘC HẠ ĐỘ TIN CẬY DƯỚI 90% (xuống 10% - 20% đối với ảnh sai loại, tối đa 65% nếu mờ), KHÓA NÚT TỰ ĐỘNG DUYỆT!
+            if (!isApproved) {
+              if (!hasKeywords || !nameMatches || !cccdMatches || !isNameValidFormat || !isCccdValidFormat) {
+                safeConf = Math.min(0.20, safeConf);
+              } else if (app.dien_uu_tien !== 'KHONG' && (!hasPriorityStamp || !hasPriorityKw)) {
+                safeConf = Math.min(0.68, safeConf);
               }
             }
 
@@ -1724,152 +1733,287 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                       </div>
                     </div>
 
-                    {/* ĐỐI CHIẾU DỮ LIỆU ĐĂNG KÝ VỚI ẢNH CHỤP */}
-                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1.5">
-                      <div className="flex justify-between items-center font-bold text-slate-800">
-                        <span>Đối Chiếu Dữ Liệu Khai Báo vs Ảnh Chụp:</span>
-                        <span className="text-[10px] text-slate-500 font-normal">AI OCR Cross-Check</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-                        <div className="p-2 bg-white rounded border border-slate-200">
-                          <span className="text-slate-500 block text-[10px]">Họ tên đăng ký:</span>
-                          <strong className="text-slate-900">{currentItem.ho_ten}</strong>
-                          <span className={`block text-[10px] font-bold mt-1 ${
-                            isImageBroken
-                              ? 'text-rose-600'
-                              : (currentItem.nameMatched ?? false)
-                              ? 'text-emerald-700'
-                              : 'text-amber-700'
-                          }`}>
-                            {isImageBroken
-                              ? '❌ Không thể đối chiếu (Ảnh bị lỗi)'
-                              : (currentItem.nameMatched ?? false)
-                              ? '✓ Trùng khớp với ảnh'
-                              : '⚠️ Cần đối chiếu lại'}
-                          </span>
-                        </div>
-                        <div className="p-2 bg-white rounded border border-slate-200">
-                          <span className="text-slate-500 block text-[10px]">Số CCCD đăng ký:</span>
-                          <strong className="text-slate-900 font-mono">{currentItem.cccd}</strong>
-                          <span className={`block text-[10px] font-bold mt-1 ${
-                            isImageBroken
-                              ? 'text-rose-600'
-                              : (currentItem.cccdMatched ?? false)
-                              ? 'text-emerald-700'
-                              : 'text-amber-700'
-                          }`}>
-                            {isImageBroken
-                              ? '❌ Không thể đối chiếu (Ảnh bị lỗi)'
-                              : (currentItem.cccdMatched ?? false)
-                              ? '✓ Trùng khớp với ảnh'
-                              : '⚠️ Cần đối chiếu lại'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 1. KẾT QUẢ KIỂM TRA CCCD */}
+                    {/* ========================================================================= */}
+                    {/* KHỐI 1: THẨM ĐỊNH CĂN CƯỚC CÔNG DÂN (CCCD) - HỢP NHẤT SO KHỚP CHÉO & PHÁP LÝ */}
+                    {/* ========================================================================= */}
                     {(() => {
-                      const isCccdValid =
-                        !isImageBroken &&
-                        (currentItem.cccdCheck?.hasKeyword ?? false) &&
-                        (currentItem.nameMatched ?? false) &&
-                        (currentItem.cccdMatched ?? false);
+                      const cleanName = (currentItem.ho_ten || '').trim();
+                      const cleanCccd = (currentItem.cccd || '').replace(/\D/g, '');
+                      const isNameFormatValid = cleanName.length >= 4 && cleanName.split(/\s+/).length >= 2 && !/^\d+$/.test(cleanName);
+                      const isCccdFormatValid = cleanCccd.length === 12 || cleanCccd.length === 9;
+                      const hasCccdKw = Boolean(currentItem.cccdCheck?.hasKeyword);
+                      const isNameMatched = Boolean(currentItem.nameMatched);
+                      const isCccdMatched = Boolean(currentItem.cccdMatched);
+                      const isCccdValid = !isImageBroken && hasCccdKw && isNameFormatValid && isCccdFormatValid && isNameMatched && isCccdMatched;
+                      const isCccdInvalidImage = isImageBroken || !hasCccdKw || !isNameFormatValid || !isCccdFormatValid;
+
                       return (
                         <div
-                          className={`p-3 rounded-lg text-xs space-y-1.5 border ${
+                          className={`p-3.5 rounded-xl text-xs space-y-2.5 border transition-all ${
                             isImageBroken
+                              ? 'bg-rose-50/90 border-rose-300'
+                              : !hasCccdKw || !isNameFormatValid || !isCccdFormatValid
                               ? 'bg-rose-50/80 border-rose-300'
                               : isCccdValid
-                              ? 'bg-emerald-50/60 border-emerald-200'
-                              : 'bg-rose-50/60 border-rose-200'
+                              ? 'bg-emerald-50/70 border-emerald-300'
+                              : 'bg-amber-50/80 border-amber-300'
                           }`}
                         >
-                          <div className="flex justify-between items-center font-bold">
-                            <span className={isImageBroken ? 'text-rose-950 font-bold' : isCccdValid ? 'text-emerald-950 font-bold' : 'text-rose-950 font-bold'}>
-                              1. Thẩm Định Căn Cước Công Dân (CCCD):
-                            </span>
+                          {/* Header & Trạng thái thẩm định CCCD */}
+                          <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+                            <div className="flex items-center space-x-1.5">
+                              <span className="text-base">🪪</span>
+                              <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                                1. Thẩm Định Căn Cước Công Dân (CCCD)
+                              </span>
+                            </div>
                             <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold border shadow-xs ${
                                 isImageBroken
-                                  ? 'bg-rose-100 text-rose-800'
+                                  ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                  : !hasCccdKw
+                                  ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                  : !isNameFormatValid || !isCccdFormatValid
+                                  ? 'bg-rose-100 text-rose-800 border-rose-300'
                                   : isCccdValid
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-rose-100 text-rose-800'
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                  : 'bg-amber-100 text-amber-800 border-amber-300'
                               }`}
                             >
-                              {isImageBroken ? '❌ Ảnh CCCD bị lỗi' : isCccdValid ? '✓ CCCD đạt chuẩn' : '⚠️ Cần đối chiếu'}
+                              {isImageBroken
+                                ? '❌ Tệp ảnh bị lỗi / hỏng'
+                                : !hasCccdKw
+                                ? '❌ Ảnh không hợp lệ (Sai loại / Bài tập)'
+                                : !isNameFormatValid || !isCccdFormatValid
+                                ? '❌ Khai báo sai định dạng'
+                                : isCccdValid
+                                ? '✓ CCCD đạt chuẩn (Khớp 100%)'
+                                : '⚠️ Dữ liệu không khớp / Cần rà soát'}
                             </span>
                           </div>
-                          {isImageBroken ? (
-                            <p className="text-rose-700 font-semibold">
-                              Tệp ảnh CCCD không tải được hoặc đường dẫn bị hỏng. AI đã chặn tự động duyệt. Cán bộ cần kiểm tra file gốc hoặc yêu cầu sinh viên bổ sung.
-                            </p>
-                          ) : isCccdValid ? (
-                            <p className="text-emerald-800 font-medium">
-                              Họ tên và số CCCD trùng khớp với ảnh chụp. Thẻ do Bộ Công An cấp (có chip/mã vạch), không yêu cầu mộc tròn đỏ UBND.
-                            </p>
-                          ) : (
-                            <p className="text-rose-700 font-semibold">
-                              Lý do: {currentItem.cccdCheck?.note || 'Họ tên hoặc số CCCD không trùng khớp với ảnh.'}
-                            </p>
-                          )}
+
+                          {/* Đối chiếu chéo (Cross-Check): Dữ liệu khai báo vs Ảnh chụp CCCD */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                            <div className="p-2 bg-white/90 rounded-lg border border-slate-200/80 shadow-2xs">
+                              <span className="text-slate-500 block text-[10px]">Họ tên khai báo:</span>
+                              <strong className="text-slate-900 block truncate text-xs">{currentItem.ho_ten}</strong>
+                              <span
+                                className={`inline-flex items-center text-[10px] font-bold mt-1 ${
+                                  isImageBroken
+                                    ? 'text-rose-600'
+                                    : !hasCccdKw
+                                    ? 'text-rose-600'
+                                    : !isNameFormatValid
+                                    ? 'text-rose-600'
+                                    : isNameMatched
+                                    ? 'text-emerald-700'
+                                    : 'text-amber-700'
+                                }`}
+                              >
+                                {isImageBroken
+                                  ? '❌ Không thể đối chiếu (Ảnh lỗi)'
+                                  : !hasCccdKw
+                                  ? '❌ Không phát hiện họ tên (Ảnh không phải CCCD)'
+                                  : !isNameFormatValid
+                                  ? '❌ Tên không hợp lệ (< 2 từ / ký tự viết tắt)'
+                                  : isNameMatched
+                                  ? '✓ Trùng khớp với ảnh CCCD'
+                                  : '⚠️ Không khớp với họ tên trên ảnh'}
+                              </span>
+                            </div>
+
+                            <div className="p-2 bg-white/90 rounded-lg border border-slate-200/80 shadow-2xs">
+                              <span className="text-slate-500 block text-[10px]">Số CCCD khai báo:</span>
+                              <strong className="text-slate-900 font-mono block truncate text-xs">{currentItem.cccd}</strong>
+                              <span
+                                className={`inline-flex items-center text-[10px] font-bold mt-1 ${
+                                  isImageBroken
+                                    ? 'text-rose-600'
+                                    : !hasCccdKw
+                                    ? 'text-rose-600'
+                                    : !isCccdFormatValid
+                                    ? 'text-rose-600'
+                                    : isCccdMatched
+                                    ? 'text-emerald-700'
+                                    : 'text-amber-700'
+                                }`}
+                              >
+                                {isImageBroken
+                                  ? '❌ Không thể đối chiếu (Ảnh lỗi)'
+                                  : !hasCccdKw
+                                  ? '❌ Không phát hiện số CCCD (Ảnh không phải CCCD)'
+                                  : !isCccdFormatValid
+                                  ? '❌ Sai định dạng (Bắt buộc 12 số CCCD gắn chip)'
+                                  : isCccdMatched
+                                  ? '✓ Trùng khớp 12 số định danh'
+                                  : '⚠️ Không khớp với số trên ảnh'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Nhận diện từ khóa pháp lý & Ghi chú thẩm định */}
+                          <div className="pt-1 text-[11px] leading-relaxed">
+                            {isImageBroken ? (
+                              <p className="text-rose-700 font-semibold">
+                                Tệp ảnh CCCD không tải được hoặc đường dẫn bị hỏng. AI đã khóa nút tự động duyệt. Cán bộ cần kiểm tra file gốc hoặc yêu cầu sinh viên bổ sung.
+                              </p>
+                            ) : !hasCccdKw ? (
+                              <p className="text-rose-700 font-semibold">
+                                ❌ Ảnh không hợp lệ: Không phát hiện tiêu đề "CĂN CƯỚC CÔNG DÂN" hoặc phát hiện tài liệu học tập, bài tập, slide, ảnh con dấu sai loại. Hệ thống đã tự động hạ độ tin cậy xuống dưới 90% và chuyển Cán bộ QLSV rà soát thủ công / Yêu cầu bổ sung.
+                              </p>
+                            ) : isCccdValid ? (
+                              <p className="text-emerald-800 font-medium">
+                                ✓ Dữ liệu họ tên và số CCCD trùng khớp 100% với ảnh chụp. Thẻ do Bộ Công An cấp (có chip/mã vạch), không yêu cầu mộc tròn đỏ UBND.
+                              </p>
+                            ) : (
+                              <p className="text-amber-800 font-semibold">
+                                ⚠️ {currentItem.cccdCheck?.note || 'Phát hiện thông tin khai báo không trùng khớp với nội dung trên ảnh CCCD. Đã khóa duyệt tự động để cán bộ đối soát.'}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       );
                     })()}
 
-                    {/* 2. KẾT QUẢ KIỂM TRA GIẤY TỜ ƯU TIÊN */}
+                    {/* ========================================================================= */}
+                    {/* KHỐI 2: THẨM ĐỊNH GIẤY TỜ ƯU TIÊN - HỢP NHẤT SO KHỚP CHÉO & MỘC ĐỎ UBND */}
+                    {/* ========================================================================= */}
                     {(() => {
                       if (isNoPriority) {
                         return (
-                          <div className="p-3 rounded-lg text-xs space-y-1.5 border bg-slate-50 border-slate-200">
-                            <div className="flex justify-between items-center font-bold">
-                              <span className="text-slate-800 font-bold">
-                                2. Giấy Tờ Ưu Tiên:
-                              </span>
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-700">
+                          <div className="p-3.5 rounded-xl text-xs space-y-2 border bg-slate-50 border-slate-200">
+                            <div className="flex justify-between items-center pb-1.5 border-b border-slate-200">
+                              <div className="flex items-center space-x-1.5">
+                                <span className="text-base">📜</span>
+                                <span className="font-bold text-slate-800 text-xs sm:text-sm">
+                                  2. Giấy Tờ Ưu Tiên:
+                                </span>
+                              </div>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-slate-200 text-slate-700 border border-slate-300">
                                 Không ưu tiên (+0đ)
                               </span>
                             </div>
-                            <p className="text-slate-600 font-medium">
-                              Hồ sơ tiêu chuẩn: Sinh viên không đăng ký diện ưu tiên (0đ). Không yêu cầu mộc đỏ.
+                            <p className="text-slate-600 font-medium leading-relaxed">
+                              Hồ sơ tiêu chuẩn: Sinh viên không đăng ký diện ưu tiên (0đ). Không yêu cầu minh chứng con dấu mộc đỏ.
                             </p>
                           </div>
                         );
                       }
 
-                      const isPriorityValid = !isImageBroken && currentItem.priorityCheck?.hasOfficialStamp;
+                      const priorityMatchedKws = currentItem.priorityCheck?.matchedKeywords || [];
+                      const hasPriorityKw = priorityMatchedKws.length > 0 && !priorityMatchedKws.includes('Không thuộc diện ưu tiên');
+                      const hasStamp = Boolean(currentItem.priorityCheck?.hasOfficialStamp);
+                      const isPriorityValid = !isImageBroken && hasPriorityKw && hasStamp;
+                      const isJunkPriority = !hasPriorityKw && !hasStamp;
+
                       return (
                         <div
-                          className={`p-3 rounded-lg text-xs space-y-1.5 border ${
-                            isPriorityValid
-                              ? 'bg-emerald-50/60 border-emerald-200'
-                              : 'bg-rose-50/60 border-rose-200'
+                          className={`p-3.5 rounded-xl text-xs space-y-2.5 border transition-all ${
+                            isImageBroken
+                              ? 'bg-rose-50/90 border-rose-300'
+                              : isJunkPriority
+                              ? 'bg-rose-50/80 border-rose-300'
+                              : isPriorityValid
+                              ? 'bg-emerald-50/70 border-emerald-300'
+                              : 'bg-amber-50/80 border-amber-300'
                           }`}
                         >
-                          <div className="flex justify-between items-center font-bold">
-                            <span className={isPriorityValid ? 'text-emerald-950 font-bold' : 'text-rose-950 font-bold'}>
-                              2. Giấy Tờ Ưu Tiên:
-                            </span>
+                          {/* Header & Trạng thái thẩm định Giấy ưu tiên */}
+                          <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+                            <div className="flex items-center space-x-1.5">
+                              <span className="text-base">📜</span>
+                              <span className="font-bold text-slate-900 text-xs sm:text-sm truncate max-w-[220px] sm:max-w-[320px]">
+                                2. Giấy Tờ Ưu Tiên: {currentItem.dien_uu_tien}
+                              </span>
+                            </div>
                             <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                isPriorityValid
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-rose-100 text-rose-800'
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold border shadow-xs ${
+                                isImageBroken
+                                  ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                  : isJunkPriority
+                                  ? 'bg-rose-100 text-rose-800 border-rose-300'
+                                  : isPriorityValid
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                  : !hasStamp
+                                  ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                  : 'bg-amber-100 text-amber-800 border-amber-300'
                               }`}
                             >
-                              {isPriorityValid ? '✓ Có Mộc Đỏ' : '⚠️ Thiếu Mộc Đỏ'}
+                              {isImageBroken
+                                ? '❌ Tệp ảnh bị hỏng'
+                                : isJunkPriority
+                                ? '❌ Ảnh không hợp lệ (Không có từ khóa/mộc đỏ)'
+                                : isPriorityValid
+                                ? '✓ Đạt chuẩn (+Điểm ưu tiên)'
+                                : !hasStamp
+                                ? '⚠️ Thiếu mộc đỏ UBND'
+                                : '⚠️ Cần đối chiếu lại'}
                             </span>
                           </div>
-                          {isPriorityValid ? (
-                            <p className="text-emerald-800 font-medium">
-                              Đã nhận diện con dấu mộc đỏ hợp lệ của cơ quan thẩm quyền.
-                            </p>
-                          ) : (
-                            <p className="text-rose-700 font-semibold">
-                              Lý do: {currentItem.priorityCheck?.note || 'Chưa phát hiện mộc đỏ của cơ quan thẩm quyền.'}
-                            </p>
-                          )}
+
+                          {/* Đối chiếu chéo diện chính sách & Con dấu mộc đỏ */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                            <div className="p-2 bg-white/90 rounded-lg border border-slate-200/80 shadow-2xs">
+                              <span className="text-slate-500 block text-[10px]">Diện chính sách đăng ký:</span>
+                              <strong className="text-slate-900 block truncate text-xs">{currentItem.dien_uu_tien}</strong>
+                              <span
+                                className={`inline-flex items-center text-[10px] font-bold mt-1 ${
+                                  isImageBroken
+                                    ? 'text-rose-600'
+                                    : hasPriorityKw
+                                    ? 'text-emerald-700'
+                                    : 'text-rose-600'
+                                }`}
+                              >
+                                {isImageBroken
+                                  ? '❌ Không thể đối chiếu'
+                                  : hasPriorityKw
+                                  ? `✓ Nhận diện từ khóa (${priorityMatchedKws.slice(0, 2).join(', ')})`
+                                  : '❌ Không tìm thấy từ khóa diện chính sách (HỘ NGHÈO/UBND)'}
+                              </span>
+                            </div>
+
+                            <div className="p-2 bg-white/90 rounded-lg border border-slate-200/80 shadow-2xs">
+                              <span className="text-slate-500 block text-[10px]">Con dấu mộc đỏ pháp lý:</span>
+                              <strong className="text-slate-900 block truncate text-xs">UBND xã/phường hoặc Phòng LĐTBXH</strong>
+                              <span
+                                className={`inline-flex items-center text-[10px] font-bold mt-1 ${
+                                  isImageBroken
+                                    ? 'text-rose-600'
+                                    : hasStamp
+                                    ? 'text-emerald-700'
+                                    : 'text-amber-700'
+                                }`}
+                              >
+                                {isImageBroken
+                                  ? '❌ Không thể đối chiếu'
+                                  : hasStamp
+                                  ? '✓ Đã nhận diện con dấu mộc đỏ hợp lệ'
+                                  : '⚠️ Chưa phát hiện mộc đỏ của cơ quan thẩm quyền'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Ghi chú thẩm định của AI */}
+                          <div className="pt-1 text-[11px] leading-relaxed">
+                            {isImageBroken ? (
+                              <p className="text-rose-700 font-semibold">
+                                Tệp ảnh minh chứng ưu tiên bị lỗi hoặc không tải được. Cần cán bộ rà soát hoặc yêu cầu sinh viên bổ sung.
+                              </p>
+                            ) : isJunkPriority ? (
+                              <p className="text-rose-700 font-semibold">
+                                ❌ Ảnh không hợp lệ: Không tìm thấy từ khóa xác nhận diện chính sách (như "HỘ NGHÈO", "CẬN NGHÈO"), cơ quan thẩm quyền (UBND) hoặc con dấu mộc đỏ hợp lệ. Yêu cầu sinh viên tải đúng ảnh Giấy xác nhận thật có mộc đỏ.
+                              </p>
+                            ) : isPriorityValid ? (
+                              <p className="text-emerald-800 font-medium">
+                                ✓ Giấy tờ hợp lệ: Nhận diện mộc đỏ pháp lý và nội dung xác nhận diện ưu tiên theo quy định.
+                              </p>
+                            ) : (
+                              <p className="text-amber-800 font-semibold">
+                                Lý do: {currentItem.priorityCheck?.note || 'Chưa phát hiện mộc đỏ của cơ quan thẩm quyền.'}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       );
                     })()}
