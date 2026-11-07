@@ -604,60 +604,52 @@ export default function EvidenceReviewQueue() {
     };
   }, [loadApplications]);
 
-  // KHI TRƯỞNG BAN ĐÃ CÔNG BỐ HOẶC KÝ DUYỆT B2: HÀNG ĐỢI RÀ SOÁT MINH CHỨNG & MINH CHỨNG BỔ SUNG PHẢI TRỐNG (0 HỒ SƠ)
-  const isRoundClosed = Boolean(workflowState.isPublished || workflowState.isRankingsFinalized);
+  // CÁC HỒ SƠ CẦN THẨM ĐỊNH THỦ CÔNG: CỐ ĐỊNH TRONG HÀNG ĐỢI, TUYỆT ĐỐI KHÔNG TỰ ĐỘNG BỎ QUA HOẶC LÀM TRỐNG
+  // Chỉ chuyển khỏi hàng đợi khi Cán bộ QLSV thực sự bấm Duyệt đạt hoặc Yêu cầu bổ sung
 
   // 1. MINH CHỨNG BỔ SUNG CẦN DUYỆT (< 95%) - TAB RIÊNG THEO YÊU CẦU NGƯỜI DÙNG
-  const supplementReviewItems = isRoundClosed
-    ? []
-    : queue.filter(
-        (x) =>
-          x.status !== 'THAM_DINH_DAT' &&
-          (x.isSupplementReview || (x.isSupplemented && (x.status === 'CHO_THAM_DINH' || x.aiConfidence < 0.95)))
-      );
+  const supplementReviewItems = queue.filter(
+    (x) =>
+      x.status !== 'THAM_DINH_DAT' &&
+      (x.isSupplementReview || (x.isSupplemented && (x.status === 'CHO_THAM_DINH' || x.aiConfidence < 0.95)))
+  );
 
   // 2. HỒ SƠ BAN ĐẦU CẦN RÀ SOÁT (< 95%)
-  const initialReviewItems = isRoundClosed
-    ? []
-    : queue.filter(
-        (x) =>
-          x.status !== 'THAM_DINH_DAT' &&
-          !x.isSupplementReview &&
-          !x.isSupplemented &&
-          (x.status === 'CHO_THAM_DINH' || x.aiConfidence < 0.95)
-      );
+  const initialReviewItems = queue.filter(
+    (x) =>
+      x.status !== 'THAM_DINH_DAT' &&
+      !x.isSupplementReview &&
+      !x.isSupplemented &&
+      (x.status === 'CHO_THAM_DINH' || x.aiConfidence < 0.95)
+  );
 
   // 3. AI TỰ ĐỘNG CHO QUA (>= 95%)
-  const autoApprovedItems = isRoundClosed
-    ? queue
-    : queue.filter(
-        (x) => x.status === 'THAM_DINH_DAT' || (x.status !== 'CHO_THAM_DINH' && x.aiConfidence >= 0.95)
-      );
+  const autoApprovedItems = queue.filter(
+    (x) => x.status === 'THAM_DINH_DAT' || (x.status !== 'CHO_THAM_DINH' && x.aiConfidence >= 0.95)
+  );
 
   const totalPendingReview = initialReviewItems.length + supplementReviewItems.length;
 
-  const filteredQueue = isRoundClosed
-    ? (['INITIAL_REVIEW', 'SUPPLEMENT_REVIEW', 'MANUAL_REVIEW'].includes(filterMode) ? [] : queue)
-    : queue.filter((item) => {
-        if (filterMode === 'SUPPLEMENT_REVIEW') {
-          return (
-            item.status !== 'THAM_DINH_DAT' &&
-            (item.isSupplementReview || (item.isSupplemented && (item.status === 'CHO_THAM_DINH' || item.aiConfidence < 0.95)))
-          );
-        }
-        if (filterMode === 'INITIAL_REVIEW' || filterMode === 'MANUAL_REVIEW') {
-          return (
-            item.status !== 'THAM_DINH_DAT' &&
-            !item.isSupplementReview &&
-            !item.isSupplemented &&
-            (item.status === 'CHO_THAM_DINH' || item.aiConfidence < 0.95)
-          );
-        }
-        if (filterMode === 'AUTO_APPROVED') {
-          return item.status === 'THAM_DINH_DAT' || (item.status !== 'CHO_THAM_DINH' && item.aiConfidence >= 0.95);
-        }
-        return true;
-      });
+  const filteredQueue = queue.filter((item) => {
+    if (filterMode === 'SUPPLEMENT_REVIEW') {
+      return (
+        item.status !== 'THAM_DINH_DAT' &&
+        (item.isSupplementReview || (item.isSupplemented && (item.status === 'CHO_THAM_DINH' || item.aiConfidence < 0.95)))
+      );
+    }
+    if (filterMode === 'INITIAL_REVIEW' || filterMode === 'MANUAL_REVIEW') {
+      return (
+        item.status !== 'THAM_DINH_DAT' &&
+        !item.isSupplementReview &&
+        !item.isSupplemented &&
+        (item.status === 'CHO_THAM_DINH' || item.aiConfidence < 0.95)
+      );
+    }
+    if (filterMode === 'AUTO_APPROVED') {
+      return item.status === 'THAM_DINH_DAT' || (item.status !== 'CHO_THAM_DINH' && item.aiConfidence >= 0.95);
+    }
+    return true;
+  });
 
   const currentItem = filteredQueue.length > 0 ? (filteredQueue[currentIndex] || filteredQueue[0]) : undefined;
 
@@ -885,6 +877,38 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
     setEmailBody(draft.body);
     setRecipientEmail(draft.recipient);
     setIsModalOpen(true);
+  };
+
+  // CÁN BỘ BẤM RÀ SOÁT THỦ CÔNG: PHÁT TÍN HIỆU REAL-TIME SANG MÀN HÌNH SINH VIÊN (0MS)
+  const handleStartManualReview = (item: QueueItem) => {
+    setActionNotice(
+      `🔍 Đang rà soát: Cán bộ QLSV đang trực tiếp kiểm tra và đối chiếu hồ sơ của ${item.ho_ten} (${item.ma_sv}). Tín hiệu đã được đồng bộ real-time sang màn hình sinh viên.`
+    );
+    if (typeof window !== 'undefined') {
+      try {
+        const syncData = {
+          type: 'STATUS_UPDATED',
+          action: 'MANUAL_REVIEWING',
+          studentCode: item.ma_sv,
+          ma_sv: item.ma_sv,
+          id: item.id,
+          status: item.status,
+          isBeingReviewed: true,
+          timestamp: Date.now(),
+        };
+        if ('BroadcastChannel' in window) {
+          const bc = new BroadcastChannel('ktx_sync');
+          bc.postMessage(syncData);
+          setTimeout(() => bc.close(), 100);
+        }
+        localStorage.setItem('ktx_sync_signal', JSON.stringify(syncData));
+        window.dispatchEvent(
+          new CustomEvent('student_session_changed', {
+            detail: { ma_sv: item.ma_sv, status: item.status, isBeingReviewed: true },
+          })
+        );
+      } catch {}
+    }
   };
 
   // DUYỆT ĐẠT 1-CLICK & CỘNG ĐIỂM ƯU TIÊN VÀO BẢNG XẾP HẠNG (0MS INSTANT TRANSITION)
@@ -1334,14 +1358,14 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
         )}
       </div>
 
-      {/* NẾU DANH SÁCH RỖNG HOẶC TRƯỞNG BAN ĐÃ CÔNG BỐ DANH SÁCH */}
+      {/* NẾU DANH SÁCH RỖNG */}
       {(!currentItem || filteredQueue.length === 0) && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-10 text-center space-y-4">
           <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-3xl font-bold">
             ✓
           </div>
           <h3 className="text-lg font-bold text-slate-800">
-            {isRoundClosed
+            {totalPendingReview === 0 && workflowState.isRankingsFinalized
               ? 'Hàng Đợi Thẩm Định & Minh Chứng Bổ Sung Đã Trống (0 Hồ Sơ Tồn Đọng)'
               : filterMode === 'SUPPLEMENT_REVIEW'
               ? 'Hàng Đợi Minh Chứng Bổ Sung Đang Trống (0 Hồ Sơ Cần Duyệt)!'
@@ -1350,7 +1374,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
               : 'Không Có Hồ Sơ Nào Trong Mục Này'}
           </h3>
           <p className="text-xs text-slate-600 max-w-lg mx-auto leading-relaxed">
-            {isRoundClosed
+            {totalPendingReview === 0 && workflowState.isRankingsFinalized
               ? 'Trưởng Ban Quản lý KTX đã công bố danh sách chính thức. Toàn bộ hồ sơ minh chứng và minh chứng bổ sung của đợt này đã được chốt và hoàn tất xử lý (0 hồ sơ cần duyệt lại).'
               : filterMode === 'SUPPLEMENT_REVIEW'
               ? 'Hiện tại không có sinh viên nào nộp lại minh chứng bổ sung dưới 95% đang chờ duyệt. Mọi minh chứng bổ sung đạt ≥ 95% đã được AI tự động duyệt đạt, cộng điểm và cập nhật lên BXH.'
@@ -1414,28 +1438,26 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
               : (currentItem.status === 'THAM_DINH_DAT' ? 0.98 : 0.70);
             const safePercent = Math.round(safeConfVal * 100);
 
-            if (isRoundClosed || (safeConfVal >= 0.95 && currentItem.status === 'THAM_DINH_DAT')) {
+            if (currentItem.status === 'THAM_DINH_DAT') {
               return (
                 <div className="bg-emerald-50 border border-emerald-300 text-emerald-950 rounded-xl p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
                   <div className="flex items-center space-x-2.5">
                     <span className="text-emerald-600 font-bold text-base">✓</span>
                     <div>
                       <span className="font-bold text-emerald-900">
-                        {isRoundClosed
-                          ? 'Hồ Sơ Đã Được Chốt Trong Đợt Tuyển Sinh (Đã Phát Hành Email)'
-                          : `AI Thẩm Định Đạt ${safePercent}% (Trùng khớp 100% dữ liệu)`}
+                        {safeConfVal >= 0.95
+                          ? `AI Thẩm Định Đạt ${safePercent}% (Trùng khớp 100% dữ liệu)`
+                          : `Cán Bộ QLSV Đã Duyệt Đạt (+${currentItem.diem_uu_tien}đ)`}
                       </span>
                       <p className="text-emerald-700 text-[11px] mt-0.5">
-                        {isRoundClosed
-                          ? 'Đợt tuyển sinh đã công bố danh sách chính thức và phát hành hợp đồng điện tử 72h. Toàn bộ khâu duyệt đã hoàn tất.'
-                          : `Hồ sơ tự động thông qua. Điểm ưu tiên (+${currentItem.diem_uu_tien}đ) đã được ghi nhận vào BXH.`}
+                        Hồ sơ đã được thẩm định đạt chuẩn và ghi nhận vào Bảng xếp hạng tuyển sinh.
                       </p>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
                     <span className="px-3 py-1.5 bg-emerald-600 text-white font-bold rounded-lg text-xs uppercase shadow-xs flex items-center space-x-1.5">
                       <span>✓</span>
-                      <span>{isRoundClosed ? 'ĐÃ CHỐT ĐỢT 1' : 'TỰ ĐỘNG THÔNG QUA (ĐÃ LÊN BXH)'}</span>
+                      <span>ĐÃ DUYỆT ĐẠT</span>
                     </span>
                     <button
                       type="button"
@@ -1475,9 +1497,15 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <span className="px-2.5 py-1 bg-purple-700 text-white font-bold rounded text-[10px] uppercase">
-                      MINH CHỨNG BỔ SUNG
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleStartManualReview(currentItem)}
+                      className="px-2.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-lg text-xs uppercase shadow-xs flex items-center space-x-1 transition cursor-pointer"
+                      title="Bấm để kích hoạt phiên rà soát trực tiếp và thông báo real-time sang sinh viên"
+                    >
+                      <span>🔍</span>
+                      <span>CÁN BỘ RÀ SOÁT</span>
+                    </button>
                     <button
                       type="button"
                       onClick={openSupplementModal}
@@ -1527,9 +1555,15 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <span className="px-2.5 py-1 bg-amber-600 text-white font-bold rounded text-[10px] uppercase">
-                    CÁN BỘ RÀ SOÁT
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleStartManualReview(currentItem)}
+                    className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs uppercase shadow-xs flex items-center space-x-1 transition cursor-pointer"
+                    title="Bấm để kích hoạt phiên rà soát trực tiếp và thông báo real-time sang sinh viên"
+                  >
+                    <span>🔍</span>
+                    <span>CÁN BỘ RÀ SOÁT</span>
+                  </button>
                   <button
                     type="button"
                     onClick={openSupplementModal}
@@ -2058,7 +2092,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                     </details>
 
                     {/* 4. DỰ THẢO EMAIL AI */}
-                    {!(isRoundClosed || (currentItem.aiConfidence >= 0.95 && !isImageBroken && currentItem.status === 'THAM_DINH_DAT')) && (
+                    {currentItem.status !== 'THAM_DINH_DAT' && (
                       <div className="p-3 bg-indigo-50/60 border border-indigo-200 rounded-lg text-xs">
                         <div className="flex justify-between items-center mb-1">
                           <span className="font-bold text-indigo-950 uppercase text-[11px]">
@@ -2089,7 +2123,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
 
                   {/* CÁC NÚT HÀNH ĐỘNG CỦA CÁN BỘ QLSV */}
                   <div className="pt-4 border-t border-slate-200 space-y-3">
-                    {isRoundClosed || (currentItem.aiConfidence >= 0.95 && !isImageBroken && currentItem.status === 'THAM_DINH_DAT') ? (
+                    {currentItem.status === 'THAM_DINH_DAT' ? (
                       <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
                         <div className="flex items-center space-x-2.5">
                           <span className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0">
@@ -2097,14 +2131,10 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                           </span>
                           <div>
                             <span className="font-bold text-emerald-950">
-                              {isRoundClosed
-                                ? 'Đợt tuyển sinh đã phát hành và chốt danh sách chính thức'
-                                : 'Hồ sơ đã được thẩm định đạt chuẩn và cộng điểm ưu tiên (+' + currentItem.diem_uu_tien + 'đ)'}
+                              Hồ sơ đã được thẩm định đạt chuẩn và cộng điểm ưu tiên (+{currentItem.diem_uu_tien}đ)
                             </span>
                             <p className="text-[11px] text-emerald-800 mt-0.5">
-                              {isRoundClosed
-                                ? 'Toàn bộ 120 email thông báo và hợp đồng điện tử 72h đã được phát hành. Khâu thẩm định minh chứng đã hoàn tất.'
-                                : `Sinh viên ${currentItem.ho_ten} đã được ghi nhận trực tiếp vào Bảng xếp hạng.`}
+                              Sinh viên {currentItem.ho_ten} đã được ghi nhận trực tiếp vào Bảng xếp hạng.
                             </p>
                           </div>
                         </div>

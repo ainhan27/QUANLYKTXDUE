@@ -70,6 +70,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
   const [otpFailedCount, setOtpFailedCount] = useState(0);
   const [isOtpLocked, setIsOtpLocked] = useState(false);
   const [showExceptionTool, setShowExceptionTool] = useState(false);
+  const [isBeingReviewed, setIsBeingReviewed] = useState(false);
 
   // TRẠNG THÁI QUY TRÌNH LIÊN THÔNG TỰ ĐỘNG
   const [workflowState, setWorkflowState] = useState<{
@@ -328,6 +329,11 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
             const currentCode = localStorage.getItem('active_student_session_code');
             const targetCode = data.ma_sv || data.studentCode;
             if (targetCode && (targetCode === studentInfo.ma_sv || targetCode === currentCode)) {
+              if (data.action === 'MANUAL_REVIEWING' || data.isBeingReviewed) {
+                setIsBeingReviewed(true);
+              } else if (data.status === 'THAM_DINH_DAT' || data.status === 'CAN_BO_SUNG') {
+                setIsBeingReviewed(false);
+              }
               const updatedStatus = data.status;
               setStatus(updatedStatus);
               setStudentInfo((prev) => {
@@ -343,6 +349,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
               });
             }
           } else if (data.type === 'ALL_EVIDENCE_APPROVED') {
+            setIsBeingReviewed(false);
             setStatus('THAM_DINH_DAT');
             setStudentInfo((prev) => {
               const updated = {
@@ -378,6 +385,11 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
           const sig = JSON.parse(e.newValue);
           const targetCode = sig.ma_sv || sig.studentCode;
           if (targetCode && (targetCode === studentInfo.ma_sv || targetCode === localStorage.getItem('active_student_session_code'))) {
+            if (sig.action === 'MANUAL_REVIEWING' || sig.isBeingReviewed) {
+              setIsBeingReviewed(true);
+            } else if (sig.status === 'THAM_DINH_DAT' || sig.status === 'CAN_BO_SUNG') {
+              setIsBeingReviewed(false);
+            }
             setStatus(sig.status);
             setStudentInfo((prev) => ({
               ...prev,
@@ -2261,24 +2273,28 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                     <span className="px-2.5 py-0.5 bg-[#003366] text-white text-[10px] font-bold rounded uppercase">
                       Bước 2: Thẩm Định Minh Chứng
                     </span>
-                    <span className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold rounded-full">
-                      ⏳ Chờ Cán Bộ QLSV Rà Soát
+                    <span className={`px-2 py-0.5 ${isBeingReviewed ? 'bg-amber-200 text-amber-950 border border-amber-400 animate-pulse' : 'bg-amber-100 text-amber-900 border border-amber-300'} text-[10px] font-bold rounded-full`}>
+                      {isBeingReviewed ? '🔍 Cán Bộ QLSV Đang Rà Soát' : '⏳ Chờ Cán Bộ QLSV Rà Soát'}
                     </span>
                   </div>
 
                   <div>
                     <h3 className="text-sm font-bold text-[#003366] uppercase">
-                      Hồ Sơ Đang Trong Hàng Đợi Thẩm Định Thủ Công
+                      {isBeingReviewed ? 'Cán Bộ QLSV Đang Rà Soát Hồ Sơ Của Bạn' : 'Hồ Sơ Đang Trong Hàng Đợi Thẩm Định Thủ Công'}
                     </h3>
                     <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                      Ảnh minh chứng của bạn đã được tiếp nhận và chuyển đến Cán bộ Quản lý Sinh viên để kiểm tra đối chiếu trực tiếp.
+                      {isBeingReviewed
+                        ? 'Cán bộ Quản lý Sinh viên đang trực tiếp kiểm tra và đối chiếu ảnh minh chứng với dữ liệu đăng ký của bạn.'
+                        : 'Ảnh minh chứng của bạn đã được tiếp nhận và chuyển đến Cán bộ Quản lý Sinh viên để kiểm tra đối chiếu trực tiếp.'}
                     </p>
                   </div>
 
                   <div className="p-3 bg-white rounded-lg border border-amber-200 text-xs space-y-1.5 text-amber-950">
                     <div className="flex justify-between">
                       <span className="text-slate-600">Trạng thái rà soát:</span>
-                      <strong className="text-amber-800">Đang chờ Cán bộ QLSV thẩm định</strong>
+                      <strong className={isBeingReviewed ? 'text-amber-900 font-extrabold flex items-center space-x-1' : 'text-amber-800'}>
+                        {isBeingReviewed ? '🔍 Cán bộ QLSV đang đối chiếu trực tiếp' : 'Đang chờ Cán bộ QLSV thẩm định'}
+                      </strong>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-600">Điểm ưu tiên hiện tại:</span>
