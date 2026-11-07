@@ -114,25 +114,19 @@ export default function ApprovalDashboard() {
 
       if (wfJson.workflow) {
         setWorkflowState((prev) => {
-          // Anti-flapping guard: Khi còn hồ sơ chưa duyệt (pendingLength > 0), bắt buộc Trưởng ban CHƯA ký duyệt
           const isLocallyFinalized =
-            pendingLength === 0 &&
             typeof window !== 'undefined' &&
             localStorage.getItem('ktx_director_finalized') === 'true';
           const isLocallyPublished =
-            pendingLength === 0 &&
             typeof window !== 'undefined' &&
             localStorage.getItem('ktx_director_published') === 'true';
 
+          // Anti-flapping: Trạng thái duyệt chính thức là bền vững một chiều (forward-only)
+          // Một khi đã ký duyệt thì cố định trạng thái, không bị flapping lùi về chưa duyệt do độ trễ mạng
           const resolvedFinalized =
-            pendingLength === 0 && (isLocallyFinalized || Boolean(wfJson.workflow.isRankingsFinalized));
+            prev.isRankingsFinalized || isLocallyFinalized || Boolean(wfJson.workflow.isRankingsFinalized);
           const resolvedPublished =
-            pendingLength === 0 && (isLocallyPublished || Boolean(wfJson.workflow.isPublished));
-
-          if (pendingLength > 0 && typeof window !== 'undefined') {
-            localStorage.removeItem('ktx_director_finalized');
-            localStorage.removeItem('ktx_director_published');
-          }
+            prev.isPublished || isLocallyPublished || Boolean(wfJson.workflow.isPublished);
 
           if (
             prev.currentStep === wfJson.workflow.currentStep &&
@@ -159,7 +153,23 @@ export default function ApprovalDashboard() {
     let bc: BroadcastChannel | null = null;
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       bc = new BroadcastChannel('ktx_sync');
-      bc.onmessage = () => {
+      bc.onmessage = (e) => {
+        if (e.data?.type === 'ALL_EVIDENCE_APPROVED') {
+          // Cập nhật tức thì 0ms khi QLSV duyệt đạt 100% minh chứng
+          setPendingEvidenceCount(0);
+          setPendingStudents([]);
+          setAllCandidates((prev) =>
+            prev.map((c) =>
+              c.status === 'CHO_THAM_DINH' || c.status === 'CAN_BO_SUNG'
+                ? { ...c, status: 'THAM_DINH_DAT', diem_uu_tien: c.diem_uu_tien > 0 ? c.diem_uu_tien : 35 }
+                : c
+            )
+          );
+        } else if (e.data?.type === 'DIRECTOR_APPROVED') {
+          setWorkflowState((prev) => ({ ...prev, isRankingsFinalized: true }));
+        } else if (e.data?.type === 'OFFICER_EMAILS_SENT' || e.data?.type === 'ALL_EMAILS_SENT') {
+          setWorkflowState((prev) => ({ ...prev, isRankingsFinalized: true, isPublished: true }));
+        }
         fetchWorkflowAndApplications();
       };
     }

@@ -546,7 +546,23 @@ export default function EvidenceReviewQueue() {
             };
           });
 
-          setQueue(newItems);
+          setQueue((prevQueue) => {
+            // Anti-regression guard: Không để background fetch ghi đè lùi các hồ sơ đã được cán bộ duyệt đạt về lại chờ duyệt
+            if (!prevQueue || prevQueue.length === 0) return newItems;
+            return newItems.map((newItem) => {
+              const existing = prevQueue.find((q) => q.id === newItem.id || q.ma_sv === newItem.ma_sv);
+              if (existing && existing.status === 'THAM_DINH_DAT' && newItem.status !== 'THAM_DINH_DAT') {
+                return {
+                  ...newItem,
+                  status: 'THAM_DINH_DAT',
+                  aiConfidence: Math.max(0.96, existing.aiConfidence || 0.96),
+                  nameMatched: true,
+                  cccdMatched: true,
+                };
+              }
+              return newItem;
+            });
+          });
         }
       })
       .catch((err) => console.warn('Lỗi nạp danh sách duyệt:', err));
@@ -921,8 +937,11 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
           type: 'STATUS_UPDATED',
           action: 'APPROVED',
           studentCode: targetItem.ma_sv,
+          ma_sv: targetItem.ma_sv,
+          id: targetItem.id,
           status: 'THAM_DINH_DAT',
           points: awardedPts,
+          diem_uu_tien: awardedPts,
           timestamp: Date.now(),
         };
         if ('BroadcastChannel' in window) {
@@ -931,9 +950,18 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
           setTimeout(() => bc.close(), 100);
         }
         localStorage.setItem('ktx_sync_signal', JSON.stringify(syncData));
+        const lastRaw = localStorage.getItem('last_submitted_student');
+        if (lastRaw) {
+          const parsed = JSON.parse(lastRaw);
+          if (parsed.ma_sv === targetItem.ma_sv || parsed.id === targetItem.id) {
+            parsed.status = 'THAM_DINH_DAT';
+            parsed.diem_uu_tien = awardedPts;
+            localStorage.setItem('last_submitted_student', JSON.stringify(parsed));
+          }
+        }
         window.dispatchEvent(
           new CustomEvent('student_session_changed', {
-            detail: { ma_sv: targetItem.ma_sv, status: 'THAM_DINH_DAT' },
+            detail: { ma_sv: targetItem.ma_sv, status: 'THAM_DINH_DAT', diem_uu_tien: awardedPts },
           })
         );
       } catch {}

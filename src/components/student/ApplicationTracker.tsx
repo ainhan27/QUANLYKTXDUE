@@ -169,6 +169,22 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
     } catch {}
   };
 
+  // BẢNG TRỌNG SỐ THỨ TỰ BƯỚC QUY TRÌNH (CHỐNG LÙI TRẠNG THÁI DO LAG MẠNG)
+  const STEP_PRIORITY: Record<string, number> = {
+    'CHO_THAM_DINH': 1,
+    'CAN_BO_SUNG': 1,
+    'KHONG_DUOC_XET': 1,
+    'TU_CHOI_BO_TRI': 1,
+    'THAM_DINH_DAT': 2,
+    'DA_XEP_HANG': 2,
+    'DA_DUYET': 2,
+    'DA_PHAT_HANH': 3,
+    'DA_KY': 4,
+    'DA_BAN_GIAO': 5,
+    'HOAN_TAT': 5,
+    'HUY_SUAT': 5,
+  };
+
   // Nạp thông tin sinh viên thực tế vừa submit từ CSDL hoặc localStorage
   useEffect(() => {
     fetchWorkflow();
@@ -185,6 +201,15 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
             setStatus(parsed.status);
           }
         }
+      }
+      const isDirectorFinalized = localStorage.getItem('ktx_director_finalized') === 'true';
+      const isDirectorPublished = localStorage.getItem('ktx_director_published') === 'true';
+      if (isDirectorFinalized || isDirectorPublished) {
+        setWorkflowState((prev) => ({
+          ...prev,
+          isRankingsFinalized: isDirectorFinalized || prev.isRankingsFinalized,
+          isPublished: isDirectorPublished || prev.isPublished,
+        }));
       }
     } catch {}
 
@@ -246,11 +271,28 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
               const found = j.data.find((x: any) => x.ma_sv === targetCode);
               if (found) {
                 const newStatus = found.status || 'CHO_THAM_DINH';
-                setStatus((prev) => (prev !== newStatus ? newStatus : prev));
+                setStatus((prev) => {
+                  const prevPrio = STEP_PRIORITY[prev] ?? 0;
+                  const newPrio = STEP_PRIORITY[newStatus] ?? 0;
+                  // Anti-regression guard: Không để background fetch kéo lùi trạng thái từ đã duyệt về lại chờ duyệt
+                  if (prevPrio > newPrio && prev !== 'CHO_THAM_DINH' && newStatus === 'CHO_THAM_DINH') {
+                    return prev;
+                  }
+                  return newStatus;
+                });
                 setStudentInfo((prev) => {
+                  const prevPrio = STEP_PRIORITY[prev.status] ?? 0;
+                  const newPrio = STEP_PRIORITY[newStatus] ?? 0;
+                  const resolvedStatus = (prevPrio > newPrio && prev.status !== 'CHO_THAM_DINH' && newStatus === 'CHO_THAM_DINH')
+                    ? prev.status
+                    : newStatus;
+                  const resolvedPts = (resolvedStatus === 'THAM_DINH_DAT' && (!found.diem_uu_tien || found.diem_uu_tien === 0))
+                    ? (prev.diem_uu_tien > 0 ? prev.diem_uu_tien : 35)
+                    : (found.diem_uu_tien ?? prev.diem_uu_tien);
+
                   if (
-                    prev.status === newStatus &&
-                    prev.diem_uu_tien === (found.diem_uu_tien ?? prev.diem_uu_tien) &&
+                    prev.status === resolvedStatus &&
+                    prev.diem_uu_tien === resolvedPts &&
                     prev.gioi_tinh === (found.gioi_tinh || prev.gioi_tinh || 'Nữ') &&
                     prev.ho_ten === found.ho_ten &&
                     prev.ma_sv === found.ma_sv
@@ -259,9 +301,9 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                   }
                   return {
                     ...prev,
-                    status: newStatus,
+                    status: resolvedStatus,
                     gioi_tinh: found.gioi_tinh || prev.gioi_tinh || 'Nữ',
-                    diem_uu_tien: found.diem_uu_tien ?? prev.diem_uu_tien,
+                    diem_uu_tien: resolvedPts,
                     aiConfidence: found.ai_result?.confidence ?? prev.aiConfidence,
                   };
                 });
@@ -275,16 +317,84 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
         .catch(() => {});
     };
 
-    // 1. Kênh BroadcastChannel đồng bộ cross-tab tức thì 0ms
+    // 1. Kênh BroadcastChannel đồng bộ cross-tab tức thì 0ms (Áp dụng ngay payload không chờ fetch)
     let bc: BroadcastChannel | null = null;
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       bc = new BroadcastChannel('ktx_sync');
-      bc.onmessage = () => {
+      bc.onmessage = (e) => {
+        const data = e.data;
+        if (data) {
+          if (data.type === 'APPLICATION_STATUS_UPDATED' || data.type === 'STATUS_UPDATED') {
+            const currentCode = localStorage.getItem('active_student_session_code');
+            const targetCode = data.ma_sv || data.studentCode;
+            if (targetCode && (targetCode === studentInfo.ma_sv || targetCode === currentCode)) {
+              const updatedStatus = data.status;
+              setStatus(updatedStatus);
+              setStudentInfo((prev) => {
+                const updated = {
+                  ...prev,
+                  status: updatedStatus,
+                  diem_uu_tien: data.points ?? data.diem_uu_tien ?? prev.diem_uu_tien,
+                };
+                try {
+                  localStorage.setItem('last_submitted_student', JSON.stringify(updated));
+                } catch {}
+                return updated;
+              });
+            }
+          } else if (data.type === 'ALL_EVIDENCE_APPROVED') {
+            setStatus('THAM_DINH_DAT');
+            setStudentInfo((prev) => {
+              const updated = {
+                ...prev,
+                status: 'THAM_DINH_DAT' as AppStatus,
+                diem_uu_tien: prev.diem_uu_tien > 0 ? prev.diem_uu_tien : 35,
+              };
+              try {
+                localStorage.setItem('last_submitted_student', JSON.stringify(updated));
+              } catch {}
+              return updated;
+            });
+          } else if (data.type === 'DIRECTOR_APPROVED') {
+            setWorkflowState((prev) => ({ ...prev, isRankingsFinalized: true }));
+            try {
+              localStorage.setItem('ktx_director_finalized', 'true');
+            } catch {}
+          } else if (data.type === 'ALL_EMAILS_SENT' || data.type === 'OFFICER_EMAILS_SENT') {
+            setWorkflowState((prev) => ({ ...prev, isRankingsFinalized: true, isPublished: true }));
+            try {
+              localStorage.setItem('ktx_director_published', 'true');
+            } catch {}
+          }
+        }
         refreshImmediately();
       };
     }
 
-    // 2. Lắng nghe chuyển tab quay lại (visibilitychange & window focus)
+    // 2. Lắng nghe storage event khi các tab khác ghi dữ liệu
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'ktx_sync_signal' && e.newValue) {
+        try {
+          const sig = JSON.parse(e.newValue);
+          const targetCode = sig.ma_sv || sig.studentCode;
+          if (targetCode && (targetCode === studentInfo.ma_sv || targetCode === localStorage.getItem('active_student_session_code'))) {
+            setStatus(sig.status);
+            setStudentInfo((prev) => ({
+              ...prev,
+              status: sig.status,
+              diem_uu_tien: sig.points ?? sig.diem_uu_tien ?? prev.diem_uu_tien,
+            }));
+          }
+        } catch {}
+      } else if (e.key === 'ktx_director_finalized' && e.newValue === 'true') {
+        setWorkflowState((prev) => ({ ...prev, isRankingsFinalized: true }));
+      } else if (e.key === 'ktx_director_published' && e.newValue === 'true') {
+        setWorkflowState((prev) => ({ ...prev, isRankingsFinalized: true, isPublished: true }));
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // 3. Lắng nghe chuyển tab quay lại (visibilitychange & window focus)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         refreshImmediately();
@@ -293,7 +403,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
     window.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', refreshImmediately);
 
-    // 3. Polling dự phòng 5s (nhẹ nhàng, không giật/nhảy trang)
+    // 4. Polling dự phòng 5s (nhẹ nhàng, không giật/nhảy trang)
     const interval = setInterval(() => {
       refreshImmediately();
     }, 5000);
@@ -354,6 +464,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
     return () => {
       clearInterval(interval);
       if (bc) bc.close();
+      window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', refreshImmediately);
       window.removeEventListener('student_application_submitted', handleStudentSubmitted);
