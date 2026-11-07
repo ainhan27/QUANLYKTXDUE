@@ -333,6 +333,33 @@ export async function POST(request: Request) {
 
     if (action === 'sign') {
       // BƯỚC 8: Sinh viên Ký hợp đồng điện tử (SIGNED)
+      const studentCode = body.studentCode || body.ma_sv || body.applicationId;
+      if (studentCode) {
+        const { updateApplicationStatusInStore } = await import('@/lib/data/live-store');
+        updateApplicationStatusInStore(studentCode, 'DA_KY');
+
+        if (
+          process.env.NEXT_PUBLIC_SUPABASE_URL &&
+          !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id') &&
+          process.env.SUPABASE_SERVICE_ROLE_KEY
+        ) {
+          try {
+            const { createAdminClient } = await import('@/lib/supabase/admin');
+            const supabase = createAdminClient();
+            await supabase
+              .from('applications')
+              .update({ status: 'DA_KY', updated_at: new Date().toISOString() })
+              .or(`ma_sv.eq.${studentCode},id.eq.${studentCode}`);
+            await supabase
+              .from('contracts')
+              .update({ status: 'DA_KY', signed_at: new Date().toISOString() })
+              .or(`application_id.eq.${studentCode}`);
+          } catch (e) {
+            console.warn('Lỗi sync sign status lên Supabase:', e);
+          }
+        }
+      }
+
       const updated = saveWorkflowState({
         currentStep: 9,
         isSigned: true,

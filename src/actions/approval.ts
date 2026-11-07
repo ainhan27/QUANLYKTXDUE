@@ -367,21 +367,40 @@ export async function signContractAction(applicationId: string, otpInput: string
     try {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
         const supabaseAdmin = createAdminClient();
+        const targetMaSv = app?.ma_sv || studentCode || applicationId;
+        const targetId = app?.id;
 
         // Cập nhật hợp đồng thành DA_KY (SIGNED)
-        await supabaseAdmin
+        let contractQuery = supabaseAdmin
           .from('contracts')
           .update({
             status: 'DA_KY',
             signed_at: new Date().toISOString(),
-          })
-          .eq('application_id', applicationId);
+          });
+        if (targetId && targetMaSv) {
+          contractQuery = contractQuery.or(`application_id.eq.${targetId},application_id.eq.${targetMaSv}`);
+        } else if (targetMaSv) {
+          contractQuery = contractQuery.eq('application_id', targetMaSv);
+        } else {
+          contractQuery = contractQuery.eq('application_id', applicationId);
+        }
+        await contractQuery;
 
         // Cập nhật hồ sơ sang DA_KY
-        await supabaseAdmin
+        let appQuery = supabaseAdmin
           .from('applications')
-          .update({ status: 'DA_KY' })
-          .eq('id', applicationId);
+          .update({
+            status: 'DA_KY',
+            updated_at: new Date().toISOString(),
+          });
+        if (targetId && targetMaSv) {
+          appQuery = appQuery.or(`id.eq.${targetId},ma_sv.eq.${targetMaSv}`);
+        } else if (targetMaSv) {
+          appQuery = appQuery.eq('ma_sv', targetMaSv);
+        } else {
+          appQuery = appQuery.eq('id', applicationId);
+        }
+        await appQuery;
 
         // Chuyển phòng sang trạng thái đã giữ chỗ (DOB_PH)
         await supabaseAdmin
@@ -402,6 +421,15 @@ export async function signContractAction(applicationId: string, otpInput: string
         signedAt: new Date().toISOString(),
       });
       updateApplicationStatusInStore(applicationId, 'DA_KY');
+      if (studentCode && studentCode !== applicationId) {
+        updateApplicationStatusInStore(studentCode, 'DA_KY');
+      }
+      if (app?.ma_sv && app.ma_sv !== applicationId) {
+        updateApplicationStatusInStore(app.ma_sv, 'DA_KY');
+      }
+      if (app?.id && app.id !== applicationId) {
+        updateApplicationStatusInStore(app.id, 'DA_KY');
+      }
     } catch {}
 
     return {
@@ -426,8 +454,8 @@ export async function handoverRoomAction(applicationId: string, roomNumber: stri
         // Cập nhật trạng thái DA_BAN_GIAO
         await supabaseAdmin
           .from('applications')
-          .update({ status: 'DA_BAN_GIAO' })
-          .eq('id', applicationId);
+          .update({ status: 'DA_BAN_GIAO', updated_at: new Date().toISOString() })
+          .or(`id.eq.${applicationId},ma_sv.eq.${applicationId}`);
 
         // Cập nhật phòng sang DANG_SU_DUNG
         await supabaseAdmin

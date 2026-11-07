@@ -35,6 +35,8 @@ interface QueueItem {
   nameMatched?: boolean;
   cccdMatched?: boolean;
   detectedOcrText: string;
+  detectedCccdText?: string;
+  detectedPriorityText?: string;
   cccdCheck: {
     hasKeyword: boolean;
     hasPoliceChief: boolean;
@@ -518,6 +520,8 @@ export default function EvidenceReviewQueue() {
               nameMatched: nameMatches,
               cccdMatched: cccdMatches,
               detectedOcrText: app.ai_result?.detected_raw_text || (app.file_url ? 'Đã đọc văn bản từ ảnh thực tế' : 'Chưa có ảnh hoặc chưa quét OCR'),
+              detectedCccdText: app.ai_result?.detected_cccd_text || (app.cccd_image_base64 || cccdImgUrl ? `CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\nCĂN CƯỚC CÔNG DÂN\nSố / No.: ${app.cccd}\nHọ và tên: ${app.ho_ten}\nNơi thường trú: ${app.dia_chi_thuong_tru || 'Đà Nẵng'}` : ''),
+              detectedPriorityText: app.ai_result?.detected_priority_text || ((app.dien_uu_tien === 'KHONG' || app.diem_uu_tien === 0) ? 'Hồ sơ tiêu chuẩn: Sinh viên không đăng ký diện ưu tiên (0đ).' : (priorityImgUrl ? `CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nUBND XÃ/PHƯỜNG ...\nGIẤY CHỨNG NHẬN DIỆN CHÍNH SÁCH ƯU TIÊN\n${app.dien_uu_tien_label || app.dien_uu_tien}\nHọ và tên sinh viên: ${app.ho_ten}\n(Đã xác nhận mộc tròn đỏ của cơ quan thẩm quyền)` : '')),
               cccdCheck: {
                 hasKeyword: hasKeywords,
                 hasPoliceChief: isApproved || Boolean(app.ai_result?.cccd_analysis?.has_police_chief_keyword),
@@ -2080,15 +2084,42 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                       );
                     })()}
 
-                    {/* 3. VĂN BẢN OCR TRÍCH XUẤT */}
+                    {/* 3. VĂN BẢN OCR TRÍCH XUẤT (TÁCH BIỆT RÕ RÀNG CCCD VÀ GIẤY ƯU TIÊN) */}
                     <details className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs cursor-pointer group">
                       <summary className="font-bold text-slate-700 select-none flex items-center justify-between">
-                        <span>Xem văn bản OCR trích xuất</span>
+                        <span className="flex items-center gap-1.5">
+                          <span>🔍</span>
+                          <span>Xem văn bản OCR trích xuất (Tách biệt CCCD &amp; Giấy ưu tiên)</span>
+                        </span>
                         <span className="text-[10px] text-slate-400 group-open:rotate-180 transition-transform">▼</span>
                       </summary>
-                      <p className="font-mono text-[11px] text-slate-600 mt-2 whitespace-pre-wrap max-h-32 overflow-y-auto">
-                        {isImageBroken ? '(Không thể trích xuất do tệp ảnh bị lỗi)' : currentItem.detectedOcrText}
-                      </p>
+                      <div className="mt-2.5 space-y-2.5 pt-2 border-t border-slate-200">
+                        {/* Khối 1: CCCD */}
+                        <div className="p-2 bg-blue-50/70 border border-blue-200 rounded">
+                          <div className="font-bold text-[#003366] text-[11px] mb-1 flex items-center gap-1">
+                            <span>🪪</span>
+                            <span>Văn bản OCR Căn cước công dân (CCCD):</span>
+                          </div>
+                          <p className="font-mono text-[11px] text-slate-700 whitespace-pre-wrap max-h-24 overflow-y-auto bg-white p-2 rounded border border-blue-100">
+                            {isImageBroken
+                              ? '(Không thể trích xuất do tệp ảnh bị lỗi)'
+                              : (currentItem.detectedCccdText || currentItem.detectedOcrText || '(Không có văn bản trích xuất)')}
+                          </p>
+                        </div>
+
+                        {/* Khối 2: Giấy ưu tiên */}
+                        <div className="p-2 bg-amber-50/70 border border-amber-200 rounded">
+                          <div className="font-bold text-amber-900 text-[11px] mb-1 flex items-center gap-1">
+                            <span>📜</span>
+                            <span>Văn bản OCR Giấy tờ chính sách / Ưu tiên:</span>
+                          </div>
+                          <p className="font-mono text-[11px] text-slate-700 whitespace-pre-wrap max-h-24 overflow-y-auto bg-white p-2 rounded border border-amber-100">
+                            {isImageBroken
+                              ? '(Không thể trích xuất do tệp ảnh bị lỗi)'
+                              : (currentItem.detectedPriorityText || (currentItem.dien_uu_tien === 'KHONG' || currentItem.diem_uu_tien === 0 ? 'Hồ sơ tiêu chuẩn: Không đăng ký diện ưu tiên (0đ).' : '(Không có văn bản trích xuất)'))}
+                          </p>
+                        </div>
+                      </div>
                     </details>
 
                     {/* 4. DỰ THẢO EMAIL AI */}

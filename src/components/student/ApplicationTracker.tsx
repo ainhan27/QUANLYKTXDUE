@@ -135,11 +135,29 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
   // HÀM CHUYỂN ĐỔI HỒ SƠ SINH VIÊN HIỂN THỊ (CỐ ĐỊNH PHIÊN KHÔNG NHẢY TÀI KHOẢN)
   const applyStudent = (app: any, list: any[] = allApplications) => {
     if (!app) return;
-    const finalStatus: AppStatus = app.status || 'CHO_THAM_DINH';
+    const isSignedLocally = typeof window !== 'undefined' && Boolean(
+      app.ma_sv && (
+        localStorage.getItem(`student_signed_${app.ma_sv}`) === 'true' ||
+        localStorage.getItem(`student_status_${app.ma_sv}`) === 'DA_KY' ||
+        localStorage.getItem(`student_status_${app.ma_sv}`) === 'DA_BAN_GIAO'
+      )
+    );
+    const rawStatus: AppStatus = app.status || 'CHO_THAM_DINH';
+    let finalStatus: AppStatus = isSignedLocally
+      ? (rawStatus === 'DA_BAN_GIAO' ? 'DA_BAN_GIAO' : 'DA_KY')
+      : rawStatus;
+
+    // Chống lùi trạng thái so với state hiện tại (Anti-Regression Rule)
+    const prevPrio = STEP_PRIORITY[status] ?? 0;
+    const newPrio = STEP_PRIORITY[finalStatus] ?? 0;
+    if (prevPrio > newPrio && finalStatus !== 'HUY_SUAT') {
+      finalStatus = status;
+    }
+
     const confidence: number =
       app.ai_result?.confidence ??
       app.aiConfidence ??
-      (finalStatus === 'THAM_DINH_DAT' ? 0.98 : 0.35);
+      (finalStatus === 'THAM_DINH_DAT' || finalStatus === 'DA_KY' || finalStatus === 'DA_BAN_GIAO' ? 0.98 : 0.35);
 
     const resolved = {
       ho_ten: app.ho_ten || '',
@@ -197,6 +215,14 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
       if (lastRaw) {
         const parsed = JSON.parse(lastRaw);
         if (parsed && (parsed.ma_sv || parsed.ho_ten)) {
+          const isSigned = parsed.ma_sv && (
+            localStorage.getItem(`student_signed_${parsed.ma_sv}`) === 'true' ||
+            localStorage.getItem(`student_status_${parsed.ma_sv}`) === 'DA_KY' ||
+            localStorage.getItem(`student_status_${parsed.ma_sv}`) === 'DA_BAN_GIAO'
+          );
+          if (isSigned && (STEP_PRIORITY[parsed.status] ?? 0) < 4) {
+            parsed.status = 'DA_KY';
+          }
           setStudentInfo((prev) => ({ ...prev, ...parsed }));
           if (parsed.status) {
             setStatus(parsed.status);
@@ -271,12 +297,24 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
             if (targetCode) {
               const found = j.data.find((x: any) => x.ma_sv === targetCode);
               if (found) {
-                const newStatus = found.status || 'CHO_THAM_DINH';
+                const isSignedLocally = typeof window !== 'undefined' && Boolean(
+                  localStorage.getItem(`student_signed_${targetCode}`) === 'true' ||
+                  localStorage.getItem(`student_status_${targetCode}`) === 'DA_KY' ||
+                  localStorage.getItem(`student_status_${targetCode}`) === 'DA_BAN_GIAO'
+                );
+                const rawNewStatus = found.status || 'CHO_THAM_DINH';
+                const newStatus = isSignedLocally
+                  ? (rawNewStatus === 'DA_BAN_GIAO' ? 'DA_BAN_GIAO' : 'DA_KY')
+                  : rawNewStatus;
+
                 setStatus((prev) => {
+                  if (isSignedLocally) {
+                    return prev === 'DA_BAN_GIAO' ? prev : 'DA_KY';
+                  }
                   const prevPrio = STEP_PRIORITY[prev] ?? 0;
                   const newPrio = STEP_PRIORITY[newStatus] ?? 0;
-                  // Anti-regression guard: Không để background fetch kéo lùi trạng thái từ đã duyệt về lại chờ duyệt
-                  if (prevPrio > newPrio && prev !== 'CHO_THAM_DINH' && newStatus === 'CHO_THAM_DINH') {
+                  // Anti-regression guard: Không bao giờ để background fetch kéo lùi trạng thái quy trình
+                  if (prevPrio > newPrio && newStatus !== 'HUY_SUAT') {
                     return prev;
                   }
                   return newStatus;
@@ -284,7 +322,9 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                 setStudentInfo((prev) => {
                   const prevPrio = STEP_PRIORITY[prev.status] ?? 0;
                   const newPrio = STEP_PRIORITY[newStatus] ?? 0;
-                  const resolvedStatus = (prevPrio > newPrio && prev.status !== 'CHO_THAM_DINH' && newStatus === 'CHO_THAM_DINH')
+                  const resolvedStatus = isSignedLocally
+                    ? (prev.status === 'DA_BAN_GIAO' ? prev.status : 'DA_KY')
+                    : (prevPrio > newPrio && newStatus !== 'HUY_SUAT')
                     ? prev.status
                     : newStatus;
                   const resolvedPts = (resolvedStatus === 'THAM_DINH_DAT' && (!found.diem_uu_tien || found.diem_uu_tien === 0))
@@ -331,15 +371,36 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
             if (targetCode && (targetCode === studentInfo.ma_sv || targetCode === currentCode)) {
               if (data.action === 'MANUAL_REVIEWING' || data.isBeingReviewed) {
                 setIsBeingReviewed(true);
-              } else if (data.status === 'THAM_DINH_DAT' || data.status === 'CAN_BO_SUNG') {
+              } else if (data.status === 'THAM_DINH_DAT' || data.status === 'CAN_BO_SUNG' || data.status === 'DA_KY' || data.status === 'DA_BAN_GIAO') {
                 setIsBeingReviewed(false);
               }
-              const updatedStatus = data.status;
-              setStatus(updatedStatus);
+              const isSignedLocally = typeof window !== 'undefined' && Boolean(
+                localStorage.getItem(`student_signed_${targetCode}`) === 'true' ||
+                localStorage.getItem(`student_status_${targetCode}`) === 'DA_KY' ||
+                localStorage.getItem(`student_status_${targetCode}`) === 'DA_BAN_GIAO'
+              );
+              const targetStatus = isSignedLocally
+                ? (data.status === 'DA_BAN_GIAO' ? 'DA_BAN_GIAO' : 'DA_KY')
+                : (data.status || 'CHO_THAM_DINH');
+
+              setStatus((prev) => {
+                if (isSignedLocally) return prev === 'DA_BAN_GIAO' ? prev : 'DA_KY';
+                const prevPrio = STEP_PRIORITY[prev] ?? 0;
+                const newPrio = STEP_PRIORITY[targetStatus] ?? 0;
+                if (prevPrio > newPrio && targetStatus !== 'HUY_SUAT') return prev;
+                return targetStatus;
+              });
               setStudentInfo((prev) => {
+                const prevPrio = STEP_PRIORITY[prev.status] ?? 0;
+                const newPrio = STEP_PRIORITY[targetStatus] ?? 0;
+                const resolvedStatus = isSignedLocally
+                  ? (prev.status === 'DA_BAN_GIAO' ? prev.status : 'DA_KY')
+                  : (prevPrio > newPrio && targetStatus !== 'HUY_SUAT')
+                  ? prev.status
+                  : targetStatus;
                 const updated = {
                   ...prev,
-                  status: updatedStatus,
+                  status: resolvedStatus,
                   diem_uu_tien: data.points ?? data.diem_uu_tien ?? prev.diem_uu_tien,
                 };
                 try {
@@ -350,17 +411,26 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
             }
           } else if (data.type === 'ALL_EVIDENCE_APPROVED') {
             setIsBeingReviewed(false);
-            setStatus('THAM_DINH_DAT');
+            // Cán bộ duyệt toàn bộ minh chứng: CHỈ áp dụng cho những hồ sơ chưa được duyệt (bước 1, 2)
+            setStatus((prev) => {
+              if (prev === 'CHO_THAM_DINH' || prev === 'CAN_BO_SUNG') {
+                return 'THAM_DINH_DAT';
+              }
+              return prev;
+            });
             setStudentInfo((prev) => {
-              const updated = {
-                ...prev,
-                status: 'THAM_DINH_DAT' as AppStatus,
-                diem_uu_tien: prev.diem_uu_tien > 0 ? prev.diem_uu_tien : 35,
-              };
-              try {
-                localStorage.setItem('last_submitted_student', JSON.stringify(updated));
-              } catch {}
-              return updated;
+              if (prev.status === 'CHO_THAM_DINH' || prev.status === 'CAN_BO_SUNG') {
+                const updated = {
+                  ...prev,
+                  status: 'THAM_DINH_DAT' as AppStatus,
+                  diem_uu_tien: prev.diem_uu_tien > 0 ? prev.diem_uu_tien : 35,
+                };
+                try {
+                  localStorage.setItem('last_submitted_student', JSON.stringify(updated));
+                } catch {}
+                return updated;
+              }
+              return prev;
             });
           } else if (data.type === 'DIRECTOR_APPROVED') {
             setWorkflowState((prev) => ({ ...prev, isRankingsFinalized: true }));
@@ -387,15 +457,39 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
           if (targetCode && (targetCode === studentInfo.ma_sv || targetCode === localStorage.getItem('active_student_session_code'))) {
             if (sig.action === 'MANUAL_REVIEWING' || sig.isBeingReviewed) {
               setIsBeingReviewed(true);
-            } else if (sig.status === 'THAM_DINH_DAT' || sig.status === 'CAN_BO_SUNG') {
+            } else if (sig.status === 'THAM_DINH_DAT' || sig.status === 'CAN_BO_SUNG' || sig.status === 'DA_KY' || sig.status === 'DA_BAN_GIAO') {
               setIsBeingReviewed(false);
             }
-            setStatus(sig.status);
-            setStudentInfo((prev) => ({
-              ...prev,
-              status: sig.status,
-              diem_uu_tien: sig.points ?? sig.diem_uu_tien ?? prev.diem_uu_tien,
-            }));
+            const isSignedLocally = typeof window !== 'undefined' && Boolean(
+              localStorage.getItem(`student_signed_${targetCode}`) === 'true' ||
+              localStorage.getItem(`student_status_${targetCode}`) === 'DA_KY' ||
+              localStorage.getItem(`student_status_${targetCode}`) === 'DA_BAN_GIAO'
+            );
+            const targetSigStatus = isSignedLocally
+              ? (sig.status === 'DA_BAN_GIAO' ? 'DA_BAN_GIAO' : 'DA_KY')
+              : (sig.status || 'CHO_THAM_DINH');
+
+            setStatus((prev) => {
+              if (isSignedLocally) return prev === 'DA_BAN_GIAO' ? prev : 'DA_KY';
+              const prevPrio = STEP_PRIORITY[prev] ?? 0;
+              const newPrio = STEP_PRIORITY[targetSigStatus] ?? 0;
+              if (prevPrio > newPrio && targetSigStatus !== 'HUY_SUAT') return prev;
+              return targetSigStatus;
+            });
+            setStudentInfo((prev) => {
+              const prevPrio = STEP_PRIORITY[prev.status] ?? 0;
+              const newPrio = STEP_PRIORITY[targetSigStatus] ?? 0;
+              const resolved = isSignedLocally
+                ? (prev.status === 'DA_BAN_GIAO' ? prev.status : 'DA_KY')
+                : (prevPrio > newPrio && targetSigStatus !== 'HUY_SUAT')
+                ? prev.status
+                : targetSigStatus;
+              return {
+                ...prev,
+                status: resolved,
+                diem_uu_tien: sig.points ?? sig.diem_uu_tien ?? prev.diem_uu_tien,
+              };
+            });
           }
         } catch {}
       } else if (e.key === 'ktx_director_finalized' && e.newValue === 'true') {
@@ -593,14 +687,58 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
       const res = await signContractAction(studentInfo.ma_sv, otpInput.trim(), studentInfo.ma_sv);
       if (res.success) {
         setOtpFailedCount(0);
+
+        // 1. Khóa cứng tiến trình trên Client Storage (Chống State Regression tuyệt đối)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`student_signed_${studentInfo.ma_sv}`, 'true');
+          localStorage.setItem(`student_status_${studentInfo.ma_sv}`, 'DA_KY');
+          try {
+            const lastRaw = localStorage.getItem('last_submitted_student');
+            if (lastRaw) {
+              const parsed = JSON.parse(lastRaw);
+              parsed.status = 'DA_KY';
+              localStorage.setItem('last_submitted_student', JSON.stringify(parsed));
+            }
+          } catch {}
+        }
+
+        // 2. Cập nhật trạng thái quy trình lên Server và CSDL Supabase
         await fetch('/api/workflow', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'sign' }),
+          body: JSON.stringify({
+            action: 'sign',
+            studentCode: studentInfo.ma_sv,
+            ma_sv: studentInfo.ma_sv,
+          }),
         });
-        await fetchWorkflow();
+
+        // 3. Cập nhật state UI sang Bước 5
         setStatus('DA_KY');
-        setWorkflowNotice('Ký hợp đồng điện tử thành công (SIGNED). Suất nội trú đã chuyển sang trạng thái ĐÃ GIỮ CHỖ và sẵn sàng tiếp nhận phòng.');
+        setStudentInfo((prev) => ({ ...prev, status: 'DA_KY' }));
+        setWorkflowNotice('Ký hợp đồng điện tử thành công (SIGNED). Suất nội trú đã chuyển sang trạng thái ĐÃ GIỮ CHỖ và sẵn sàng tiếp nhận phòng (Bước 5).');
+
+        // 4. Phát tín hiệu Real-time cross-tab
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          const bc = new BroadcastChannel('ktx_sync');
+          bc.postMessage({
+            type: 'APPLICATION_STATUS_UPDATED',
+            ma_sv: studentInfo.ma_sv,
+            status: 'DA_KY',
+            isStudentSigned: true,
+          });
+        }
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('ktx_sync_signal', JSON.stringify({
+            type: 'APPLICATION_STATUS_UPDATED',
+            ma_sv: studentInfo.ma_sv,
+            status: 'DA_KY',
+            isStudentSigned: true,
+            timestamp: Date.now(),
+          }));
+        }
+
+        await fetchWorkflow();
       } else {
         const nextFailed = otpFailedCount + 1;
         setOtpFailedCount(nextFailed);
@@ -621,6 +759,10 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
   // RESET TIẾN TRÌNH VỀ BƯỚC 3 ĐỂ DEMO LẠI
   const handleResetWorkflow = async () => {
     try {
+      if (typeof window !== 'undefined' && studentInfo.ma_sv) {
+        localStorage.removeItem(`student_signed_${studentInfo.ma_sv}`);
+        localStorage.removeItem(`student_status_${studentInfo.ma_sv}`);
+      }
       await resetWorkflowAction();
       await fetch('/api/workflow', {
         method: 'POST',
@@ -801,7 +943,14 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
     status === 'DA_PHAT_HANH' ||
     status === 'DA_KY' ||
     status === 'DA_BAN_GIAO';
-  const isStudentSigned = status === 'DA_KY' || status === 'DA_BAN_GIAO';
+  const isLocallySigned = typeof window !== 'undefined' && Boolean(
+    studentInfo.ma_sv && (
+      localStorage.getItem(`student_signed_${studentInfo.ma_sv}`) === 'true' ||
+      localStorage.getItem(`student_status_${studentInfo.ma_sv}`) === 'DA_KY' ||
+      localStorage.getItem(`student_status_${studentInfo.ma_sv}`) === 'DA_BAN_GIAO'
+    )
+  );
+  const isStudentSigned = status === 'DA_KY' || status === 'DA_BAN_GIAO' || isLocallySigned;
   const isStudentHandedOver = status === 'DA_BAN_GIAO' || (isStudentSigned && Boolean(workflowState.isHandedOver));
   const isAdmitted = !isPendingReview && !isSupplement && !isCancelled && !isDeniedResidence && !isDisqualified && studentRank > 0 && studentRank <= 120;
 
@@ -835,7 +984,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
       num: 3,
       title: '3. Phê duyệt & Công bố',
       desc:
-        workflowState.isPublished
+        isStudentSigned || workflowState.isPublished
           ? 'Đã công bố danh sách'
           : workflowState.isRankingsFinalized
           ? 'Trưởng ban đã phê duyệt chính thức'
@@ -865,14 +1014,15 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
   let currentStepNumber = 2;
   if (isDeniedResidence) {
     currentStepNumber = 1; // Bước 1: Tiếp nhận & Sàng lọc (Bị từ chối do HK Đà Nẵng)
-  } else if (isPendingReview || isSupplement || isDisqualified) {
-    // ƯU TIÊN TUYỆT ĐỐI: Khi hồ sơ còn đang chờ thẩm định (CHO_THAM_DINH) hoặc cần bổ sung (CAN_BO_SUNG) hoặc bị loại do quá 48h (KHONG_DUOC_XET),
-    // sinh viên BẮT BUỘC ĐỨNG Ở BƯỚC 2 (Thẩm định minh chứng). TUYỆT ĐỐI KHÔNG NHẢY LÊN BƯỚC 5!
-    currentStepNumber = 2;
+  } else if (isStudentSigned) {
+    // KHÓA CỨNG BƯỚC 5: Khi sinh viên đã ký hợp đồng OTP thành công, cố định ở Bước 5 (Tiếp nhận & Bàn giao)
+    // TUYỆT ĐỐI NGĂN CHẶN STATE REGRESSION LÙI VỀ BƯỚC 3 HAY BƯỚC 4 DO RE-RENDER HAY CACHE CŨ!
+    currentStepNumber = 5;
   } else if (isCancelled) {
     currentStepNumber = 5; // Bị hủy suất
-  } else if (isStudentSigned) {
-    currentStepNumber = 5; // Bước 5: Tiếp nhận phòng & bàn giao (Chỉ khi CHÍNH SINH VIÊN NÀY đã ký số)
+  } else if (isPendingReview || isSupplement || isDisqualified) {
+    // ƯU TIÊN: Khi hồ sơ còn đang chờ thẩm định hoặc cần bổ sung hoặc bị loại, sinh viên đứng ở Bước 2
+    currentStepNumber = 2;
   } else if ((workflowState.isPublished || status === 'DA_PHAT_HANH') && isAdmitted) {
     currentStepNumber = 4; // Bước 4: Mở cổng ký hợp đồng điện tử 72h (Trúng tuyển Top 120)
   } else if (isApprovedEvidence || workflowState.isRankingsFinalized || studentInfo.diem_uu_tien > 0) {
@@ -883,13 +1033,9 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
 
   // Điều kiện để ẩn cột "Thông tin hồ sơ đã ghi nhận" và hiển thị toàn màn hình Hợp đồng
   const isContractOrHandoverStep =
-    !isPendingReview &&
-    !isSupplement &&
     !isCancelled &&
     !isDeniedResidence &&
-    !isDisqualified &&
-    isAdmitted &&
-    ((workflowState.isPublished || status === 'DA_PHAT_HANH') || isStudentSigned);
+    (isStudentSigned || (!isPendingReview && !isSupplement && !isDisqualified && isAdmitted && (workflowState.isPublished || status === 'DA_PHAT_HANH')));
 
   // NẾU CHƯA CÓ PHIÊN ĐĂNG NHẬP SINH VIÊN (CHƯA ĐĂNG NHẬP VÀ CHƯA NỘP ĐƠN)
   if (!studentInfo.ma_sv) {
@@ -1159,7 +1305,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
         )}
 
         {/* GIAI ĐOẠN 3B: TRƯỞNG BAN ĐÃ DUYỆT – CHỜ CÁN BỘ QLSV GỬI EMAIL */}
-        {workflowState.isRankingsFinalized && !workflowState.isPublished && !isPendingReview && (
+        {workflowState.isRankingsFinalized && !workflowState.isPublished && !isPendingReview && !isStudentSigned && (
           <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-indigo-300 rounded-xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
             <div className="space-y-1">
               <div className="flex items-center space-x-2">
@@ -1189,6 +1335,41 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                 <span>✉️</span>
                 <span>Cổng QLSV: Phát Hành Thông Báo &rarr;</span>
               </Link>
+            </div>
+          </div>
+        )}
+
+        {/* GIAI ĐOẠN 5: ĐÃ HOÀN TẤT KÝ SỐ – SẴN SÀNG TIẾP NHẬN PHÒNG */}
+        {isStudentSigned && !isCancelled && (
+          <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-500 rounded-xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="space-y-1">
+              <div className="flex items-center space-x-2">
+                <span className="px-2.5 py-0.5 bg-emerald-700 text-white text-[10px] font-bold rounded uppercase">
+                  Bước 5: Tiếp Nhận &amp; Bàn Giao
+                </span>
+                <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">
+                  ✓ Đã Ký Hợp Đồng OTP Thành Công
+                </span>
+              </div>
+              <h4 className="font-bold text-sm text-emerald-950">
+                🎉 Hồ sơ đã ký số hợp lệ – Phòng {personalRoom} đã được khóa giữ chỗ thành công!
+              </h4>
+              <p className="text-emerald-800 text-xs leading-relaxed max-w-2xl">
+                Hợp đồng điện tử của bạn đã được xác thực an toàn bằng mã OTP. Vui lòng xem và in Giấy báo tiếp nhận nội trú bên dưới để làm thủ tục nhận phòng và chìa khóa tại KTX DUE.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('formal-contract-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg text-xs shadow transition flex items-center space-x-1"
+              >
+                <span>📄</span>
+                <span>Xem Giấy Báo &amp; Hợp Đồng &darr;</span>
+              </button>
             </div>
           </div>
         )}
@@ -1226,7 +1407,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
         )}
 
         {/* GIAI ĐOẠN 4: DANH SÁCH CHỜ */}
-        {workflowState.isPublished && !isAdmitted && (
+        {workflowState.isPublished && !isAdmitted && !isStudentSigned && (
           <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
             <div>
               <div className="flex items-center space-x-2">
