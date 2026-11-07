@@ -120,13 +120,27 @@ export default function ApprovalDashboard() {
           const isLocallyPublished =
             typeof window !== 'undefined' &&
             localStorage.getItem('ktx_director_published') === 'true';
+          const isLocallyReset =
+            typeof window !== 'undefined' &&
+            localStorage.getItem('ktx_director_reset') === 'true';
 
-          // Anti-flapping: Trạng thái duyệt chính thức là bền vững một chiều (forward-only)
-          // Một khi đã ký duyệt thì cố định trạng thái, không bị flapping lùi về chưa duyệt do độ trễ mạng
+          // Khi có cờ reset vừa thực hiện
+          if (isLocallyReset) {
+            if (!wfJson.workflow.isRankingsFinalized) {
+              localStorage.removeItem('ktx_director_reset');
+            }
+            return {
+              ...wfJson.workflow,
+              isRankingsFinalized: false,
+              isPublished: false,
+            };
+          }
+
+          // Anti-flapping: Trạng thái duyệt chính thức là bền vững một chiều
           const resolvedFinalized =
-            prev.isRankingsFinalized || isLocallyFinalized || Boolean(wfJson.workflow.isRankingsFinalized);
+            isLocallyFinalized || Boolean(wfJson.workflow.isRankingsFinalized);
           const resolvedPublished =
-            prev.isPublished || isLocallyPublished || Boolean(wfJson.workflow.isPublished);
+            isLocallyPublished || Boolean(wfJson.workflow.isPublished);
 
           if (
             prev.currentStep === wfJson.workflow.currentStep &&
@@ -167,6 +181,18 @@ export default function ApprovalDashboard() {
           );
         } else if (e.data?.type === 'DIRECTOR_APPROVED') {
           setWorkflowState((prev) => ({ ...prev, isRankingsFinalized: true }));
+        } else if (e.data?.type === 'WORKFLOW_RESET') {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('ktx_director_finalized');
+            localStorage.removeItem('ktx_director_published');
+            localStorage.setItem('ktx_director_reset', 'true');
+          }
+          setWorkflowState((prev) => ({
+            ...prev,
+            isRankingsFinalized: false,
+            isPublished: false,
+            currentStep: 3,
+          }));
         } else if (e.data?.type === 'OFFICER_EMAILS_SENT' || e.data?.type === 'ALL_EMAILS_SENT') {
           setWorkflowState((prev) => ({ ...prev, isRankingsFinalized: true, isPublished: true }));
         }
@@ -232,10 +258,11 @@ export default function ApprovalDashboard() {
   };
 
   // TRƯỞNG BAN KÝ DUYỆT DANH SÁCH CHÍNH THỨC
-  // SAU KHI DUYỆT: CHUYỂN TIẾP CHO CÁN BỘ QLSV ĐỂ PHÁT HÀNH EMAIL (AI SOẠN SẴN)
+  // SAU KHI DUYỆT: QUYẾT ĐỊNH BAN HÀNH CHÍNH THỨC, CHUYỂN SANG BƯỚC 3B CHO CÁN BỘ QLSV
   const handleApproveAndPublish = async () => {
     setIsProcessing(true);
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('ktx_director_reset');
       localStorage.setItem('ktx_director_finalized', 'true');
     }
     setWorkflowState((prev) => ({ ...prev, isRankingsFinalized: true }));
@@ -301,12 +328,17 @@ export default function ApprovalDashboard() {
     }
   };
 
-  // THIẾT LẬP LẠI QUY TRÌNH VỀ BƯỚC 3 ĐỂ DEMO LẠI
+  // THIẾT LẬP LẠI QUY TRÌNH VỀ BƯỚC 3 ĐỂ DEMO / KIỂM THỬ LẠI
   const handleResetWorkflow = async () => {
+    if (!confirm('Xác nhận đặt lại trạng thái về "Chưa Phê Duyệt" để thực hiện lại thao tác ký duyệt hoặc demo?')) {
+      return;
+    }
+    setIsProcessing(true);
     try {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('ktx_director_finalized');
         localStorage.removeItem('ktx_director_published');
+        localStorage.setItem('ktx_director_reset', 'true');
       }
       setWorkflowState((prev) => ({
         ...prev,
@@ -321,8 +353,18 @@ export default function ApprovalDashboard() {
         body: JSON.stringify({ action: 'reset' }),
       });
       await fetchWorkflowAndApplications();
-      setStatusMessage('🔄 Đã thiết lập lại quy trình về Bước 3 (Bảng xếp hạng Tạm thời).');
-    } catch {}
+      setStatusMessage('🔄 Đã đặt lại trạng thái thành công! Đợt tuyển sinh đã quay về trạng thái "Chờ Trưởng Ban Duyệt" để sẵn sàng kiểm thử / demo lại.');
+
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('ktx_sync');
+        bc.postMessage({ type: 'WORKFLOW_RESET', timestamp: Date.now() });
+        setTimeout(() => bc.close(), 100);
+      }
+    } catch (e: any) {
+      alert('Lỗi đặt lại trạng thái: ' + (e.message || ''));
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Trả về điều chỉnh (XOR 3: 20% nhánh Trả về - Gửi thông báo đến Cổng QLSV)
@@ -378,6 +420,83 @@ export default function ApprovalDashboard() {
         </div>
       )}
   
+
+      {/* BẢNG TIẾN TRÌNH & ĐIỀU HƯỚNG CHUYỂN BƯỚC QUY TRÌNH BPMN TO-BE */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div>
+            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+              <span className="text-blue-600 text-sm">🔄</span>
+              <span>Điều Hướng Chuyển Bước Toàn Trình (Quy Trình Tuyển Sinh KTX BPMN TO-BE)</span>
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              Chuyển nhanh giữa các bước để theo dõi toàn trình nghiệp vụ hoặc kiểm thử luồng quy trình
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleResetWorkflow}
+              disabled={isProcessing}
+              className="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+              title="Đặt lại đợt tuyển sinh về trạng thái Chưa Phê Duyệt để demo lại quy trình Trưởng ban ký quyết định"
+            >
+              <span>🔄 Reset Về Chưa Phê Duyệt</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+          <Link
+            href="/student"
+            className="p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition text-center group cursor-pointer"
+          >
+            <div className="text-[10px] font-bold text-slate-400 group-hover:text-blue-600 uppercase">Bước 1</div>
+            <div className="text-xs font-bold text-slate-800 group-hover:text-blue-900 mt-0.5">Nộp Hồ Sơ</div>
+            <div className="text-[10px] text-slate-500 mt-1">Cổng Sinh Viên &rarr;</div>
+          </Link>
+
+          <Link
+            href="/officer"
+            className="p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 transition text-center group cursor-pointer"
+          >
+            <div className="text-[10px] font-bold text-slate-400 group-hover:text-blue-600 uppercase">Bước 2</div>
+            <div className="text-xs font-bold text-slate-800 group-hover:text-blue-900 mt-0.5">Thẩm Định AI Vision</div>
+            <div className="text-[10px] text-slate-500 mt-1">Cổng Cán Bộ QLSV &rarr;</div>
+          </Link>
+
+          <div className="p-3 rounded-xl border-2 border-blue-600 bg-blue-50/80 text-center shadow-xs">
+            <div className="text-[10px] font-black text-blue-700 uppercase">Bước 3A (Hiện Tại)</div>
+            <div className="text-xs font-extrabold text-[#003366] mt-0.5">Trưởng Ban Phê Duyệt</div>
+            <div className="text-[10px] font-black mt-1">
+              {workflowState.isRankingsFinalized ? (
+                <span className="text-emerald-700">✓ ĐÃ PHÊ DUYỆT B2</span>
+              ) : (
+                <span className="text-amber-700">⏳ Chờ Ký Duyệt</span>
+              )}
+            </div>
+          </div>
+
+          <Link
+            href="/officer"
+            className="p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-amber-50 hover:border-amber-400 transition text-center group cursor-pointer"
+          >
+            <div className="text-[10px] font-bold text-slate-400 group-hover:text-amber-700 uppercase">Bước 3B</div>
+            <div className="text-xs font-bold text-slate-800 group-hover:text-amber-900 mt-0.5">Phát Hành Email & Ký HĐ</div>
+            <div className="text-[10px] text-amber-700 font-semibold mt-1">Cổng QLSV &rarr;</div>
+          </Link>
+
+          <Link
+            href="/student"
+            className="p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-indigo-50 hover:border-indigo-400 transition text-center group cursor-pointer"
+          >
+            <div className="text-[10px] font-bold text-slate-400 group-hover:text-indigo-700 uppercase">Bước 4 & 5</div>
+            <div className="text-xs font-bold text-slate-800 group-hover:text-indigo-900 mt-0.5">Ký OTP & Bàn Giao Khóa</div>
+            <div className="text-[10px] text-indigo-700 font-semibold mt-1">Cổng Sinh Viên &rarr;</div>
+          </Link>
+        </div>
+      </div>
 
       {/* THANH ĐIỀU HÀNH CHÍNH XÁC DÀNH CHO TRƯỞNG BAN QUẢN LÝ KTX */}
       <div className="p-6 bg-gradient-to-r from-[#072E54] via-[#0B4378] to-[#125FA9] rounded-2xl border-2 border-blue-400/50 text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
@@ -502,12 +621,35 @@ export default function ApprovalDashboard() {
             ) : (
               <div className="flex flex-wrap items-center gap-2">
                 <Link
+                  href="/officer"
+                  className="px-4 py-2.5 bg-[#FFB800] hover:bg-amber-400 text-[#003366] font-black rounded-xl text-xs shadow-lg transition flex items-center space-x-1.5 cursor-pointer"
+                  title="Chuyển sang Bước 3B: Cổng Cán Bộ QLSV (Phát hành thông báo trúng tuyển & mở cổng ký hợp đồng)"
+                >
+                  <span>👉 Chuyển Sang Bước 3B: Cổng QLSV &rarr;</span>
+                </Link>
+                <Link
+                  href="/student"
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg transition flex items-center space-x-1.5 cursor-pointer"
+                  title="Chuyển sang Bước 4: Cổng Sinh Viên (Mở cổng ký hợp đồng điện tử OTP 72h)"
+                >
+                  <span>📱 Cổng Sinh Viên (Bước 4) &rarr;</span>
+                </Link>
+                <Link
                   href="/ranking"
-                  className="px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-xl text-xs shadow-lg transition flex items-center space-x-2 cursor-pointer"
+                  className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-xl text-xs shadow-lg transition flex items-center space-x-1.5 cursor-pointer"
                   title="Xem Bảng Xếp Hạng Tuyển Sinh Chính Thức Đã Phê Duyệt"
                 >
-                  <span>📊 Xem Bảng Xếp Hạng Đã Phê Duyệt &rarr;</span>
+                  <span>📊 Xem Bảng Xếp Hạng &rarr;</span>
                 </Link>
+                <button
+                  type="button"
+                  onClick={handleResetWorkflow}
+                  disabled={isProcessing}
+                  className="px-3.5 py-2.5 bg-slate-800/90 hover:bg-rose-700 text-slate-200 hover:text-white border border-slate-600 hover:border-rose-400 rounded-xl text-xs font-bold shadow transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+                  title="Cơ chế đặt lại trạng thái về Chưa Phê Duyệt để thực hiện demo hoặc kiểm thử lại quy trình ký duyệt"
+                >
+                  <span>🔄 Reset Về Chưa Phê Duyệt</span>
+                </button>
               </div>
             )}
           </div>
