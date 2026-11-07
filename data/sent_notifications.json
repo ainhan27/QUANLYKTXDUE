@@ -1,5 +1,18 @@
 [
   {
+    "id": "notif-1794047491350-vy53",
+    "application_id": "8d702daf-71a9-4497-9134-5650ba9f62f0",
+    "recipient_email": "nguyenthaoblink0808@gmail.com",
+    "student_code": "251121536135",
+    "student_name": "Nguyễn Ngọc Quỳnh Vy",
+    "tieu_de": "[KTX DUE] Chúc Mừng Bạn Đã Trúng Tuyển – Ký Hợp Đồng KTX Trong 72 Giờ",
+    "noi_dung": "\n    <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n      <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n        <h2 style=\"margin: 0; font-size: 18px;\">BAN QUẢN LÝ KÝ TÚC XÁ – ĐH KINH TẾ ĐÀ NẴNG</h2>\n        <p style=\"margin: 5px 0 0; font-size: 12px; color: #FFB800;\">KẾT QUẢ XÉT TUYỂN & HỢP ĐỒNG ĐIỆN TỬ (Msg_CongBo)</p>\n      </div>\n      <div style=\"padding: 24px; color: #334155; line-height: 1.6;\">\n        <p>Chúc mừng sinh viên <strong>Nguyễn Ngọc Quỳnh Vy</strong> (MSSV: <strong>251121536135</strong>),</p>\n        <p>Hội đồng Tuyển sinh và Trưởng ban Quản lý KTX DUE trân trọng thông báo bạn đã <strong>CHÍNH THỨC TRÚNG TUYỂN</strong> vào ký túc xá năm học 2026 – 2027 với thứ hạng xét tuyển <strong>#53 / 358 thí sinh</strong> (thuộc Top 120 chỉ tiêu xét tuyển đợt 1).</p>\n        \n        <div style=\"background-color: #f0fdf4; border: 1px solid #86efac; padding: 16px; margin: 16px 0; border-radius: 8px; text-align: center;\">\n          <span style=\"font-size: 13px; color: #166534; font-weight: bold;\">PHÒNG NỘI TRÚ ĐƯỢC CẤP BỐ TRÍ:</span><br/>\n          <strong style=\"font-size: 22px; color: #15803d;\">Phòng 301 - Khu A (4 người)</strong>\n        </div>\n\n        <p><strong>Hiệu lực ký hợp đồng:</strong> Trong vòng <strong>72 giờ</strong> kể từ thời điểm công bố danh sách. Vui lòng đăng nhập Cổng thông tin Sinh viên và sử dụng mã xác thực điện tử OTP dưới đây để hoàn tất ký số:</p>\n        <div style=\"text-align: center; margin: 20px 0;\">\n          <span style=\"background-color: #003366; color: white; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;\">\n            Mã OTP Ký Hợp Đồng: 888888 (hoặc mã định danh cá nhân)\n          </span>\n        </div>\n        <p style=\"font-size: 13px; color: #64748b;\">Sau 72 giờ nếu không hoàn tất ký hợp đồng, suất nội trú sẽ được điều chuyển cho sinh viên kế tiếp trong danh sách chờ theo đúng quy chế.</p>\n      </div>\n    </div>\n  ",
+    "loai": "TRUNG_TUYEN_KY_HD",
+    "status": "DA_GUI",
+    "created_at": "2026-11-07T10:31:31.350Z",
+    "deadline_hours": 72
+  },
+  {
     "id": "notif-1793966959685-fblu",
     "application_id": "app-1793966953481",
     "recipient_email": "thanhthao@gmail.com",
@@ -61,18 +74,6 @@
     "status": "DA_GUI",
     "created_at": "2026-11-01T10:57:40.079Z",
     "deadline_hours": 72
-  },
-  {
-    "id": "notif-1793530660063-pzsf",
-    "application_id": "app-1793505748202",
-    "recipient_email": "nguyenthaoblink0808@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Mai thảo",
-    "tieu_de": "[KTX DUE] Kết Quả Tuyển Sinh Đợt 1 – Danh Sách Chờ (Thứ hạng #206)",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px;\">BAN QUẢN LÝ KÝ TÚC XÁ – ĐH KINH TẾ ĐÀ NẴNG</h2>\n            <p style=\"margin: 5px 0 0; font-size: 12px; color: #FFB800;\">THÔNG BÁO KẾT QUẢ TUYỂN SINH – DANH SÁCH CHỜ</p>\n          </div>\n          <div style=\"padding: 24px; color: #334155; line-height: 1.6;\">\n            <p>Kính gửi sinh viên <strong>Mai thảo</strong> (MSSV: <strong>251121536135</strong>),</p>\n            <p>Hội đồng Tuyển sinh Ký túc xá DUE thông báo kết quả xét tuyển nội trú Đợt 1:</p>\n            <div style=\"background-color: #fffbeb; border: 1px solid #fde68a; padding: 16px; margin: 16px 0; border-radius: 8px; text-align: center;\">\n              <span style=\"font-size: 13px; color: #92400e; font-weight: bold;\">KẾT QUẢ XÉT TUYỂN ĐỢT 1:</span><br/>\n              <strong style=\"font-size: 18px; color: #b45309;\">DANH SÁCH CHỜ (DỰ BỊ THỨ #86)</strong>\n              <div style=\"font-size: 12px; color: #78350f; margin-top: 4px;\">Thứ hạng tổng trên BXH: #206 / 358 thí sinh</div>\n            </div>\n            <p>Chỉ tiêu đợt 1 có <strong>120 chỗ</strong> đã được phân bổ cho 120 thí sinh có điểm ưu tiên cao nhất. Suất nội trú chưa được phân bổ cho bạn trong đợt tuyển này.</p>\n            <p style=\"font-size: 13px; color: #475569;\">Trong trường hợp thí sinh trúng tuyển đợt 1 không hoàn tất ký hợp đồng trong 72 giờ hoặc hủy suất, hệ thống sẽ tự động xét duyệt và mời các thí sinh trong Danh sách chờ theo đúng thứ tự ưu tiên.</p>\n          </div>\n        </div>\n      ",
-    "loai": "DANH_SACH_CHO",
-    "status": "DA_GUI",
-    "created_at": "2026-11-01T10:57:40.063Z"
   },
   {
     "id": "notif-1793530660050-ljb7",
@@ -266,18 +267,6 @@
     "created_at": "2026-11-01T10:57:23.334Z"
   },
   {
-    "id": "notif-1793530640352",
-    "application_id": "app-1793505748202",
-    "recipient_email": "nguyenthaoblink0808@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Mai thảo",
-    "tieu_de": "[KTX DUE] Minh Chứng Bổ Sung Đã Được Cán Bộ QLSV Phê Duyệt – Cộng Điểm Thành Công",
-    "noi_dung": "<p>Chào sinh viên <strong>Mai thảo</strong> (MSSV: <strong>251121536135</strong>),</p><p>Cán bộ Quản lý Sinh viên đã thẩm định và phê duyệt minh chứng của bạn <strong>HỢP LỆ (ĐẠT)</strong>.</p><div style=\"background-color: #f0fdf4; border: 1px solid #86efac; padding: 12px; margin: 10px 0; border-radius: 6px;\"><strong style=\"color: #15803d;\">Điểm ưu tiên được cộng: +20 điểm</strong><br/><span style=\"font-size: 12px; color: #166534;\">Thứ hạng của bạn đã được tự động cập nhật tăng lên trên Bảng Xếp Hạng Tuyển Sinh (SP3).</span></div>",
-    "loai": "XAC_NHAN_NOP",
-    "status": "DA_GUI",
-    "created_at": "2026-11-01T10:57:20.352Z"
-  },
-  {
     "id": "notif-1793530620487",
     "application_id": "app-1793365924238",
     "recipient_email": "anhnhung@gmail.com",
@@ -387,18 +376,6 @@
     "status": "DA_GUI",
     "created_at": "2026-11-01T10:50:41.116Z",
     "deadline_hours": 72
-  },
-  {
-    "id": "notif-1793530241096-rowl",
-    "application_id": "app-1793505748202",
-    "recipient_email": "nguyenthaoblink0808@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Mai thảo",
-    "tieu_de": "[KTX DUE] Kết Quả Tuyển Sinh Đợt 1 – Danh Sách Chờ (Thứ hạng #285)",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px;\">BAN QUẢN LÝ KÝ TÚC XÁ – ĐH KINH TẾ ĐÀ NẴNG</h2>\n            <p style=\"margin: 5px 0 0; font-size: 12px; color: #FFB800;\">THÔNG BÁO KẾT QUẢ TUYỂN SINH – DANH SÁCH CHỜ</p>\n          </div>\n          <div style=\"padding: 24px; color: #334155; line-height: 1.6;\">\n            <p>Kính gửi sinh viên <strong>Mai thảo</strong> (MSSV: <strong>251121536135</strong>),</p>\n            <p>Hội đồng Tuyển sinh Ký túc xá DUE thông báo kết quả xét tuyển nội trú Đợt 1:</p>\n            <div style=\"background-color: #fffbeb; border: 1px solid #fde68a; padding: 16px; margin: 16px 0; border-radius: 8px; text-align: center;\">\n              <span style=\"font-size: 13px; color: #92400e; font-weight: bold;\">KẾT QUẢ XÉT TUYỂN ĐỢT 1:</span><br/>\n              <strong style=\"font-size: 18px; color: #b45309;\">DANH SÁCH CHỜ (DỰ BỊ THỨ #165)</strong>\n              <div style=\"font-size: 12px; color: #78350f; margin-top: 4px;\">Thứ hạng tổng trên BXH: #285 / 358 thí sinh</div>\n            </div>\n            <p>Chỉ tiêu đợt 1 có <strong>120 chỗ</strong> đã được phân bổ cho 120 thí sinh có điểm ưu tiên cao nhất. Suất nội trú chưa được phân bổ cho bạn trong đợt tuyển này.</p>\n            <p style=\"font-size: 13px; color: #475569;\">Trong trường hợp thí sinh trúng tuyển đợt 1 không hoàn tất ký hợp đồng trong 72 giờ hoặc hủy suất, hệ thống sẽ tự động xét duyệt và mời các thí sinh trong Danh sách chờ theo đúng thứ tự ưu tiên.</p>\n          </div>\n        </div>\n      ",
-    "loai": "DANH_SACH_CHO",
-    "status": "DA_GUI",
-    "created_at": "2026-11-01T10:50:41.096Z"
   },
   {
     "id": "notif-1793530241077-ak2b",
@@ -588,54 +565,6 @@
     "created_at": "2026-11-01T04:34:17.657Z"
   },
   {
-    "id": "notif-1793507460008-enoo",
-    "application_id": "app-1793505748202",
-    "recipient_email": "nguyenthaoblink0808@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Mai thảo",
-    "tieu_de": "[KTX DUE] Thông Báo Hủy Suất Ở KTX – Chuyển Suất Cho Danh Sách Đợt 2",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px;\">BAN QUẢN LÝ KÝ TÚC XÁ – ĐH KINH TẾ ĐÀ NẴNG</h2>\n            <p style=\"margin: 5px 0 0; font-size: 12px; color: #FFB800;\">THÔNG BÁO HỦY SUẤT (Msg_Huy)</p>\n          </div>\n          <div style=\"padding: 24px; color: #334155; line-height: 1.6;\">\n            <p>Chào bạn <strong>Mai thảo</strong>,</p>\n            <p>Do quá thời hạn 72 giờ ký hợp đồng hoặc sinh viên gửi yêu cầu từ chối, suất nội trú tại phòng <strong>Phòng đã phân bổ</strong> đã được thu hồi và chuyển trạng thái về <strong>AVAILABLE</strong> để xét bổ sung đợt 2 cho danh sách chờ.</p>\n          </div>\n        </div>\n      ",
-    "loai": "HUY_SUAT",
-    "status": "DA_GUI",
-    "created_at": "2026-11-01T04:31:00.008Z"
-  },
-  {
-    "id": "notif-1793507459989",
-    "application_id": "app-1793505748202",
-    "recipient_email": "nguyenthaoblink0808@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Mai thảo",
-    "tieu_de": "[KTX DUE] Xác Nhận Từ Chối Nhận Phòng & Hủy Suất Nội Trú KTX",
-    "noi_dung": "<p>Chào sinh viên <strong>Mai thảo</strong> (MSSV: <strong>251121536135</strong>),</p><p>Hệ thống ghi nhận bạn đã xác nhận <strong>TỪ CHỐI NHẬN PHÒNG</strong> tại bước ký hợp đồng điện tử.</p><p>Lý do: <em>Không còn nhu cầu ở nội trú KTX</em></p><p>Suất nội trú của bạn đã được hủy bỏ và chuyển giao cho sinh viên kế tiếp trên danh sách chờ theo đúng quy chế tuyển sinh.</p>",
-    "loai": "HUY_SUAT",
-    "status": "DA_GUI",
-    "created_at": "2026-11-01T04:30:59.989Z"
-  },
-  {
-    "id": "notif-1793507449019-2txq",
-    "application_id": "app-1793505748202",
-    "recipient_email": "nguyenthaoblink0808@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Mai thảo",
-    "tieu_de": "[KTX DUE] Thông Báo Hủy Suất Ở KTX – Chuyển Suất Cho Danh Sách Đợt 2",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px;\">BAN QUẢN LÝ KÝ TÚC XÁ – ĐH KINH TẾ ĐÀ NẴNG</h2>\n            <p style=\"margin: 5px 0 0; font-size: 12px; color: #FFB800;\">THÔNG BÁO HỦY SUẤT (Msg_Huy)</p>\n          </div>\n          <div style=\"padding: 24px; color: #334155; line-height: 1.6;\">\n            <p>Chào bạn <strong>Mai thảo</strong>,</p>\n            <p>Do quá thời hạn 72 giờ ký hợp đồng hoặc sinh viên gửi yêu cầu từ chối, suất nội trú tại phòng <strong>Phòng đã phân bổ</strong> đã được thu hồi và chuyển trạng thái về <strong>AVAILABLE</strong> để xét bổ sung đợt 2 cho danh sách chờ.</p>\n          </div>\n        </div>\n      ",
-    "loai": "HUY_SUAT",
-    "status": "DA_GUI",
-    "created_at": "2026-11-01T04:30:49.019Z"
-  },
-  {
-    "id": "notif-1793507449003",
-    "application_id": "app-1793505748202",
-    "recipient_email": "nguyenthaoblink0808@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Mai thảo",
-    "tieu_de": "[KTX DUE] Xác Nhận Từ Chối Nhận Phòng & Hủy Suất Nội Trú KTX",
-    "noi_dung": "<p>Chào sinh viên <strong>Mai thảo</strong> (MSSV: <strong>251121536135</strong>),</p><p>Hệ thống ghi nhận bạn đã xác nhận <strong>TỪ CHỐI NHẬN PHÒNG</strong> tại bước ký hợp đồng điện tử.</p><p>Lý do: <em>Không còn nhu cầu ở nội trú KTX</em></p><p>Suất nội trú của bạn đã được hủy bỏ và chuyển giao cho sinh viên kế tiếp trên danh sách chờ theo đúng quy chế tuyển sinh.</p>",
-    "loai": "HUY_SUAT",
-    "status": "DA_GUI",
-    "created_at": "2026-11-01T04:30:49.003Z"
-  },
-  {
     "id": "notif-1793507302867-teem",
     "application_id": "app-1793245101382",
     "recipient_email": "ngocvy@gmail.com",
@@ -672,19 +601,6 @@
     "loai": "TRUNG_TUYEN_KY_HD",
     "status": "DA_GUI",
     "created_at": "2026-11-01T04:28:22.841Z",
-    "deadline_hours": 72
-  },
-  {
-    "id": "notif-1793507302825-vvv1",
-    "application_id": "app-1793505748202",
-    "recipient_email": "nguyenthaoblink0808@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Mai thảo",
-    "tieu_de": "[KTX DUE] Chúc Mừng Bạn Đã Trúng Tuyển – Ký Hợp Đồng KTX Trong 72 Giờ",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px;\">BAN QUẢN LÝ KÝ TÚC XÁ – ĐH KINH TẾ ĐÀ NẴNG</h2>\n            <p style=\"margin: 5px 0 0; font-size: 12px; color: #FFB800;\">KẾT QUẢ XÉT TUYỂN & HỢP ĐỒNG ĐIỆN TỬ (Msg_CongBo)</p>\n          </div>\n          <div style=\"padding: 24px; color: #334155; line-height: 1.6;\">\n            <p>Chúc mừng sinh viên <strong>Mai thảo</strong> (MSSV: <strong>251121536135</strong>),</p>\n            <p>Trưởng ban Quản lý KTX đã ký duyệt danh sách trúng tuyển chính thức. Bạn được phân bổ:</p>\n            <div style=\"background-color: #f0fdf4; border: 1px solid #86efac; padding: 16px; margin: 16px 0; border-radius: 8px; text-align: center;\">\n              <span style=\"font-size: 13px; color: #166534;\">PHÒNG NỘI TRÚ ĐƯỢC CẤP:</span><br/>\n              <strong style=\"font-size: 22px; color: #15803d;\">Phòng B.203 - Giường số 02 (Khu B (Nữ) - 4 người/phòng)</strong>\n            </div>\n            <p><strong>Hiệu lực ký hợp đồng:</strong> Trong vòng <strong>72 giờ</strong>. Vui lòng đăng nhập và nhập mã OTP bên dưới để hoàn tất:</p>\n            <div style=\"text-align: center; margin: 20px 0;\">\n              <span style=\"background-color: #003366; color: white; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;\">\n                Mã OTP Ký Hợp Đồng: 857469\n              </span>\n            </div>\n          </div>\n        </div>\n      ",
-    "loai": "TRUNG_TUYEN_KY_HD",
-    "status": "DA_GUI",
-    "created_at": "2026-11-01T04:28:22.825Z",
     "deadline_hours": 72
   },
   {
@@ -881,18 +797,6 @@
     "deadline_hours": 72
   },
   {
-    "id": "notif-1793505963729-o2gj",
-    "application_id": "app-1793505748202",
-    "recipient_email": "nguyenthaoblink0808@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Mai thảo",
-    "tieu_de": "[KTX DUE] Kết Quả Tuyển Sinh Đợt 1 – Danh Sách Chờ (Thứ hạng #281)",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px;\">BAN QUẢN LÝ KÝ TÚC XÁ – ĐH KINH TẾ ĐÀ NẴNG</h2>\n            <p style=\"margin: 5px 0 0; font-size: 12px; color: #FFB800;\">THÔNG BÁO KẾT QUẢ TUYỂN SINH – DANH SÁCH CHỜ</p>\n          </div>\n          <div style=\"padding: 24px; color: #334155; line-height: 1.6;\">\n            <p>Kính gửi sinh viên <strong>Mai thảo</strong> (MSSV: <strong>251121536135</strong>),</p>\n            <p>Hội đồng Tuyển sinh Ký túc xá DUE thông báo kết quả xét tuyển nội trú Đợt 1:</p>\n            <div style=\"background-color: #fffbeb; border: 1px solid #fde68a; padding: 16px; margin: 16px 0; border-radius: 8px; text-align: center;\">\n              <span style=\"font-size: 13px; color: #92400e; font-weight: bold;\">KẾT QUẢ XÉT TUYỂN ĐỢT 1:</span><br/>\n              <strong style=\"font-size: 18px; color: #b45309;\">DANH SÁCH CHỜ (DỰ BỊ THỨ #161)</strong>\n              <div style=\"font-size: 12px; color: #78350f; margin-top: 4px;\">Thứ hạng tổng trên BXH: #281 / 358 thí sinh</div>\n            </div>\n            <p>Chỉ tiêu đợt 1 có <strong>120 chỗ</strong> đã được phân bổ cho 120 thí sinh có điểm ưu tiên cao nhất. Suất nội trú chưa được phân bổ cho bạn trong đợt tuyển này.</p>\n            <p style=\"font-size: 13px; color: #475569;\">Trong trường hợp thí sinh trúng tuyển đợt 1 không hoàn tất ký hợp đồng trong 72 giờ hoặc hủy suất, hệ thống sẽ tự động xét duyệt và mời các thí sinh trong Danh sách chờ theo đúng thứ tự ưu tiên.</p>\n          </div>\n        </div>\n      ",
-    "loai": "DANH_SACH_CHO",
-    "status": "DA_GUI",
-    "created_at": "2026-11-01T04:06:03.729Z"
-  },
-  {
     "id": "notif-1793505963713-ciy6",
     "application_id": "app-1793366218108",
     "recipient_email": "tuongvy@gmail.com",
@@ -1030,19 +934,6 @@
     "created_at": "2026-11-01T04:06:03.531Z"
   },
   {
-    "id": "notif-1793505879699-a7wm",
-    "application_id": "app-1793505748202",
-    "recipient_email": "nguyenthaoblink0808@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Mai thảo",
-    "tieu_de": "[KTX DUE] Yêu Cầu Bổ Sung Minh Chứng Trong 48 Giờ – Sinh Viên Mai thảo (251121536135)",
-    "noi_dung": "<div style=\"font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px; letter-spacing: 0.5px;\">TRƯỜNG ĐẠI HỌC KINH TẾ – ĐH ĐÀ NẴNG (DUE)</h2>\n            <p style=\"margin: 6px 0 0; font-size: 13px; color: #FFB800; font-weight: bold;\">BAN QUẢN LÝ KÝ TÚC XÁ – YÊU CẦU BỔ SUNG MINH CHỨNG (TASK TR)</p>\n          </div>\n          <div style=\"padding: 24px; color: #1e293b; line-height: 1.6; white-space: pre-line;\">\n            Kính gửi sinh viên Mai thảo (MSSV: 251121536135),<br/><br/>Ban Quản lý Ký túc xá Trường Đại học Kinh tế – Đại học Đà Nẵng (DUE) xin thông báo kết quả thẩm định hồ sơ đăng ký nội trú của bạn:<br/><br/>Hệ thống thẩm định minh chứng tự động và Bộ phận Quản lý Sinh viên đã rà soát đối chiếu hồ sơ. Để đảm bảo tính chính xác và quyền lợi cộng điểm ưu tiên (Sinh viên ngoại tỉnh cự ly di chuyển > 200km), bạn cần bổ sung/chụp lại minh chứng theo yêu cầu sau:<br/><br/>📌 CHI TIẾT SAI SÓT PHÁT HIỆN:<br/>- Họ tên trên ảnh không trùng khớp với họ tên đã nhập (Mai thảo). Không tìm thấy số CCCD 084568946512 trên ảnh. Phát hiện sai lệch: Bạn đăng ký diện \"Sinh viên ngoại tỉnh cự ly > 200km\" nhưng giấy tờ minh chứng lại thuộc diện \"Con liệt sĩ, thương binh, bệnh binh\". Cần cán bộ QLSV rà soát.<br/><br/>⏱️ THỜI HẠN BỔ SUNG: Bạn có chính xác 48 GIỜ kể từ khi nhận được email này để chụp lại bản rõ nét và tải lên Cổng thông tin (theo quy định tiếp nhận bổ sung của KTX DUE).<br/><br/>🚨 LƯU Ý BẮT BUỘC: Hết thời hạn 48 giờ nêu trên, nếu không nhận được minh chứng hợp lệ bổ sung, hệ thống sẽ tự động chuyển hồ sơ sang trạng thái \"KHÔNG ĐƯỢC XÉT\" và hủy điểm ưu tiên dự kiến.<br/><br/>Vui lòng truy cập Cổng Tân Sinh Viên KTX DUE tại http://localhost:3000/student để tải lại ảnh minh chứng.<br/><br/>Trân trọng,<br/>Bộ phận Quản lý Sinh viên – Ban Quản trị KTX DUE<br/>Trường Đại học Kinh tế – Đại học Đà Nẵng<br/>Điện thoại: (0236) 3836.169 | Email: ktx@due.edu.vn\n          </div>\n          <div style=\"background-color: #f8fafc; padding: 14px 24px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; text-align: center;\">\n            Hệ thống Quản lý Quy trình KTX DUE • Hạn chót bổ sung: 48 giờ kể từ thời điểm gửi thông báo\n          </div>\n        </div>",
-    "loai": "YEU_CAU_BO_SUNG",
-    "status": "DA_GUI",
-    "created_at": "2026-11-01T04:04:39.699Z",
-    "deadline_hours": 48
-  },
-  {
     "id": "notif-1793505825507-vkvr",
     "application_id": "app-1793365924238",
     "recipient_email": "anhnhung@gmail.com",
@@ -1095,18 +986,6 @@
     "deadline_hours": 48
   },
   {
-    "id": "notif-1793505752919-h61i",
-    "application_id": "app-1793505748202",
-    "recipient_email": "nguyenthaoblink0808@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Mai thảo",
-    "tieu_de": "[KTX DUE] Xác Nhận Nộp Hồ Sơ Đăng Ký Nội Trú – MSSV: 251121536135",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px; letter-spacing: 0.5px;\">TRƯỜNG ĐẠI HỌC KINH TẾ – ĐH ĐÀ NẴNG (DUE)</h2>\n            <p style=\"margin: 6px 0 0; font-size: 13px; color: #FFB800; font-weight: bold;\">BAN QUẢN LÝ KÝ TÚC XÁ – XÁC NHẬN TIẾP NHẬN HỒ SƠ</p>\n          </div>\n          <div style=\"padding: 24px; color: #1e293b; line-height: 1.6;\">\n            <p>Kính gửi sinh viên <strong>Mai thảo</strong> (Mã SV: <strong>251121536135</strong>),</p>\n            <p>Hệ thống KTX DUE đã tiếp nhận thành công hồ sơ đăng ký nội trú của bạn vào cơ sở dữ liệu (DataStore_HS).</p>\n            \n            <div style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px; margin: 16px 0;\">\n              <h4 style=\"margin: 0 0 10px; color: #003366; font-size: 14px;\">THÔNG TIN ĐĂNG KÝ:</h4>\n              <p style=\"margin: 4px 0; font-size: 13px;\">• Diện ưu tiên: <strong>Sinh viên ngoại tỉnh cự ly di chuyển > 200km</strong></p>\n              <p style=\"margin: 4px 0; font-size: 13px;\">• Điểm ưu tiên dự kiến: <strong style=\"color: #1d4ed8;\">0 điểm</strong></p>\n              <p style=\"margin: 4px 0; font-size: 13px;\">• Kết quả quét AI Vision: <strong>Đang chờ đối chiếu rà soát</strong></p>\n            </div>\n\n            <p style=\"font-size: 13px; color: #475569;\">\n              Hồ sơ của bạn đã được chuyển vào <strong>Bảng Xếp Hạng Tạm Thời (SP3)</strong>. Bảng xếp hạng cập nhật liên tục theo thời gian thực (Real-time).\n            </p>\n            <p style=\"margin-top: 20px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 12px;\">\n              Email này được tạo tự động từ Hệ thống Quản lý Quy trình KTX DUE. Vui lòng không phản hồi trực tiếp vào địa chỉ này.\n            </p>\n          </div>\n        </div>\n      ",
-    "loai": "XAC_NHAN_NOP",
-    "status": "DA_GUI",
-    "created_at": "2026-11-01T04:02:32.919Z"
-  },
-  {
     "id": "notif-1793504845755-3jns",
     "application_id": "app-1793245101382",
     "recipient_email": "ngocvy@gmail.com",
@@ -1143,19 +1022,6 @@
     "loai": "TRUNG_TUYEN_KY_HD",
     "status": "DA_GUI",
     "created_at": "2026-11-01T03:47:25.731Z",
-    "deadline_hours": 72
-  },
-  {
-    "id": "notif-1793504845717-0mnu",
-    "application_id": "app-1793504522685",
-    "recipient_email": "nguyenthaoblink0808@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Chúc Mừng Bạn Đã Trúng Tuyển – Ký Hợp Đồng KTX Trong 72 Giờ",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px;\">BAN QUẢN LÝ KÝ TÚC XÁ – ĐH KINH TẾ ĐÀ NẴNG</h2>\n            <p style=\"margin: 5px 0 0; font-size: 12px; color: #FFB800;\">KẾT QUẢ XÉT TUYỂN & HỢP ĐỒNG ĐIỆN TỬ (Msg_CongBo)</p>\n          </div>\n          <div style=\"padding: 24px; color: #334155; line-height: 1.6;\">\n            <p>Chúc mừng sinh viên <strong>Nguyễn Ngọc Mai Thảo</strong> (MSSV: <strong>251121536135</strong>),</p>\n            <p>Trưởng ban Quản lý KTX đã ký duyệt danh sách trúng tuyển chính thức. Bạn được phân bổ:</p>\n            <div style=\"background-color: #f0fdf4; border: 1px solid #86efac; padding: 16px; margin: 16px 0; border-radius: 8px; text-align: center;\">\n              <span style=\"font-size: 13px; color: #166534;\">PHÒNG NỘI TRÚ ĐƯỢC CẤP:</span><br/>\n              <strong style=\"font-size: 22px; color: #15803d;\">Phòng B.203 - Giường số 01 (Khu B (Nữ) - 4 người/phòng)</strong>\n            </div>\n            <p><strong>Hiệu lực ký hợp đồng:</strong> Trong vòng <strong>72 giờ</strong>. Vui lòng đăng nhập và nhập mã OTP bên dưới để hoàn tất:</p>\n            <div style=\"text-align: center; margin: 20px 0;\">\n              <span style=\"background-color: #003366; color: white; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;\">\n                Mã OTP Ký Hợp Đồng: 857469\n              </span>\n            </div>\n          </div>\n        </div>\n      ",
-    "loai": "TRUNG_TUYEN_KY_HD",
-    "status": "DA_GUI",
-    "created_at": "2026-11-01T03:47:25.717Z",
     "deadline_hours": 72
   },
   {
@@ -1350,19 +1216,6 @@
     "deadline_hours": 72
   },
   {
-    "id": "notif-1793504751497-wnba",
-    "application_id": "app-1793504522685",
-    "recipient_email": "nguyenthaoblink0808@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Chúc Mừng Bạn Đã Trúng Tuyển – Ký Hợp Đồng KTX Trong 72 Giờ",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px;\">BAN QUẢN LÝ KÝ TÚC XÁ – ĐH KINH TẾ ĐÀ NẴNG</h2>\n            <p style=\"margin: 5px 0 0; font-size: 12px; color: #FFB800;\">KẾT QUẢ XÉT TUYỂN & HỢP ĐỒNG ĐIỆN TỬ (Msg_CongBo)</p>\n          </div>\n          <div style=\"padding: 24px; color: #334155; line-height: 1.6;\">\n            <p>Chúc mừng sinh viên <strong>Nguyễn Ngọc Mai Thảo</strong> (MSSV: <strong>251121536135</strong>),</p>\n            <p>Trưởng ban Quản lý KTX đã ký duyệt danh sách trúng tuyển chính thức. Bạn được phân bổ:</p>\n            <div style=\"background-color: #f0fdf4; border: 1px solid #86efac; padding: 16px; margin: 16px 0; border-radius: 8px; text-align: center;\">\n              <span style=\"font-size: 13px; color: #166534;\">PHÒNG NỘI TRÚ ĐƯỢC CẤP:</span><br/>\n              <strong style=\"font-size: 22px; color: #15803d;\">Phòng B.203 - Giường số 01 (Khu B (Nữ) - 4 người/phòng)</strong>\n            </div>\n            <p><strong>Hiệu lực ký hợp đồng:</strong> Trong vòng <strong>72 giờ</strong>. Vui lòng đăng nhập và nhập mã OTP bên dưới để hoàn tất:</p>\n            <div style=\"text-align: center; margin: 20px 0;\">\n              <span style=\"background-color: #003366; color: white; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;\">\n                Mã OTP Ký Hợp Đồng: 857469\n              </span>\n            </div>\n          </div>\n        </div>\n      ",
-    "loai": "TRUNG_TUYEN_KY_HD",
-    "status": "DA_GUI",
-    "created_at": "2026-11-01T03:45:51.497Z",
-    "deadline_hours": 72
-  },
-  {
     "id": "notif-1793504751481-9toe",
     "application_id": "app-1793366218108",
     "recipient_email": "tuongvy@gmail.com",
@@ -1504,19 +1357,6 @@
     "deadline_hours": 72
   },
   {
-    "id": "notif-1793504670767-en07",
-    "application_id": "app-1793504522685",
-    "recipient_email": "nguyenthaoblink0808@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Yêu Cầu Bổ Sung Minh Chứng Trong 48 Giờ – Sinh Viên Nguyễn Ngọc Mai Thảo (251121536135)",
-    "noi_dung": "<div style=\"font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px; letter-spacing: 0.5px;\">TRƯỜNG ĐẠI HỌC KINH TẾ – ĐH ĐÀ NẴNG (DUE)</h2>\n            <p style=\"margin: 6px 0 0; font-size: 13px; color: #FFB800; font-weight: bold;\">BAN QUẢN LÝ KÝ TÚC XÁ – YÊU CẦU BỔ SUNG MINH CHỨNG (TASK TR)</p>\n          </div>\n          <div style=\"padding: 24px; color: #1e293b; line-height: 1.6; white-space: pre-line;\">\n            Kính gửi sinh viên Nguyễn Ngọc Mai Thảo (MSSV: 251121536135),<br/><br/>Ban Quản lý Ký túc xá Trường Đại học Kinh tế – Đại học Đà Nẵng (DUE) xin thông báo kết quả thẩm định hồ sơ đăng ký nội trú của bạn:<br/><br/>Hệ thống thẩm định minh chứng tự động và Bộ phận Quản lý Sinh viên đã rà soát đối chiếu hồ sơ. Để đảm bảo tính chính xác và quyền lợi cộng điểm ưu tiên (Không thuộc diện ưu tiên), bạn cần bổ sung/chụp lại minh chứng theo yêu cầu sau:<br/><br/>📌 CHI TIẾT SAI SÓT PHÁT HIỆN:<br/>- Họ tên trên ảnh không trùng khớp với họ tên đã nhập (Nguyễn Ngọc Mai Thảo). Không tìm thấy số CCCD 048305002756 trên ảnh<br/><br/>⏱️ THỜI HẠN BỔ SUNG: Bạn có chính xác 48 GIỜ kể từ khi nhận được email này để chụp lại bản rõ nét và tải lên Cổng thông tin (theo quy định tiếp nhận bổ sung của KTX DUE).<br/><br/>🚨 LƯU Ý BẮT BUỘC: Hết thời hạn 48 giờ nêu trên, nếu không nhận được minh chứng hợp lệ bổ sung, hệ thống sẽ tự động chuyển hồ sơ sang trạng thái \"KHÔNG ĐƯỢC XÉT\" và hủy điểm ưu tiên dự kiến.<br/><br/>Vui lòng truy cập Cổng Tân Sinh Viên KTX DUE tại http://localhost:3000/student để tải lại ảnh minh chứng.<br/><br/>Trân trọng,<br/>Bộ phận Quản lý Sinh viên – Ban Quản trị KTX DUE<br/>Trường Đại học Kinh tế – Đại học Đà Nẵng<br/>Điện thoại: (0236) 3836.169 | Email: ktx@due.edu.vn\n          </div>\n          <div style=\"background-color: #f8fafc; padding: 14px 24px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; text-align: center;\">\n            Hệ thống Quản lý Quy trình KTX DUE • Hạn chót bổ sung: 48 giờ kể từ thời điểm gửi thông báo\n          </div>\n        </div>",
-    "loai": "YEU_CAU_BO_SUNG",
-    "status": "DA_GUI",
-    "created_at": "2026-11-01T03:44:30.767Z",
-    "deadline_hours": 48
-  },
-  {
     "id": "notif-1793504662504-558x",
     "application_id": "app-1793365924238",
     "recipient_email": "anhnhung@gmail.com",
@@ -1567,18 +1407,6 @@
     "status": "DA_GUI",
     "created_at": "2026-11-01T03:43:59.224Z",
     "deadline_hours": 48
-  },
-  {
-    "id": "notif-1793504526789-ccjd",
-    "application_id": "app-1793504522685",
-    "recipient_email": "nguyenthaoblink0808@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Xác Nhận Nộp Hồ Sơ Đăng Ký Nội Trú – MSSV: 251121536135",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px; letter-spacing: 0.5px;\">TRƯỜNG ĐẠI HỌC KINH TẾ – ĐH ĐÀ NẴNG (DUE)</h2>\n            <p style=\"margin: 6px 0 0; font-size: 13px; color: #FFB800; font-weight: bold;\">BAN QUẢN LÝ KÝ TÚC XÁ – XÁC NHẬN TIẾP NHẬN HỒ SƠ</p>\n          </div>\n          <div style=\"padding: 24px; color: #1e293b; line-height: 1.6;\">\n            <p>Kính gửi sinh viên <strong>Nguyễn Ngọc Mai Thảo</strong> (Mã SV: <strong>251121536135</strong>),</p>\n            <p>Hệ thống KTX DUE đã tiếp nhận thành công hồ sơ đăng ký nội trú của bạn vào cơ sở dữ liệu (DataStore_HS).</p>\n            \n            <div style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px; margin: 16px 0;\">\n              <h4 style=\"margin: 0 0 10px; color: #003366; font-size: 14px;\">THÔNG TIN ĐĂNG KÝ:</h4>\n              <p style=\"margin: 4px 0; font-size: 13px;\">• Diện ưu tiên: <strong>Không thuộc diện ưu tiên</strong></p>\n              <p style=\"margin: 4px 0; font-size: 13px;\">• Điểm ưu tiên dự kiến: <strong style=\"color: #1d4ed8;\">0 điểm</strong></p>\n              <p style=\"margin: 4px 0; font-size: 13px;\">• Kết quả quét AI Vision: <strong>Đang chờ đối chiếu rà soát</strong></p>\n            </div>\n\n            <p style=\"font-size: 13px; color: #475569;\">\n              Hồ sơ của bạn đã được chuyển vào <strong>Bảng Xếp Hạng Tạm Thời (SP3)</strong>. Bảng xếp hạng cập nhật liên tục theo thời gian thực (Real-time).\n            </p>\n            <p style=\"margin-top: 20px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 12px;\">\n              Email này được tạo tự động từ Hệ thống Quản lý Quy trình KTX DUE. Vui lòng không phản hồi trực tiếp vào địa chỉ này.\n            </p>\n          </div>\n        </div>\n      ",
-    "loai": "XAC_NHAN_NOP",
-    "status": "DA_GUI",
-    "created_at": "2026-11-01T03:42:06.789Z"
   },
   {
     "id": "notif-1793469266930-x3v6",
@@ -7679,18 +7507,6 @@
     "created_at": "2026-10-29T16:22:49.880Z"
   },
   {
-    "id": "notif-1793290969867-4h52",
-    "application_id": "app-1793269414896",
-    "recipient_email": "hothanhthaovlqt123@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Kết Quả Tuyển Sinh Đợt 1 – Danh Sách Chờ (Thứ hạng #361)",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px;\">BAN QUẢN LÝ KÝ TÚC XÁ – ĐH KINH TẾ ĐÀ NẴNG</h2>\n            <p style=\"margin: 5px 0 0; font-size: 12px; color: #FFB800;\">THÔNG BÁO KẾT QUẢ TUYỂN SINH – DANH SÁCH CHỜ</p>\n          </div>\n          <div style=\"padding: 24px; color: #334155; line-height: 1.6;\">\n            <p>Kính gửi sinh viên <strong>Nguyễn Ngọc Mai Thảo</strong> (MSSV: <strong>251121536135</strong>),</p>\n            <p>Hội đồng Tuyển sinh Ký túc xá DUE thông báo kết quả xét tuyển nội trú Đợt 1:</p>\n            <div style=\"background-color: #fffbeb; border: 1px solid #fde68a; padding: 16px; margin: 16px 0; border-radius: 8px; text-align: center;\">\n              <span style=\"font-size: 13px; color: #92400e; font-weight: bold;\">KẾT QUẢ XÉT TUYỂN ĐỢT 1:</span><br/>\n              <strong style=\"font-size: 18px; color: #b45309;\">DANH SÁCH CHỜ (DỰ BỊ THỨ #241)</strong>\n              <div style=\"font-size: 12px; color: #78350f; margin-top: 4px;\">Thứ hạng tổng trên BXH: #361 / 358 thí sinh</div>\n            </div>\n            <p>Chỉ tiêu đợt 1 có <strong>120 chỗ</strong> đã được phân bổ cho 120 thí sinh có điểm ưu tiên cao nhất. Suất nội trú chưa được phân bổ cho bạn trong đợt tuyển này.</p>\n            <p style=\"font-size: 13px; color: #475569;\">Trong trường hợp thí sinh trúng tuyển đợt 1 không hoàn tất ký hợp đồng trong 72 giờ hoặc hủy suất, hệ thống sẽ tự động xét duyệt và mời các thí sinh trong Danh sách chờ theo đúng thứ tự ưu tiên.</p>\n          </div>\n        </div>\n      ",
-    "loai": "DANH_SACH_CHO",
-    "status": "DA_GUI",
-    "created_at": "2026-10-29T16:22:49.867Z"
-  },
-  {
     "id": "notif-1793290969841-xf70",
     "application_id": "app-1793287304742",
     "recipient_email": "quynhvy@gmail.com",
@@ -7795,19 +7611,6 @@
     "deadline_hours": 48
   },
   {
-    "id": "notif-1793290893123-qu89",
-    "application_id": "app-1793269414896",
-    "recipient_email": "hothanhthaovlqt123@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Yêu Cầu Bổ Sung Minh Chứng Trong 48 Giờ – Sinh Viên Nguyễn Ngọc Mai Thảo (251121536135)",
-    "noi_dung": "<div style=\"font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px; letter-spacing: 0.5px;\">TRƯỜNG ĐẠI HỌC KINH TẾ – ĐH ĐÀ NẴNG (DUE)</h2>\n            <p style=\"margin: 6px 0 0; font-size: 13px; color: #FFB800; font-weight: bold;\">BAN QUẢN LÝ KÝ TÚC XÁ – YÊU CẦU BỔ SUNG MINH CHỨNG (TASK TR)</p>\n          </div>\n          <div style=\"padding: 24px; color: #1e293b; line-height: 1.6; white-space: pre-line;\">\n            Kính gửi sinh viên Nguyễn Ngọc Mai Thảo (MSSV: 251121536135),<br/><br/>Ban Quản lý Ký túc xá Trường Đại học Kinh tế – Đại học Đà Nẵng (DUE) xin thông báo kết quả thẩm định hồ sơ đăng ký nội trú của bạn:<br/><br/>Hệ thống AI Quét thẩm định minh chứng (Task A6) và Bộ phận Quản lý Sinh viên đã rà soát đối chiếu hồ sơ. Để đảm bảo tính chính xác và quyền lợi cộng điểm ưu tiên (Hộ khẩu thường trú tại vùng sâu, vùng xa, hải đảo (Khu vực 1)), bạn cần bổ sung/chụp lại minh chứng theo yêu cầu sau:<br/><br/>📌 CHI TIẾT SAI SÓT PHÁT HIỆN:<br/>- Họ tên trên ảnh không trùng khớp với họ tên đã nhập (Nguyễn Ngọc Mai Thảo). Số CCCD trên ảnh (99609009505) khác số đã nhập (048307002756)<br/><br/>⏱️ THỜI HẠN BỔ SUNG: Bạn có chính xác 48 GIỜ kể từ khi nhận được email này để chụp lại bản rõ nét và tải lên Cổng thông tin (theo quy trình Task TR - BPMN 2.0).<br/><br/>🚨 LƯU Ý BẮT BUỘC: Hết thời hạn 48 giờ nêu trên, nếu không nhận được minh chứng hợp lệ bổ sung, hệ thống sẽ tự động chuyển hồ sơ sang trạng thái \"KHÔNG ĐƯỢC XÉT\" (Sự kiện BE2 - Err_KhongXet) và hủy điểm ưu tiên dự kiến.<br/><br/>Vui lòng truy cập Cổng Tân Sinh Viên KTX DUE tại http://localhost:3000/student để tải lại ảnh minh chứng.<br/><br/>Trân trọng,<br/>Bộ phận Quản lý Sinh viên – Ban Quản trị KTX DUE<br/>Trường Đại học Kinh tế – Đại học Đà Nẵng<br/>Điện thoại: (0236) 3836.169 | Email: ktx@due.edu.vn\n          </div>\n          <div style=\"background-color: #f8fafc; padding: 14px 24px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; text-align: center;\">\n            Hệ thống Quản lý Quy trình KTX DUE • Hạn chót bổ sung: 48 giờ kể từ thời điểm gửi thông báo\n          </div>\n        </div>",
-    "loai": "YEU_CAU_BO_SUNG",
-    "status": "DA_GUI",
-    "created_at": "2026-10-29T16:21:33.123Z",
-    "deadline_hours": 48
-  },
-  {
     "id": "notif-1793290887302",
     "application_id": "app-1793288454868",
     "recipient_email": "truonggiang@gmail.com",
@@ -7869,19 +7672,6 @@
     "loai": "YEU_CAU_BO_SUNG",
     "status": "DA_GUI",
     "created_at": "2026-10-29T16:20:36.932Z",
-    "deadline_hours": 48
-  },
-  {
-    "id": "notif-1793290833577-unz2",
-    "application_id": "app-1793269414896",
-    "recipient_email": "hothanhthaovlqt123@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Yêu Cầu Bổ Sung Minh Chứng Trong 48 Giờ – Sinh Viên Nguyễn Ngọc Mai Thảo (251121536135)",
-    "noi_dung": "<div style=\"font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px; letter-spacing: 0.5px;\">TRƯỜNG ĐẠI HỌC KINH TẾ – ĐH ĐÀ NẴNG (DUE)</h2>\n            <p style=\"margin: 6px 0 0; font-size: 13px; color: #FFB800; font-weight: bold;\">BAN QUẢN LÝ KÝ TÚC XÁ – YÊU CẦU BỔ SUNG MINH CHỨNG (TASK TR)</p>\n          </div>\n          <div style=\"padding: 24px; color: #1e293b; line-height: 1.6; white-space: pre-line;\">\n            Kính gửi sinh viên Nguyễn Ngọc Mai Thảo (MSSV: 251121536135),<br/><br/>Ban Quản lý Ký túc xá Trường Đại học Kinh tế – Đại học Đà Nẵng (DUE) xin thông báo kết quả thẩm định hồ sơ đăng ký nội trú của bạn:<br/><br/>Hệ thống AI Quét thẩm định minh chứng (Task A6) và Bộ phận Quản lý Sinh viên đã rà soát đối chiếu hồ sơ. Để đảm bảo tính chính xác và quyền lợi cộng điểm ưu tiên (Hộ khẩu thường trú tại vùng sâu, vùng xa, hải đảo (Khu vực 1)), bạn cần bổ sung/chụp lại minh chứng theo yêu cầu sau:<br/><br/>📌 CHI TIẾT SAI SÓT PHÁT HIỆN:<br/>- Họ tên trên ảnh không trùng khớp với họ tên đã nhập (Nguyễn Ngọc Mai Thảo). Số CCCD trên ảnh (99609009505) khác số đã nhập (048307002756)<br/><br/>⏱️ THỜI HẠN BỔ SUNG: Bạn có chính xác 48 GIỜ kể từ khi nhận được email này để chụp lại bản rõ nét và tải lên Cổng thông tin (theo quy trình Task TR - BPMN 2.0).<br/><br/>🚨 LƯU Ý BẮT BUỘC: Hết thời hạn 48 giờ nêu trên, nếu không nhận được minh chứng hợp lệ bổ sung, hệ thống sẽ tự động chuyển hồ sơ sang trạng thái \"KHÔNG ĐƯỢC XÉT\" (Sự kiện BE2 - Err_KhongXet) và hủy điểm ưu tiên dự kiến.<br/><br/>Vui lòng truy cập Cổng Tân Sinh Viên KTX DUE tại http://localhost:3000/student để tải lại ảnh minh chứng.<br/><br/>Trân trọng,<br/>Bộ phận Quản lý Sinh viên – Ban Quản trị KTX DUE<br/>Trường Đại học Kinh tế – Đại học Đà Nẵng<br/>Điện thoại: (0236) 3836.169 | Email: ktx@due.edu.vn\n          </div>\n          <div style=\"background-color: #f8fafc; padding: 14px 24px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; text-align: center;\">\n            Hệ thống Quản lý Quy trình KTX DUE • Hạn chót bổ sung: 48 giờ kể từ thời điểm gửi thông báo\n          </div>\n        </div>",
-    "loai": "YEU_CAU_BO_SUNG",
-    "status": "DA_GUI",
-    "created_at": "2026-10-29T16:20:33.577Z",
     "deadline_hours": 48
   },
   {
@@ -8170,18 +7960,6 @@
     "created_at": "2026-10-29T15:55:07.994Z"
   },
   {
-    "id": "notif-1793289307976-mr1f",
-    "application_id": "app-1793269414896",
-    "recipient_email": "hothanhthaovlqt123@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Kết Quả Tuyển Sinh Đợt 1 – Danh Sách Chờ (Thứ hạng #360)",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px;\">BAN QUẢN LÝ KÝ TÚC XÁ – ĐH KINH TẾ ĐÀ NẴNG</h2>\n            <p style=\"margin: 5px 0 0; font-size: 12px; color: #FFB800;\">THÔNG BÁO KẾT QUẢ TUYỂN SINH – DANH SÁCH CHỜ</p>\n          </div>\n          <div style=\"padding: 24px; color: #334155; line-height: 1.6;\">\n            <p>Kính gửi sinh viên <strong>Nguyễn Ngọc Mai Thảo</strong> (MSSV: <strong>251121536135</strong>),</p>\n            <p>Hội đồng Tuyển sinh Ký túc xá DUE thông báo kết quả xét tuyển nội trú Đợt 1:</p>\n            <div style=\"background-color: #fffbeb; border: 1px solid #fde68a; padding: 16px; margin: 16px 0; border-radius: 8px; text-align: center;\">\n              <span style=\"font-size: 13px; color: #92400e; font-weight: bold;\">KẾT QUẢ XÉT TUYỂN ĐỢT 1:</span><br/>\n              <strong style=\"font-size: 18px; color: #b45309;\">DANH SÁCH CHỜ (DỰ BỊ THỨ #240)</strong>\n              <div style=\"font-size: 12px; color: #78350f; margin-top: 4px;\">Thứ hạng tổng trên BXH: #360 / 358 thí sinh</div>\n            </div>\n            <p>Chỉ tiêu đợt 1 có <strong>120 chỗ</strong> đã được phân bổ cho 120 thí sinh có điểm ưu tiên cao nhất. Suất nội trú chưa được phân bổ cho bạn trong đợt tuyển này.</p>\n            <p style=\"font-size: 13px; color: #475569;\">Trong trường hợp thí sinh trúng tuyển đợt 1 không hoàn tất ký hợp đồng trong 72 giờ hoặc hủy suất, hệ thống sẽ tự động xét duyệt và mời các thí sinh trong Danh sách chờ theo đúng thứ tự ưu tiên.</p>\n          </div>\n        </div>\n      ",
-    "loai": "DANH_SACH_CHO",
-    "status": "DA_GUI",
-    "created_at": "2026-10-29T15:55:07.976Z"
-  },
-  {
     "id": "notif-1793289307960-8x1x",
     "application_id": "app-1793287304742",
     "recipient_email": "quynhvy@gmail.com",
@@ -8430,18 +8208,6 @@
     "created_at": "2026-10-29T15:54:17.967Z"
   },
   {
-    "id": "notif-1793289257960-wnbz",
-    "application_id": "app-1793269414896",
-    "recipient_email": "hothanhthaovlqt123@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Kết Quả Tuyển Sinh Đợt 1 – Danh Sách Chờ (Thứ hạng #360)",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px;\">BAN QUẢN LÝ KÝ TÚC XÁ – ĐH KINH TẾ ĐÀ NẴNG</h2>\n            <p style=\"margin: 5px 0 0; font-size: 12px; color: #FFB800;\">THÔNG BÁO KẾT QUẢ TUYỂN SINH – DANH SÁCH CHỜ</p>\n          </div>\n          <div style=\"padding: 24px; color: #334155; line-height: 1.6;\">\n            <p>Kính gửi sinh viên <strong>Nguyễn Ngọc Mai Thảo</strong> (MSSV: <strong>251121536135</strong>),</p>\n            <p>Hội đồng Tuyển sinh Ký túc xá DUE thông báo kết quả xét tuyển nội trú Đợt 1:</p>\n            <div style=\"background-color: #fffbeb; border: 1px solid #fde68a; padding: 16px; margin: 16px 0; border-radius: 8px; text-align: center;\">\n              <span style=\"font-size: 13px; color: #92400e; font-weight: bold;\">KẾT QUẢ XÉT TUYỂN ĐỢT 1:</span><br/>\n              <strong style=\"font-size: 18px; color: #b45309;\">DANH SÁCH CHỜ (DỰ BỊ THỨ #240)</strong>\n              <div style=\"font-size: 12px; color: #78350f; margin-top: 4px;\">Thứ hạng tổng trên BXH: #360 / 358 thí sinh</div>\n            </div>\n            <p>Chỉ tiêu đợt 1 có <strong>120 chỗ</strong> đã được phân bổ cho 120 thí sinh có điểm ưu tiên cao nhất. Suất nội trú chưa được phân bổ cho bạn trong đợt tuyển này.</p>\n            <p style=\"font-size: 13px; color: #475569;\">Trong trường hợp thí sinh trúng tuyển đợt 1 không hoàn tất ký hợp đồng trong 72 giờ hoặc hủy suất, hệ thống sẽ tự động xét duyệt và mời các thí sinh trong Danh sách chờ theo đúng thứ tự ưu tiên.</p>\n          </div>\n        </div>\n      ",
-    "loai": "DANH_SACH_CHO",
-    "status": "DA_GUI",
-    "created_at": "2026-10-29T15:54:17.960Z"
-  },
-  {
     "id": "notif-1793289257953-sx3p",
     "application_id": "app-1793287304742",
     "recipient_email": "quynhvy@gmail.com",
@@ -8529,19 +8295,6 @@
     "loai": "YEU_CAU_BO_SUNG",
     "status": "DA_GUI",
     "created_at": "2026-10-29T15:52:59.555Z",
-    "deadline_hours": 48
-  },
-  {
-    "id": "notif-1793289174871-5o4l",
-    "application_id": "app-1793269414896",
-    "recipient_email": "hothanhthaovlqt123@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Yêu Cầu Bổ Sung Minh Chứng Trong 48 Giờ – Sinh Viên Nguyễn Ngọc Mai Thảo (251121536135)",
-    "noi_dung": "<div style=\"font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px; letter-spacing: 0.5px;\">TRƯỜNG ĐẠI HỌC KINH TẾ – ĐH ĐÀ NẴNG (DUE)</h2>\n            <p style=\"margin: 6px 0 0; font-size: 13px; color: #FFB800; font-weight: bold;\">BAN QUẢN LÝ KÝ TÚC XÁ – YÊU CẦU BỔ SUNG MINH CHỨNG (TASK TR)</p>\n          </div>\n          <div style=\"padding: 24px; color: #1e293b; line-height: 1.6; white-space: pre-line;\">\n            Kính gửi sinh viên Nguyễn Ngọc Mai Thảo (MSSV: 251121536135),<br/><br/>Ban Quản lý Ký túc xá Trường Đại học Kinh tế – Đại học Đà Nẵng (DUE) xin thông báo kết quả thẩm định hồ sơ đăng ký nội trú của bạn:<br/><br/>Hệ thống AI Quét thẩm định minh chứng (Task A6) và Bộ phận Quản lý Sinh viên đã rà soát đối chiếu hồ sơ. Để đảm bảo tính chính xác và quyền lợi cộng điểm ưu tiên (Hộ khẩu thường trú tại vùng sâu, vùng xa, hải đảo (Khu vực 1)), bạn cần bổ sung/chụp lại minh chứng theo yêu cầu sau:<br/><br/>📌 CHI TIẾT SAI SÓT PHÁT HIỆN:<br/>- Họ tên trên ảnh không trùng khớp với họ tên đã nhập (Nguyễn Ngọc Mai Thảo). Số CCCD trên ảnh (99609009505) khác số đã nhập (048307002756)<br/><br/>⏱️ THỜI HẠN BỔ SUNG: Bạn có chính xác 48 GIỜ kể từ khi nhận được email này để chụp lại bản rõ nét và tải lên Cổng thông tin (theo quy trình Task TR - BPMN 2.0).<br/><br/>🚨 LƯU Ý BẮT BUỘC: Hết thời hạn 48 giờ nêu trên, nếu không nhận được minh chứng hợp lệ bổ sung, hệ thống sẽ tự động chuyển hồ sơ sang trạng thái \"KHÔNG ĐƯỢC XÉT\" (Sự kiện BE2 - Err_KhongXet) và hủy điểm ưu tiên dự kiến.<br/><br/>Vui lòng truy cập Cổng Tân Sinh Viên KTX DUE tại http://localhost:3000/student để tải lại ảnh minh chứng.<br/><br/>Trân trọng,<br/>Bộ phận Quản lý Sinh viên – Ban Quản trị KTX DUE<br/>Trường Đại học Kinh tế – Đại học Đà Nẵng<br/>Điện thoại: (0236) 3836.169 | Email: ktx@due.edu.vn\n          </div>\n          <div style=\"background-color: #f8fafc; padding: 14px 24px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; text-align: center;\">\n            Hệ thống Quản lý Quy trình KTX DUE • Hạn chót bổ sung: 48 giờ kể từ thời điểm gửi thông báo\n          </div>\n        </div>",
-    "loai": "YEU_CAU_BO_SUNG",
-    "status": "DA_GUI",
-    "created_at": "2026-10-29T15:52:54.871Z",
     "deadline_hours": 48
   },
   {
@@ -8780,18 +8533,6 @@
     "created_at": "2026-10-29T15:47:55.566Z"
   },
   {
-    "id": "notif-1793288875561-zbur",
-    "application_id": "app-1793269414896",
-    "recipient_email": "hothanhthaovlqt123@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Kết Quả Tuyển Sinh Đợt 1 – Danh Sách Chờ (Thứ hạng #359)",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px;\">BAN QUẢN LÝ KÝ TÚC XÁ – ĐH KINH TẾ ĐÀ NẴNG</h2>\n            <p style=\"margin: 5px 0 0; font-size: 12px; color: #FFB800;\">THÔNG BÁO KẾT QUẢ TUYỂN SINH – DANH SÁCH CHỜ</p>\n          </div>\n          <div style=\"padding: 24px; color: #334155; line-height: 1.6;\">\n            <p>Kính gửi sinh viên <strong>Nguyễn Ngọc Mai Thảo</strong> (MSSV: <strong>251121536135</strong>),</p>\n            <p>Hội đồng Tuyển sinh Ký túc xá DUE thông báo kết quả xét tuyển nội trú Đợt 1:</p>\n            <div style=\"background-color: #fffbeb; border: 1px solid #fde68a; padding: 16px; margin: 16px 0; border-radius: 8px; text-align: center;\">\n              <span style=\"font-size: 13px; color: #92400e; font-weight: bold;\">KẾT QUẢ XÉT TUYỂN ĐỢT 1:</span><br/>\n              <strong style=\"font-size: 18px; color: #b45309;\">DANH SÁCH CHỜ (DỰ BỊ THỨ #239)</strong>\n              <div style=\"font-size: 12px; color: #78350f; margin-top: 4px;\">Thứ hạng tổng trên BXH: #359 / 358 thí sinh</div>\n            </div>\n            <p>Chỉ tiêu đợt 1 có <strong>120 chỗ</strong> đã được phân bổ cho 120 thí sinh có điểm ưu tiên cao nhất. Suất nội trú chưa được phân bổ cho bạn trong đợt tuyển này.</p>\n            <p style=\"font-size: 13px; color: #475569;\">Trong trường hợp thí sinh trúng tuyển đợt 1 không hoàn tất ký hợp đồng trong 72 giờ hoặc hủy suất, hệ thống sẽ tự động xét duyệt và mời các thí sinh trong Danh sách chờ theo đúng thứ tự ưu tiên.</p>\n          </div>\n        </div>\n      ",
-    "loai": "DANH_SACH_CHO",
-    "status": "DA_GUI",
-    "created_at": "2026-10-29T15:47:55.561Z"
-  },
-  {
     "id": "notif-1793288875554-anwp",
     "application_id": "app-1793287304742",
     "recipient_email": "quynhvy@gmail.com",
@@ -8926,19 +8667,6 @@
     "loai": "YEU_CAU_BO_SUNG",
     "status": "DA_GUI",
     "created_at": "2026-10-29T15:37:46.096Z",
-    "deadline_hours": 48
-  },
-  {
-    "id": "notif-1793288262474-51z6",
-    "application_id": "app-1793269414896",
-    "recipient_email": "hothanhthaovlqt123@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Yêu Cầu Bổ Sung Minh Chứng Trong 48 Giờ – Sinh Viên Nguyễn Ngọc Mai Thảo (251121536135)",
-    "noi_dung": "<div style=\"font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px; letter-spacing: 0.5px;\">TRƯỜNG ĐẠI HỌC KINH TẾ – ĐH ĐÀ NẴNG (DUE)</h2>\n            <p style=\"margin: 6px 0 0; font-size: 13px; color: #FFB800; font-weight: bold;\">BAN QUẢN LÝ KÝ TÚC XÁ – YÊU CẦU BỔ SUNG MINH CHỨNG (TASK TR)</p>\n          </div>\n          <div style=\"padding: 24px; color: #1e293b; line-height: 1.6; white-space: pre-line;\">\n            Kính gửi sinh viên Nguyễn Ngọc Mai Thảo (MSSV: 251121536135),<br/><br/>Ban Quản lý Ký túc xá Trường Đại học Kinh tế – Đại học Đà Nẵng (DUE) xin thông báo kết quả thẩm định hồ sơ đăng ký nội trú của bạn:<br/><br/>Hệ thống AI Quét thẩm định minh chứng (Task A6) và Bộ phận Quản lý Sinh viên đã rà soát đối chiếu hồ sơ. Để đảm bảo tính chính xác và quyền lợi cộng điểm ưu tiên (Hộ khẩu thường trú tại vùng sâu, vùng xa, hải đảo (Khu vực 1)), bạn cần bổ sung/chụp lại minh chứng theo yêu cầu sau:<br/><br/>📌 CHI TIẾT SAI SÓT PHÁT HIỆN:<br/>- Họ tên trên ảnh không trùng khớp với họ tên đã nhập (Nguyễn Ngọc Mai Thảo). Số CCCD trên ảnh (99609009505) khác số đã nhập (048307002756)<br/><br/>⏱️ THỜI HẠN BỔ SUNG: Bạn có chính xác 48 GIỜ kể từ khi nhận được email này để chụp lại bản rõ nét và tải lên Cổng thông tin (theo quy trình Task TR - BPMN 2.0).<br/><br/>🚨 LƯU Ý BẮT BUỘC: Hết thời hạn 48 giờ nêu trên, nếu không nhận được minh chứng hợp lệ bổ sung, hệ thống sẽ tự động chuyển hồ sơ sang trạng thái \"KHÔNG ĐƯỢC XÉT\" (Sự kiện BE2 - Err_KhongXet) và hủy điểm ưu tiên dự kiến.<br/><br/>Vui lòng truy cập Cổng Tân Sinh Viên KTX DUE tại http://localhost:3000/student để tải lại ảnh minh chứng.<br/><br/>Trân trọng,<br/>Bộ phận Quản lý Sinh viên – Ban Quản trị KTX DUE<br/>Trường Đại học Kinh tế – Đại học Đà Nẵng<br/>Điện thoại: (0236) 3836.169 | Email: ktx@due.edu.vn\n          </div>\n          <div style=\"background-color: #f8fafc; padding: 14px 24px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; text-align: center;\">\n            Hệ thống Quản lý Quy trình KTX DUE • Hạn chót bổ sung: 48 giờ kể từ thời điểm gửi thông báo\n          </div>\n        </div>",
-    "loai": "YEU_CAU_BO_SUNG",
-    "status": "DA_GUI",
-    "created_at": "2026-10-29T15:37:42.474Z",
     "deadline_hours": 48
   },
   {
@@ -9305,93 +9033,6 @@
     "loai": "DANH_SACH_CHO",
     "status": "DA_GUI",
     "created_at": "2026-10-29T10:47:43.253Z"
-  },
-  {
-    "id": "notif-1793270863241-5olj",
-    "application_id": "app-1793269414896",
-    "recipient_email": "hothanhthaovlqt123@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Chúc Mừng Bạn Đã Trúng Tuyển – Ký Hợp Đồng KTX Trong 72 Giờ",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px;\">BAN QUẢN LÝ KÝ TÚC XÁ – ĐH KINH TẾ ĐÀ NẴNG</h2>\n            <p style=\"margin: 5px 0 0; font-size: 12px; color: #FFB800;\">KẾT QUẢ XÉT TUYỂN & HỢP ĐỒNG ĐIỆN TỬ (Msg_CongBo)</p>\n          </div>\n          <div style=\"padding: 24px; color: #334155; line-height: 1.6;\">\n            <p>Chúc mừng sinh viên <strong>Nguyễn Ngọc Mai Thảo</strong> (MSSV: <strong>251121536135</strong>),</p>\n            <p>Trưởng ban Quản lý KTX đã ký duyệt danh sách trúng tuyển chính thức. Bạn được phân bổ:</p>\n            <div style=\"background-color: #f0fdf4; border: 1px solid #86efac; padding: 16px; margin: 16px 0; border-radius: 8px; text-align: center;\">\n              <span style=\"font-size: 13px; color: #166534;\">PHÒNG NỘI TRÚ ĐƯỢC CẤP:</span><br/>\n              <strong style=\"font-size: 22px; color: #15803d;\">Phòng A.306 - Giường số 04 (Khu A (Nam) - 4 người/phòng)</strong>\n            </div>\n            <p><strong>Hiệu lực ký hợp đồng:</strong> Trong vòng <strong>72 giờ</strong>. Vui lòng đăng nhập và nhập mã OTP bên dưới để hoàn tất:</p>\n            <div style=\"text-align: center; margin: 20px 0;\">\n              <span style=\"background-color: #003366; color: white; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;\">\n                Mã OTP Ký Hợp Đồng: 857469\n              </span>\n            </div>\n          </div>\n        </div>\n      ",
-    "loai": "TRUNG_TUYEN_KY_HD",
-    "status": "DA_GUI",
-    "created_at": "2026-10-29T10:47:43.241Z",
-    "deadline_hours": 72
-  },
-  {
-    "id": "notif-1793270727474",
-    "application_id": "app-1793269414896",
-    "recipient_email": "hothanhthaovlqt123@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Minh Chứng Bổ Sung Đã Được Cán Bộ QLSV Phê Duyệt – Cộng Điểm Thành Công",
-    "noi_dung": "<p>Chào sinh viên <strong>Nguyễn Ngọc Mai Thảo</strong> (MSSV: <strong>251121536135</strong>),</p><p>Cán bộ Quản lý Sinh viên đã thẩm định và phê duyệt minh chứng của bạn <strong>HỢP LỆ (ĐẠT)</strong>.</p><div style=\"background-color: #f0fdf4; border: 1px solid #86efac; padding: 12px; margin: 10px 0; border-radius: 6px;\"><strong style=\"color: #15803d;\">Điểm ưu tiên được cộng: +30 điểm</strong><br/><span style=\"font-size: 12px; color: #166534;\">Thứ hạng của bạn đã được tự động cập nhật tăng lên trên Bảng Xếp Hạng Tuyển Sinh (SP3).</span></div>",
-    "loai": "XAC_NHAN_NOP",
-    "status": "DA_GUI",
-    "created_at": "2026-10-29T10:45:27.475Z"
-  },
-  {
-    "id": "notif-1793270699758",
-    "application_id": "app-1793269414896",
-    "recipient_email": "hothanhthaovlqt123@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Đã Tiếp Nhận Minh Chứng Bổ Sung – Đang Chờ Cán Bộ QLSV Duyệt Lại",
-    "noi_dung": "<p>Chào sinh viên <strong>Nguyễn Ngọc Mai Thảo</strong>,</p><p>Hệ thống đã tiếp nhận ảnh minh chứng bổ sung của bạn. Hồ sơ đã được chuyển đến Cán bộ QLSV để thẩm định lại. Ngay sau khi Cán bộ duyệt đạt, điểm ưu tiên và thứ hạng của bạn sẽ được tự động cộng và cập nhật lên Bảng xếp hạng.</p>",
-    "loai": "XAC_NHAN_NOP",
-    "status": "DA_GUI",
-    "created_at": "2026-10-29T10:44:59.758Z"
-  },
-  {
-    "id": "notif-1793270660297-wyh4",
-    "application_id": "app-1793269414896",
-    "recipient_email": "hothanhthaovlqt123@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Yêu Cầu Bổ Sung Minh Chứng Trong 48 Giờ – Sinh Viên Nguyễn Ngọc Mai Thảo (251121536135)",
-    "noi_dung": "<div style=\"font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px; letter-spacing: 0.5px;\">TRƯỜNG ĐẠI HỌC KINH TẾ – ĐH ĐÀ NẴNG (DUE)</h2>\n            <p style=\"margin: 6px 0 0; font-size: 13px; color: #FFB800; font-weight: bold;\">BAN QUẢN LÝ KÝ TÚC XÁ – YÊU CẦU BỔ SUNG MINH CHỨNG (TASK TR)</p>\n          </div>\n          <div style=\"padding: 24px; color: #1e293b; line-height: 1.6; white-space: pre-line;\">\n            Kính gửi sinh viên Nguyễn Ngọc Mai Thảo (MSSV: 251121536135),<br/><br/>Ban Quản lý Ký túc xá Trường Đại học Kinh tế – Đại học Đà Nẵng (DUE) xin thông báo kết quả thẩm định hồ sơ đăng ký nội trú của bạn:<br/><br/>Hệ thống AI Quét thẩm định minh chứng (Task A6) và Bộ phận Quản lý Sinh viên đã rà soát đối chiếu hồ sơ. Để đảm bảo tính chính xác và quyền lợi cộng điểm ưu tiên (Hộ khẩu thường trú tại vùng sâu, vùng xa, hải đảo (Khu vực 1)), bạn cần bổ sung/chụp lại minh chứng theo yêu cầu sau:<br/><br/>📌 CHI TIẾT SAI SÓT PHÁT HIỆN:<br/>- Họ tên trên ảnh không trùng khớp với họ tên đã nhập (Nguyễn Ngọc Mai Thảo). Số CCCD trên ảnh (99609009505) khác số đã nhập (048307002756)<br/><br/>⏱️ THỜI HẠN BỔ SUNG: Bạn có chính xác 48 GIỜ kể từ khi nhận được email này để chụp lại bản rõ nét và tải lên Cổng thông tin (theo quy trình Task TR - BPMN 2.0).<br/><br/>🚨 LƯU Ý BẮT BUỘC: Hết thời hạn 48 giờ nêu trên, nếu không nhận được minh chứng hợp lệ bổ sung, hệ thống sẽ tự động chuyển hồ sơ sang trạng thái \"KHÔNG ĐƯỢC XÉT\" (Sự kiện BE2 - Err_KhongXet) và hủy điểm ưu tiên dự kiến.<br/><br/>Vui lòng truy cập Cổng Tân Sinh Viên KTX DUE tại http://localhost:3000/student để tải lại ảnh minh chứng.<br/><br/>Trân trọng,<br/>Bộ phận Quản lý Sinh viên – Ban Quản trị KTX DUE<br/>Trường Đại học Kinh tế – Đại học Đà Nẵng<br/>Điện thoại: (0236) 3836.169 | Email: ktx@due.edu.vn\n          </div>\n          <div style=\"background-color: #f8fafc; padding: 14px 24px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; text-align: center;\">\n            Hệ thống Quản lý Quy trình KTX DUE • Hạn chót bổ sung: 48 giờ kể từ thời điểm gửi thông báo\n          </div>\n        </div>",
-    "loai": "YEU_CAU_BO_SUNG",
-    "status": "DA_GUI",
-    "created_at": "2026-10-29T10:44:20.297Z",
-    "deadline_hours": 48
-  },
-  {
-    "id": "notif-1793270271235",
-    "application_id": "app-1793269414896",
-    "recipient_email": "hothanhthaovlqt123@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Đã Tiếp Nhận Minh Chứng Bổ Sung – Đang Chờ Cán Bộ QLSV Duyệt Lại",
-    "noi_dung": "<p>Chào sinh viên <strong>Nguyễn Ngọc Mai Thảo</strong>,</p><p>Hệ thống đã tiếp nhận ảnh minh chứng bổ sung của bạn. Hồ sơ đã được chuyển đến Cán bộ QLSV để thẩm định lại. Ngay sau khi Cán bộ duyệt đạt, điểm ưu tiên và thứ hạng của bạn sẽ được tự động cộng và cập nhật lên Bảng xếp hạng.</p>",
-    "loai": "XAC_NHAN_NOP",
-    "status": "DA_GUI",
-    "created_at": "2026-10-29T10:37:51.235Z"
-  },
-  {
-    "id": "notif-1793269898936-s5r4",
-    "application_id": "app-1793269414896",
-    "recipient_email": "hothanhthaovlqt123@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Yêu Cầu Bổ Sung Minh Chứng Trong 48 Giờ – Sinh Viên Nguyễn Ngọc Mai Thảo (251121536135)",
-    "noi_dung": "<div style=\"font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px; letter-spacing: 0.5px;\">TRƯỜNG ĐẠI HỌC KINH TẾ – ĐH ĐÀ NẴNG (DUE)</h2>\n            <p style=\"margin: 6px 0 0; font-size: 13px; color: #FFB800; font-weight: bold;\">BAN QUẢN LÝ KÝ TÚC XÁ – YÊU CẦU BỔ SUNG MINH CHỨNG (TASK TR)</p>\n          </div>\n          <div style=\"padding: 24px; color: #1e293b; line-height: 1.6; white-space: pre-line;\">\n            Kính gửi sinh viên Nguyễn Ngọc Mai Thảo (MSSV: 251121536135),<br/><br/>Ban Quản lý Ký túc xá Trường Đại học Kinh tế – Đại học Đà Nẵng (DUE) xin thông báo kết quả thẩm định hồ sơ đăng ký nội trú của bạn:<br/><br/>Hệ thống AI Quét thẩm định minh chứng (Task A6) và Bộ phận Quản lý Sinh viên đã rà soát đối chiếu hồ sơ. Để đảm bảo tính chính xác và quyền lợi cộng điểm ưu tiên (Hộ khẩu thường trú tại vùng sâu, vùng xa, hải đảo (Khu vực 1)), bạn cần bổ sung/chụp lại minh chứng theo yêu cầu sau:<br/><br/>📌 CHI TIẾT SAI SÓT PHÁT HIỆN:<br/>- Họ tên trên ảnh không trùng khớp với họ tên đã nhập (Nguyễn Ngọc Mai Thảo). Không tìm thấy số CCCD 048307002756 trên ảnh<br/><br/>⏱️ THỜI HẠN BỔ SUNG: Bạn có chính xác 48 GIỜ kể từ khi nhận được email này để chụp lại bản rõ nét và tải lên Cổng thông tin (theo quy trình Task TR - BPMN 2.0).<br/><br/>🚨 LƯU Ý BẮT BUỘC: Hết thời hạn 48 giờ nêu trên, nếu không nhận được minh chứng hợp lệ bổ sung, hệ thống sẽ tự động chuyển hồ sơ sang trạng thái \"KHÔNG ĐƯỢC XÉT\" (Sự kiện BE2 - Err_KhongXet) và hủy điểm ưu tiên dự kiến.<br/><br/>Vui lòng truy cập Cổng Tân Sinh Viên KTX DUE tại http://localhost:3000/student để tải lại ảnh minh chứng.<br/><br/>Trân trọng,<br/>Bộ phận Quản lý Sinh viên – Ban Quản trị KTX DUE<br/>Trường Đại học Kinh tế – Đại học Đà Nẵng<br/>Điện thoại: (0236) 3836.169 | Email: ktx@due.edu.vn\n          </div>\n          <div style=\"background-color: #f8fafc; padding: 14px 24px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; text-align: center;\">\n            Hệ thống Quản lý Quy trình KTX DUE • Hạn chót bổ sung: 48 giờ kể từ thời điểm gửi thông báo\n          </div>\n        </div>",
-    "loai": "YEU_CAU_BO_SUNG",
-    "status": "DA_GUI",
-    "created_at": "2026-10-29T10:31:38.936Z",
-    "deadline_hours": 48
-  },
-  {
-    "id": "notif-1793269416393-vcxk",
-    "application_id": "app-1793269414896",
-    "recipient_email": "hothanhthaovlqt123@gmail.com",
-    "student_code": "251121536135",
-    "student_name": "Nguyễn Ngọc Mai Thảo",
-    "tieu_de": "[KTX DUE] Xác Nhận Nộp Hồ Sơ Đăng Ký Nội Trú – MSSV: 251121536135",
-    "noi_dung": "\n        <div style=\"font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;\">\n          <div style=\"background-color: #003366; color: white; padding: 20px; text-align: center;\">\n            <h2 style=\"margin: 0; font-size: 18px; letter-spacing: 0.5px;\">TRƯỜNG ĐẠI HỌC KINH TẾ – ĐH ĐÀ NẴNG (DUE)</h2>\n            <p style=\"margin: 6px 0 0; font-size: 13px; color: #FFB800; font-weight: bold;\">BAN QUẢN LÝ KÝ TÚC XÁ – XÁC NHẬN TIẾP NHẬN HỒ SƠ</p>\n          </div>\n          <div style=\"padding: 24px; color: #1e293b; line-height: 1.6;\">\n            <p>Kính gửi sinh viên <strong>Nguyễn Ngọc Mai Thảo</strong> (Mã SV: <strong>251121536135</strong>),</p>\n            <p>Hệ thống KTX DUE đã tiếp nhận thành công hồ sơ đăng ký nội trú của bạn vào cơ sở dữ liệu (DataStore_HS).</p>\n            \n            <div style=\"background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px; margin: 16px 0;\">\n              <h4 style=\"margin: 0 0 10px; color: #003366; font-size: 14px;\">THÔNG TIN ĐĂNG KÝ:</h4>\n              <p style=\"margin: 4px 0; font-size: 13px;\">• Diện ưu tiên: <strong>Hộ khẩu thường trú tại vùng sâu, vùng xa, hải đảo (Khu vực 1)</strong></p>\n              <p style=\"margin: 4px 0; font-size: 13px;\">• Điểm ưu tiên dự kiến: <strong style=\"color: #1d4ed8;\">30 điểm</strong></p>\n              <p style=\"margin: 4px 0; font-size: 13px;\">• Kết quả quét AI Vision: <strong>Đang chờ đối chiếu rà soát</strong></p>\n            </div>\n\n            <p style=\"font-size: 13px; color: #475569;\">\n              Hồ sơ của bạn đã được chuyển vào <strong>Bảng Xếp Hạng Tạm Thời (SP3)</strong>. Bảng xếp hạng cập nhật liên tục theo thời gian thực (Real-time).\n            </p>\n            <p style=\"margin-top: 20px; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 12px;\">\n              Email này được tạo tự động từ Hệ thống Quản lý Quy trình KTX DUE. Vui lòng không phản hồi trực tiếp vào địa chỉ này.\n            </p>\n          </div>\n        </div>\n      ",
-    "loai": "XAC_NHAN_NOP",
-    "status": "DA_GUI",
-    "created_at": "2026-10-29T10:23:36.393Z"
   },
   {
     "id": "notif-1793267725348-k7g8",

@@ -114,12 +114,15 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
   };
 
   // ĐỒNG BỘ DANH SÁCH THÔNG BÁO TỪ CÁN BỘ (IN-APP INBOX)
-  const fetchNotifications = async (maSv?: string, email?: string) => {
+  const fetchNotifications = async (maSv?: string, email?: string, hoTen?: string) => {
     try {
       const code = maSv || studentInfo.ma_sv;
       const mail = email || studentInfo.email;
+      const name = hoTen || studentInfo.ho_ten;
       if (!code && !mail) return;
-      const res = await fetch(`/api/notifications?studentCode=${encodeURIComponent(code)}&email=${encodeURIComponent(mail)}`);
+      const res = await fetch(
+        `/api/notifications?studentCode=${encodeURIComponent(code)}&email=${encodeURIComponent(mail)}&studentName=${encodeURIComponent(name || '')}`
+      );
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setNotifications((prev) => {
@@ -179,7 +182,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
     const rankInfo = getStudentRankInfo(app.ma_sv, list);
     setStudentRank(rankInfo.rank);
     setTotalStudents(rankInfo.total);
-    fetchNotifications(app.ma_sv, app.email);
+    fetchNotifications(app.ma_sv, app.email, app.ho_ten);
     try {
       localStorage.setItem('last_submitted_student', JSON.stringify(resolved));
       localStorage.setItem('active_student_session_code', app.ma_sv);

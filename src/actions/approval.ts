@@ -235,7 +235,23 @@ export async function officerSendBatchEmailsAction() {
     } = await import('@/lib/data/live-store');
 
     // KIỂM TRA ĐIỀU KIỆN TIÊN QUYẾT: KHÔNG CÒN HỒ SƠ CHỜ DUYỆT
-    const storedApps = getAllStoredApplications();
+    let storedApps = getAllStoredApplications();
+    if (
+      process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id') &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    ) {
+      try {
+        const supabaseAdmin = createAdminClient();
+        const { data: dbApps } = await supabaseAdmin.from('applications').select('*');
+        if (dbApps && dbApps.length > 0) {
+          storedApps = dbApps as any;
+        }
+      } catch (err) {
+        console.warn('Lỗi đọc applications từ Supabase trong officerSendBatchEmailsAction:', err);
+      }
+    }
+
     const pendingApps = storedApps.filter(
       (a) => a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG'
     );
