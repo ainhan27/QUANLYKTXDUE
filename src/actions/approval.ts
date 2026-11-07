@@ -214,7 +214,7 @@ export async function directorApproveRoundAction(roundId: string = 'round-k50-do
     }
     return {
       success: true,
-      message: 'Trưởng ban Quản lý KTX đã ký duyệt danh sách trúng tuyển chính thức (Quyết định B2)! AI đã soạn sẵn 120 email thông báo. Hồ sơ đã chuyển sang Cán bộ QLSV để kiểm tra và gửi email cho sinh viên.',
+      message: 'Trưởng ban Quản lý KTX đã ký phê duyệt quyết định danh sách tuyển sinh chính thức (Quyết định B2)! Quyết định đã có hiệu lực thi hành.',
     };
   } catch (error: unknown) {
     return {

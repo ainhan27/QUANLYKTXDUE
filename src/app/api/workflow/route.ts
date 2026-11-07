@@ -253,9 +253,9 @@ export async function POST(request: Request) {
       // BƯỚC 3A: Trưởng ban ký duyệt danh sách chính thức (isRankingsFinalized = true, isPublished = false)
       addDirectorDirectiveToStore({
         type: 'PHE_DUYET',
-        title: 'Trưởng Ban KTX Đã Ký Duyệt Quyết Định B2 – Chuyển QLSV Phát Hành Email',
+        title: 'Trưởng Ban KTX Đã Ký Quyết Định Phê Duyệt Danh Sách Chính Thức (Quyết Định B2)',
         message:
-          'Trưởng ban Quản lý KTX đã ký quyết định phê duyệt danh sách chính thức (B2). Hệ thống AI đã soạn sẵn 120 email trúng tuyển kèm Hợp đồng điện tử. Đề nghị Cán bộ QLSV kiểm tra các dự thảo và bấm xác nhận phát hành gửi đến cho toàn bộ sinh viên.',
+          'Trưởng ban Quản lý KTX đã ký quyết định phê duyệt danh sách trúng tuyển chính thức Đợt 1 (Quyết định B2). Quyết định đã ban hành và có hiệu lực thi hành.',
         sender: 'ThS. Nguyễn Văn Quản – Trưởng Ban Quản lý KTX',
       });
       const updated = saveWorkflowState({

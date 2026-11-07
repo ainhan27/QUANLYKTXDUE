@@ -254,7 +254,7 @@ export default function ApprovalDashboard() {
       await fetchWorkflowAndApplications();
       setStatusMessage(
         res.message ||
-          'Trưởng ban đã phê duyệt danh sách chính thức! AI đã soạn sẵn 120 email trúng tuyển kèm Hợp đồng điện tử. Đã chuyển tiếp sang Cán bộ Quản lý Sinh viên (QLSV) để phát hành gửi đến cho sinh viên.'
+          'Trưởng ban Quản lý KTX đã ký quyết định phê duyệt danh sách chính thức Đợt 1 (Quyết định B2)! Quyết định đã ban hành và có hiệu lực thi hành.'
       );
 
       // Đồng bộ cross-tab tức thì 0ms
@@ -408,7 +408,7 @@ export default function ApprovalDashboard() {
 
           <p className="text-xs text-slate-200 max-w-2xl leading-relaxed">
             {workflowState.isRankingsFinalized
-              ? 'Trưởng ban Quản lý KTX đã ký quyết định phê duyệt chính thức 120 thí sinh trúng tuyển. Quyết định đã được chuyển sang Ban Quản lý (Cán bộ QLSV) để thực hiện gửi thông báo và hướng dẫn ký hợp đồng.'
+              ? 'Trưởng ban Quản lý KTX đã ký quyết định phê duyệt chính thức 120 thí sinh trúng tuyển (Quyết định B2). Quyết định đã ban hành và có hiệu lực thi hành.'
               : pendingCount > 0
               ? 'Theo Quy chế KTX DUE, Cán bộ QLSV phải thẩm định và duyệt xong 100% minh chứng trước khi công bố. Khi số hồ sơ còn lại bằng 0, Trưởng ban mới có thể ký duyệt danh sách trúng tuyển.'
               : '100% hồ sơ minh chứng đã được Cán bộ QLSV duyệt đạt chuẩn. Trưởng ban Quản lý KTX thực hiện ký quyết định phê duyệt danh sách chính thức.'}
@@ -436,14 +436,14 @@ export default function ApprovalDashboard() {
                     type="button"
                     onClick={handleApproveAllPendingQuick}
                     disabled={isProcessing}
-                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs whitespace-nowrap shadow transition flex items-center space-x-1 shrink-0"
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs whitespace-nowrap shadow transition flex items-center space-x-1 shrink-0 cursor-pointer"
                     title="Cán bộ / Trưởng ban phê duyệt nhanh tất cả để mở khóa ký quyết định"
                   >
                     <span>✓ Duyệt Đạt Tất Cả ({pendingCount})</span>
                   </button>
                   <Link
                     href="/officer"
-                    className="px-3.5 py-2 bg-[#FFB800] hover:bg-amber-400 text-[#003366] font-black rounded-lg text-xs whitespace-nowrap shadow transition flex items-center space-x-1 shrink-0"
+                    className="px-3.5 py-2 bg-[#FFB800] hover:bg-amber-400 text-[#003366] font-black rounded-lg text-xs whitespace-nowrap shadow transition flex items-center space-x-1 shrink-0 cursor-pointer"
                   >
                     <span>👉 Cổng QLSV &rarr;</span>
                   </Link>
@@ -456,9 +456,11 @@ export default function ApprovalDashboard() {
               </div>
             )
           ) : (
-            <div className="p-2.5 bg-emerald-500/20 border border-emerald-400 text-emerald-300 rounded-xl text-xs flex items-center space-x-2">
-              <span className="text-emerald-400 text-base font-bold">✓</span>
-              <span className="font-semibold">Đã hoàn tất phê duyệt danh sách chính thức. Thẩm quyền gửi email thuộc về Ban Quản lý (QLSV).</span>
+            <div className="p-3 bg-emerald-500/25 border-2 border-emerald-400 text-emerald-100 rounded-xl text-xs flex items-center space-x-2 shadow-sm">
+              <span className="text-emerald-400 text-lg font-black">✓</span>
+              <span className="font-bold">
+                ĐÃ KÝ PHÊ DUYỆT CHÍNH THỨC (QUYẾT ĐỊNH B2) – QUYẾT ĐỊNH ĐÃ CÓ HIỆU LỰC PHÁP LÝ
+              </span>
             </div>
           )}
 
@@ -499,30 +501,13 @@ export default function ApprovalDashboard() {
               </>
             ) : (
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsReturnModalOpen(true)}
-                  disabled={isProcessing}
-                  className="px-4 py-2.5 border border-rose-300 text-rose-200 hover:bg-rose-500/20 rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer"
-                >
-                  Trả Về Cho Cán Bộ Thẩm Định Lại
-                </button>
                 <Link
-                  href="/officer"
-                  className="px-5 py-3 bg-[#FFB800] hover:bg-amber-400 text-[#003366] font-black rounded-xl text-xs shadow-lg transition flex items-center space-x-1.5 cursor-pointer"
-                  title="Chuyển sang Cổng Ban Quản lý (QLSV) để thực hiện kiểm tra và gửi email thông báo trúng tuyển"
+                  href="/ranking"
+                  className="px-5 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-xl text-xs shadow-lg transition flex items-center space-x-2 cursor-pointer"
+                  title="Xem Bảng Xếp Hạng Tuyển Sinh Chính Thức Đã Phê Duyệt"
                 >
-                  <span>Chuyển Sang Cổng Ban Quản Lý (QLSV) Để Gửi Email &rarr;</span>
+                  <span>📊 Xem Bảng Xếp Hạng Đã Phê Duyệt &rarr;</span>
                 </Link>
-                <button
-                  type="button"
-                  onClick={handleResetWorkflow}
-                  disabled={isProcessing}
-                  className="px-3.5 py-2.5 bg-slate-700/80 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer"
-                  title="Thiết lập lại trạng thái về Bước 3 để kiểm thử"
-                >
-                  🔄 Reset Về Chưa Duyệt
-                </button>
               </div>
             )}
           </div>
