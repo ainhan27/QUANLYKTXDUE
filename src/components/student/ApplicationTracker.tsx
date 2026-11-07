@@ -676,7 +676,10 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
     status === 'THAM_DINH_DAT' ||
     status === 'DA_DUYET' ||
     status === 'DA_PHAT_HANH' ||
-    status === 'DA_KY';
+    status === 'DA_KY' ||
+    status === 'DA_BAN_GIAO';
+  const isStudentSigned = status === 'DA_KY' || status === 'DA_BAN_GIAO';
+  const isStudentHandedOver = status === 'DA_BAN_GIAO' || (isStudentSigned && Boolean(workflowState.isHandedOver));
   const isAdmitted = !isPendingReview && !isSupplement && !isCancelled && !isDeniedResidence && !isDisqualified && studentRank > 0 && studentRank <= 120;
 
   // PHÂN BỔ PHÒNG VÀ MÃ OTP CÁ NHÂN DUY NHẤT CHO TỪNG SINH VIÊN (1 NGƯỜI 1 PHÒNG & 1 MÃ OTP)
@@ -691,13 +694,15 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
     {
       num: 1,
       title: '1. Nộp hồ sơ',
-      desc: 'Đã lưu CSDL',
+      desc: isDeniedResidence ? 'Không đủ điều kiện (HK ĐN)' : 'Đã lưu CSDL',
     },
     {
       num: 2,
       title: '2. Thẩm định minh chứng',
       desc:
-        status === 'CAN_BO_SUNG'
+        isDisqualified
+          ? 'Không được xét (Quá hạn 48h)'
+          : status === 'CAN_BO_SUNG'
           ? 'Cần bổ sung (Hạn 48h)'
           : status === 'CHO_THAM_DINH'
           ? 'Chờ cán bộ QLSV rà soát'
@@ -716,12 +721,20 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
     {
       num: 4,
       title: '4. Ký hợp đồng OTP',
-      desc: workflowState.isSigned ? 'Đã ký số thành công' : 'Thời hạn 72h',
+      desc: isStudentSigned
+        ? 'Đã ký số thành công'
+        : (workflowState.isPublished || status === 'DA_PHAT_HANH') && isAdmitted
+        ? 'Thời hạn 72h'
+        : 'Chờ mở cổng ký',
     },
     {
       num: 5,
       title: '5. Tiếp nhận & Bàn giao',
-      desc: workflowState.isHandedOver ? 'Đã bàn giao phòng' : 'Bàn giao chìa khóa',
+      desc: isStudentHandedOver
+        ? 'Đã bàn giao phòng'
+        : isStudentSigned
+        ? 'Sẵn sàng tiếp nhận phòng'
+        : 'Bàn giao chìa khóa',
     },
   ];
 
@@ -729,33 +742,31 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
   let currentStepNumber = 2;
   if (isDeniedResidence) {
     currentStepNumber = 1; // Bước 1: Tiếp nhận & Sàng lọc (Bị từ chối do HK Đà Nẵng)
-  } else if (isDisqualified) {
-    currentStepNumber = 2; // Bước 2: Thẩm định minh chứng (Bị loại do quá hạn 48h)
+  } else if (isPendingReview || isSupplement || isDisqualified) {
+    // ƯU TIÊN TUYỆT ĐỐI: Khi hồ sơ còn đang chờ thẩm định (CHO_THAM_DINH) hoặc cần bổ sung (CAN_BO_SUNG) hoặc bị loại do quá 48h (KHONG_DUOC_XET),
+    // sinh viên BẮT BUỘC ĐỨNG Ở BƯỚC 2 (Thẩm định minh chứng). TUYỆT ĐỐI KHÔNG NHẢY LÊN BƯỚC 5!
+    currentStepNumber = 2;
   } else if (isCancelled) {
-    currentStepNumber = 5;
-  } else if (workflowState.isHandedOver || workflowState.isSigned) {
-    currentStepNumber = 5; // Bước 5: Tiếp nhận phòng & bàn giao
-  } else if (workflowState.isPublished && isAdmitted) {
-    currentStepNumber = 4; // Bước 4: Mở cổng ký hợp đồng điện tử 72h
-  } else if (workflowState.isRankingsFinalized) {
-    currentStepNumber = 3; // Bước 3: Trưởng ban đã ký B2
-  } else if (isApprovedEvidence || (studentInfo.diem_uu_tien > 0 && status !== 'CHO_THAM_DINH' && status !== 'CAN_BO_SUNG')) {
-    currentStepNumber = 3; // Bước 3: Minh chứng đã duyệt đạt, đang chờ Trưởng ban duyệt B2
+    currentStepNumber = 5; // Bị hủy suất
+  } else if (isStudentSigned) {
+    currentStepNumber = 5; // Bước 5: Tiếp nhận phòng & bàn giao (Chỉ khi CHÍNH SINH VIÊN NÀY đã ký số)
+  } else if ((workflowState.isPublished || status === 'DA_PHAT_HANH') && isAdmitted) {
+    currentStepNumber = 4; // Bước 4: Mở cổng ký hợp đồng điện tử 72h (Trúng tuyển Top 120)
+  } else if (isApprovedEvidence || workflowState.isRankingsFinalized || studentInfo.diem_uu_tien > 0) {
+    currentStepNumber = 3; // Bước 3: Minh chứng đã duyệt đạt, đang chờ Trưởng ban duyệt B2 hoặc nằm trong danh sách chờ
   } else {
-    // status === 'CHO_THAM_DINH' hoặc status === 'CAN_BO_SUNG'
-    currentStepNumber = 2; // Bước 2: Thẩm định minh chứng
+    currentStepNumber = 2; // Mặc định ở Bước 2
   }
 
   // Điều kiện để ẩn cột "Thông tin hồ sơ đã ghi nhận" và hiển thị toàn màn hình Hợp đồng
   const isContractOrHandoverStep =
     !isPendingReview &&
+    !isSupplement &&
     !isCancelled &&
     !isDeniedResidence &&
     !isDisqualified &&
-    status !== 'CAN_BO_SUNG' &&
-    workflowState.isRankingsFinalized &&
     isAdmitted &&
-    (workflowState.isPublished || workflowState.isSigned);
+    ((workflowState.isPublished || status === 'DA_PHAT_HANH') || isStudentSigned);
 
   // NẾU CHƯA CÓ PHIÊN ĐĂNG NHẬP SINH VIÊN (CHƯA ĐĂNG NHẬP VÀ CHƯA NỘP ĐƠN)
   if (!studentInfo.ma_sv) {
@@ -891,20 +902,22 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
               ? '⛔ Không Đủ Điều Kiện (Hộ Khẩu Đà Nẵng)'
               : isDisqualified
               ? '⚠️ Không Được Xét (Quá Hạn Bổ Sung Minh Chứng)'
-              : workflowState.isHandedOver
-              ? 'Đã Bàn Giao Phòng'
-              : workflowState.isSigned
-              ? 'Đã Ký Hợp Đồng Thành Công'
               : isPendingReview
               ? 'Chờ Cán Bộ Rà Soát'
+              : status === 'CAN_BO_SUNG'
+              ? 'Cần Bổ Sung Minh Chứng'
+              : isStudentHandedOver
+              ? 'Đã Bàn Giao Phòng'
+              : isStudentSigned
+              ? 'Đã Ký Hợp Đồng Thành Công'
               : workflowState.isPublished && isAdmitted
               ? 'Đã Phát Hành HĐ (72h)'
               : workflowState.isPublished && !isAdmitted
               ? 'Danh Sách Chờ'
               : workflowState.isRankingsFinalized
               ? 'Trưởng Ban Đã Phê Duyệt Chính Thức'
-              : status === 'CAN_BO_SUNG'
-              ? 'Cần Bổ Sung Minh Chứng'
+              : isApprovedEvidence
+              ? 'Minh Chứng Đã Đạt'
               : 'Đã Tiếp Nhận Hồ Sơ'}
           </span>
           {workflowState.isRankingsFinalized && (
@@ -1058,7 +1071,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
         )}
 
         {/* GIAI ĐOẠN 4: ĐÃ PHÁT HÀNH EMAIL – TOP 120 */}
-        {workflowState.isPublished && !workflowState.isSigned && isAdmitted && (
+        {(workflowState.isPublished || status === 'DA_PHAT_HANH') && !isStudentSigned && isAdmitted && (
           <div className="p-3.5 bg-emerald-50 border border-emerald-400 rounded-xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
             <div>
               <div className="flex items-center space-x-2">
@@ -1188,6 +1201,8 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
               {currentStepNumber === 2
                 ? status === 'CAN_BO_SUNG'
                   ? 'Cần bổ sung minh chứng trong 48h (Bước 2)'
+                  : isDisqualified
+                  ? 'Không được xét do quá hạn nộp minh chứng (Bước 2)'
                   : 'Hồ sơ đang trong hàng đợi Cán bộ QLSV thẩm định (Bước 2)'
                 : currentStepNumber === 3
                 ? workflowState.isRankingsFinalized
@@ -1196,9 +1211,13 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                 : currentStepNumber === 4
                 ? 'Đang mở Cổng Ký Hợp Đồng Điện Tử (Thời hạn 72h)'
                 : currentStepNumber === 5
-                ? workflowState.isHandedOver
+                ? isCancelled
+                  ? 'Hồ sơ đã kết thúc / Hủy suất nội trú'
+                  : isStudentHandedOver
                   ? 'Đã hoàn tất bàn giao phòng – Quy trình kết thúc'
-                  : 'Đã ký hợp đồng – Sẵn sàng tiếp nhận phòng'
+                  : isStudentSigned
+                  ? 'Đã ký hợp đồng – Sẵn sàng tiếp nhận phòng'
+                  : 'Đã hoàn tất quy trình'
                 : 'Đã hoàn tất quy trình'}
             </span>
           </div>
@@ -1247,7 +1266,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
         {isContractOrHandoverStep ? (
           <div id="formal-contract-section" className="space-y-8 pt-4 border-t border-slate-200">
             {/* NẾU ĐÃ KÝ: HIỂN THỊ THÊM GIẤY BÁO TIẾP NHẬN NỘI TRÚ VÀ LỊCH HẸN BÀN GIAO PHÒNG (BƯỚC 9) */}
-            {workflowState.isSigned && (
+            {isStudentSigned && (
               <div className="bg-white border-2 border-emerald-600 rounded-xl shadow-md p-6 sm:p-8 space-y-5 text-slate-900">
                 {/* Tiêu ngữ giấy báo tiếp nhận */}
                 <div className="border-b border-slate-200 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -1309,7 +1328,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                     <div>
                       <span>TRẠNG THÁI TIẾP NHẬN: </span>
                       <strong className="text-emerald-900">
-                        {workflowState.isHandedOver
+                        {isStudentHandedOver
                           ? 'ĐÃ HOÀN TẤT BÀN GIAO PHÒNG (E2) & KÍCH HOẠT PORTAL NỘI TRÚ'
                           : 'HỢP ĐỒNG ĐÃ ĐƯỢC KÝ SỐ THÀNH CÔNG (SIGNED) – PHÒNG ĐÃ KHÓA GIỮ CHỖ (DOB_PH)'}
                       </strong>
@@ -1609,7 +1628,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                   </div>
 
                   {/* TRƯỜNG HỢP 1: ĐÃ KÝ THÀNH CÔNG */}
-                  {workflowState.isSigned ? (
+                  {isStudentSigned ? (
                     <div className="my-4 inline-block p-3 border-2 border-dashed border-emerald-600 bg-emerald-50 rounded-lg text-left text-[11px] text-emerald-950 font-mono shadow-xs">
                       <div className="font-bold text-emerald-800 text-center uppercase tracking-wider text-[10px] pb-1 border-b border-emerald-300">
                         XÁC THỰC KÝ SỐ ĐIỆN TỬ THÀNH CÔNG
@@ -1817,7 +1836,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
               </div>
 
               {/* NÚT HOẠT ĐỘNG NGOẠI LỆ: HỦY YÊU CẦU TỪ NGƯỜI ĐỀ NGHỊ (RÚT HỒ SƠ) */}
-              {!isCancelled && !isDeniedResidence && !isDisqualified && !workflowState.isHandedOver && (
+              {!isCancelled && !isDeniedResidence && !isDisqualified && !isStudentHandedOver && (
                 <div className="pt-2 border-t border-slate-100">
                   <button
                     type="button"
