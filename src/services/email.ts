@@ -177,7 +177,7 @@ export async function sendWorkflowEmail(params: SendWorkflowEmailParams): Promis
             <p>Chào sinh viên <strong>${studentName}</strong>,</p>
             <p>Hợp đồng của bạn đã được ghi nhận trạng thái <strong>SIGNED</strong>. Lịch bàn giao cơ sở vật chất phòng <strong>${details?.roomName || 'Phòng 301'}</strong>:</p>
             <ul>
-              <li>Thời gian nhận phòng: <strong>${details?.appointmentDate || 'Từ 08:00 đến 17:00 ngày 01/09/2026'}</strong></li>
+              <li>Thời gian nhận phòng: <strong>${details?.appointmentDate || 'Từ 08:00 đến 17:00 ngày 01/11/2026'}</strong></li>
               <li>Địa điểm: Văn phòng Quản lý KTX – Số 71 Ngũ Hành Sơn, Đà Nẵng</li>
               <li>Hồ sơ mang theo: Bản gốc CCCD và Bản gốc Giấy xác nhận đối tượng ưu tiên để đối chiếu Offline (E2).</li>
             </ul>

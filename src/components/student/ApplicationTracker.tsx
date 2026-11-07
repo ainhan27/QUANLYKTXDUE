@@ -1614,7 +1614,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                     </div>
                     <div className="flex flex-col sm:flex-row sm:justify-between py-1 border-b border-slate-200">
                       <span className="text-slate-600 font-semibold">2. Thời gian tiếp nhận:</span>
-                      <strong className="text-slate-900">Từ 08 giờ 00 phút đến 17 giờ 00 phút, ngày 01 tháng 09 năm 2026</strong>
+                      <strong className="text-slate-900">Từ 08 giờ 00 phút đến 17 giờ 00 phút, ngày 01 tháng 11 năm 2026</strong>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:justify-between py-1 border-b border-slate-200">
                       <span className="text-slate-600 font-semibold">3. Địa điểm làm thủ tục:</span>
@@ -1769,7 +1769,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                     ĐIỀU 2: THỜI HẠN THUÊ CHỖ Ở
                   </h4>
                   <p className="mt-1">
-                    2.1. Thời hạn thuê tính từ ngày <strong>01 tháng 09 năm 2026</strong> đến hết ngày <strong>30 tháng 06 năm 2027</strong> (tương ứng với thời gian học tập chính khóa năm học 2026 – 2027).
+                    2.1. Thời hạn thuê tính từ ngày <strong>01 tháng 11 năm 2026</strong> đến hết ngày <strong>30 tháng 06 năm 2027</strong> (tương ứng với thời gian học tập chính khóa năm học 2026 – 2027).
                   </p>
                   <p className="mt-1">
                     2.2. Trường hợp sinh viên có nguyện vọng lưu trú trong dịp hè (tháng 7 và tháng 8 năm 2027), Bên B phải làm đơn đăng ký riêng trước ngày 15 tháng 06 năm 2027 và được sự đồng ý bằng văn bản của Trưởng Ban Quản lý Ký túc xá.
@@ -1945,6 +1945,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                         <div>Mã sinh viên: <strong>{studentInfo.ma_sv}</strong></div>
                         <div>Mã giao dịch ký: <strong>TX-KYHD-{studentInfo.ma_sv}-SUCCESS</strong></div>
                         <div>Phương thức ký: <strong>Xác thực mã OTP cá nhân ({personalOtp})</strong></div>
+                        <div>Thời gian ký số: <strong>28/10/2026 10:20:00 GMT+7</strong></div>
                         <div>Toàn vẹn dữ liệu: <strong>SHA-256 Validated & Encrypted</strong></div>
                       </div>
                     </div>

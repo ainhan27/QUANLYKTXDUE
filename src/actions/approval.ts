@@ -491,7 +491,7 @@ export async function handoverRoomAction(applicationId: string, roomNumber: stri
       type: 'NHAN_PHONG_BAN_GIAO',
       details: {
         roomName: roomNumber,
-        appointmentDate: '08:30 ngày 01/09/2026',
+        appointmentDate: '08:30 ngày 01/11/2026',
       },
     });
 
