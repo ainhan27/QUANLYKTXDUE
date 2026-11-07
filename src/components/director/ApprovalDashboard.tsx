@@ -672,8 +672,8 @@ export default function ApprovalDashboard() {
         </div>
       </div>
 
-      {/* MODAL TRẢ VỀ ĐIỀU CHỈNH */}
-      {isReturnModalOpen && (
+      {/* MODAL TRẢ VỀ ĐIỀU CHỈNH (CHỈ KHẢ DỤNG TRƯỚC KHI TRƯỞNG BAN KÝ PHÊ DUYỆT) */}
+      {!workflowState.isRankingsFinalized && isReturnModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
             <h3 className="text-sm font-bold text-slate-900 uppercase">
