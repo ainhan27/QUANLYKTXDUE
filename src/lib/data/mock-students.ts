@@ -134,10 +134,33 @@ export function computeMergedRankings(storedApps: any[] = [], quota = 120): Rank
     const isDanang =
       s.tinh_thanh?.toLowerCase().includes('đà nẵng') ||
       s.tinh_thanh?.toLowerCase().includes('da nang');
-    if (isDanang) continue;
+
+    // Tự động chuyển KHONG_DUOC_XET nếu quá hạn 48 giờ bổ sung minh chứng (Trường hợp 4)
+    if (s.status === 'CAN_BO_SUNG' && s.updated_at) {
+      const diffMs = Date.now() - new Date(s.updated_at).getTime();
+      if (diffMs > 48 * 60 * 60 * 1000) {
+        s.status = 'KHONG_DUOC_XET';
+      }
+    }
+
+    // Các trạng thái kết thúc KHÔNG vào bảng xếp hạng theo Bảng tóm tắt Mục 5:
+    // TU_CHOI_BO_TRI (Hộ khẩu ĐN), KHONG_DUOC_XET (Quá hạn 48h), HUY_SUAT (Từ chối / Quá hạn ký 72h)
+    const isExcludedFromRanking =
+      isDanang ||
+      s.status === 'TU_CHOI_BO_TRI' ||
+      s.status === 'KHONG_DUOC_XET' ||
+      s.status === 'HUY_SUAT';
+
+    if (isExcludedFromRanking) {
+      const exIdx = merged.findIndex((m) => m.ma_sv === s.ma_sv || m.id === s.id);
+      if (exIdx >= 0) {
+        merged.splice(exIdx, 1);
+      }
+      continue;
+    }
 
     const isPendingReview = s.status === 'CHO_THAM_DINH' || s.status === 'CAN_BO_SUNG';
-    const isCancelled = s.status === 'HUY_SUAT' || s.status === 'TU_CHOI_BO_TRI';
+    const isCancelled = s.status === 'HUY_SUAT' || s.status === 'TU_CHOI_BO_TRI' || s.status === 'KHONG_DUOC_XET';
     const isNoPrioApplicant =
       !s.dien_uu_tien ||
       s.dien_uu_tien === 'KHONG' ||
@@ -155,7 +178,10 @@ export function computeMergedRankings(storedApps: any[] = [], quota = 120): Rank
       else if (s.dien_uu_tien === 'NGOAI_TINH_XA') activePoints = 20;
       else if (s.dien_uu_tien_label?.toLowerCase().includes('thương binh') || s.dien_uu_tien_label?.toLowerCase().includes('liệt sĩ')) activePoints = 40;
       else if (s.dien_uu_tien_label?.toLowerCase().includes('nghèo')) activePoints = 35;
-      else activePoints = 0; // Tuyệt đối không gán 35đ cho diện không xác định!
+      else if (s.dien_uu_tien_label?.toLowerCase().includes('vùng sâu') || s.dien_uu_tien_label?.toLowerCase().includes('hải đảo')) activePoints = 30;
+      else if (s.dien_uu_tien_label?.toLowerCase().includes('dân tộc')) activePoints = 25;
+      else if (s.dien_uu_tien_label?.toLowerCase().includes('ngoại tỉnh')) activePoints = 20;
+      else activePoints = 0; // Tuyệt đối không gán điểm nếu không thuộc diện
     }
 
     const existingIdx = merged.findIndex((m) => m.ma_sv === s.ma_sv || m.id === s.id);
@@ -195,7 +221,8 @@ export function computeMergedRankings(storedApps: any[] = [], quota = 120): Rank
       item.status === 'CHO_THAM_DINH' ||
       item.status === 'CAN_BO_SUNG' ||
       item.status === 'HUY_SUAT' ||
-      item.status === 'TU_CHOI_BO_TRI';
+      item.status === 'TU_CHOI_BO_TRI' ||
+      item.status === 'KHONG_DUOC_XET';
 
     if (!isExcluded && admittedCount < quota && item.diem_uu_tien > 0) {
       item.is_trung_tuyen = true;
