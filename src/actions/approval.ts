@@ -990,23 +990,39 @@ export async function sendSupplementRequestAction(params: {
     const { applicationId, recipientEmail, studentName, studentCode, reason, emailSubject, emailBody } = params;
 
     // 1. Cập nhật trạng thái hồ sơ trong Persistent Store sang CAN_BO_SUNG
-    const { updateApplicationStatusInStore } = await import('@/lib/data/live-store');
+    const { updateApplicationStatusInStore, getAllStoredApplications, saveApplicationToStore } = await import('@/lib/data/live-store');
     updateApplicationStatusInStore(applicationId, 'CAN_BO_SUNG');
     if (studentCode) {
       updateApplicationStatusInStore(studentCode, 'CAN_BO_SUNG');
+    }
+    // Đảm bảo reset sạch cờ bổ sung để không hiện thông báo giả định
+    const storedList = getAllStoredApplications();
+    const targetApp = storedList.find((x) => x.id === applicationId || (studentCode && x.ma_sv === studentCode));
+    if (targetApp) {
+      targetApp.status = 'CAN_BO_SUNG';
+      targetApp.is_supplemented = false;
+      targetApp.has_reuploaded = false;
+      targetApp.supplement_submitted_at = undefined;
+      targetApp.is_supplement_review = false;
+      saveApplicationToStore(targetApp);
     }
 
     // 2. Cập nhật Supabase nếu có cấu hình
     try {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
         const supabaseAdmin = createAdminClient();
-        await supabaseAdmin
+        const updateBuilder = supabaseAdmin
           .from('applications')
           .update({
             status: 'CAN_BO_SUNG',
             ghi_chu_ly_do: reason,
-          })
-          .eq('id', applicationId);
+            updated_at: new Date().toISOString(),
+          });
+        if (studentCode) {
+          await updateBuilder.or(`ma_sv.eq.${studentCode},id.eq.${applicationId}`);
+        } else {
+          await updateBuilder.eq('id', applicationId);
+        }
       }
     } catch (e) {
       console.warn('DB update CAN_BO_SUNG:', e);
@@ -1294,8 +1310,9 @@ export async function submitSupplementEvidenceAction(params: {
               diem_uu_tien: awardedPoints,
               file_url: filesPayload,
               ghi_chu_ly_do: aiAnalysis.rejection_reason || aiAnalysis.raw_reasoning || null,
+              updated_at: new Date().toISOString(),
             })
-            .eq('ma_sv', studentCode);
+            .or(`ma_sv.eq.${studentCode},id.eq.${studentCode}`);
         }
       } catch (e) {
         console.warn('DB update supplemented approved:', e);
@@ -1343,8 +1360,9 @@ export async function submitSupplementEvidenceAction(params: {
               status: 'CHO_THAM_DINH',
               file_url: filesPayload,
               ghi_chu_ly_do: aiAnalysis.rejection_reason || aiAnalysis.raw_reasoning || null,
+              updated_at: new Date().toISOString(),
             })
-            .eq('ma_sv', studentCode);
+            .or(`ma_sv.eq.${studentCode},id.eq.${studentCode}`);
         }
       } catch (e) {
         console.warn('DB update supplemented pending:', e);

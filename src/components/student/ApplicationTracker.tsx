@@ -10,7 +10,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AppStatus } from '@/types/database';
-import { STATUS_METADATA, getAssignedRoomForStudent, getStudentOtpCode } from '@/lib/constants/workflow';
+import { STATUS_METADATA, getAssignedRoomForStudent, getStudentOtpCode, resolveNextAppStatus } from '@/lib/constants/workflow';
 import { getStudentRankInfo } from '@/lib/data/mock-students';
 import StudentLoginModal from '@/components/student/StudentLoginModal';
 import {
@@ -44,6 +44,9 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
     aiConfidence: 0.35,
     ghi_chu_ly_do: undefined as string | undefined,
     aiResult: null as any,
+    is_supplemented: false,
+    has_reuploaded: false,
+    supplement_submitted_at: undefined as string | undefined,
   });
 
   const [studentRank, setStudentRank] = useState<number>(325);
@@ -156,11 +159,12 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
       )
     );
     const rawStatus: AppStatus = effectiveAppStatus || 'CHO_THAM_DINH';
-    // Server status is authoritative for application approval steps (1 -> 3)
-    // Anti-regression ONLY protects locally signed student contracts (Bước 4, 5)
-    const finalStatus: AppStatus = isSignedLocally
-      ? (rawStatus === 'DA_BAN_GIAO' ? 'DA_BAN_GIAO' : 'DA_KY')
-      : rawStatus;
+    // State machine monotonic resolver: Chống rollback trạng thái do mạng lag hoặc polling cũ
+    const finalStatus: AppStatus = resolveNextAppStatus(status, rawStatus, {
+      isSignedLocally,
+      isApprovedLocally,
+      hasReuploaded: Boolean(app.has_reuploaded ?? app.is_supplemented),
+    });
 
     const confidence: number =
       app.ai_result?.confidence ??
@@ -189,6 +193,9 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
       aiConfidence: confidence,
       ghi_chu_ly_do: app.ghi_chu_ly_do,
       aiResult: app.ai_result || app.aiResult || null,
+      is_supplemented: Boolean(app.is_supplemented),
+      has_reuploaded: Boolean(app.has_reuploaded ?? app.is_supplemented),
+      supplement_submitted_at: app.supplement_submitted_at || undefined,
     };
     setStudentInfo(resolved);
     setStatus(finalStatus);
@@ -340,30 +347,27 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                 try {
                   approvedIds = JSON.parse(localStorage.getItem('officer_approved_ids') || '[]');
                 } catch {}
-                const isApprovedLocally = approvedIds.includes(found.id) || (targetCode && approvedIds.includes(targetCode));
+                const isApprovedLocally = Boolean(approvedIds.includes(found.id) || (targetCode && approvedIds.includes(targetCode)));
                 const rawNewStatus = (isApprovedLocally && (found.status === 'CHO_THAM_DINH' || !found.status))
                   ? 'THAM_DINH_DAT'
                   : (found.status || 'CHO_THAM_DINH');
-                const newStatus = isSignedLocally
-                  ? (rawNewStatus === 'DA_BAN_GIAO' ? 'DA_BAN_GIAO' : 'DA_KY')
-                  : rawNewStatus;
-
-                setStatus((prev) => {
-                  if (isSignedLocally) {
-                    return prev === 'DA_BAN_GIAO' ? prev : 'DA_KY';
-                  }
-                  // Khóa chống lùi chỉ bảo vệ hợp đồng điện tử đã ký (DA_KY, DA_BAN_GIAO)
-                  if (prev === 'DA_KY' || prev === 'DA_BAN_GIAO') {
-                    if (newStatus !== 'HUY_SUAT' && newStatus !== 'DA_BAN_GIAO') return prev;
-                  }
-                  return newStatus;
+                const newStatus = resolveNextAppStatus(status, rawNewStatus, {
+                  isSignedLocally,
+                  isApprovedLocally,
+                  hasReuploaded: Boolean(found.has_reuploaded ?? found.is_supplemented),
                 });
+
+                setStatus((prev) => resolveNextAppStatus(prev, newStatus, {
+                  isSignedLocally,
+                  isApprovedLocally,
+                  hasReuploaded: Boolean(found.has_reuploaded ?? found.is_supplemented),
+                }));
                 setStudentInfo((prev) => {
-                  const resolvedStatus = isSignedLocally
-                    ? (prev.status === 'DA_BAN_GIAO' ? prev.status : 'DA_KY')
-                    : (prev.status === 'DA_KY' || prev.status === 'DA_BAN_GIAO')
-                    ? (newStatus === 'HUY_SUAT' || newStatus === 'DA_BAN_GIAO' ? newStatus : prev.status)
-                    : newStatus;
+                  const resolvedStatus = resolveNextAppStatus(prev.status, newStatus, {
+                    isSignedLocally,
+                    isApprovedLocally,
+                    hasReuploaded: Boolean(found.has_reuploaded ?? found.is_supplemented),
+                  });
                   const isNoPrio =
                     !found.dien_uu_tien ||
                     found.dien_uu_tien === 'KHONG' ||
@@ -381,15 +385,6 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                     ? prev.diem_uu_tien
                     : 0;
 
-                  if (
-                    prev.status === resolvedStatus &&
-                    prev.diem_uu_tien === resolvedPts &&
-                    prev.gioi_tinh === (found.gioi_tinh || prev.gioi_tinh || 'Nữ') &&
-                    prev.ho_ten === found.ho_ten &&
-                    prev.ma_sv === found.ma_sv
-                  ) {
-                    return prev;
-                  }
                   return {
                     ...prev,
                     status: resolvedStatus,
@@ -397,6 +392,9 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                     diem_uu_tien: resolvedPts,
                     aiConfidence: found.ai_result?.confidence ?? prev.aiConfidence,
                     aiResult: found.ai_result ?? prev.aiResult ?? null,
+                    is_supplemented: Boolean(found.is_supplemented ?? prev.is_supplemented),
+                    has_reuploaded: Boolean(found.has_reuploaded ?? found.is_supplemented ?? prev.has_reuploaded),
+                    supplement_submitted_at: found.supplement_submitted_at ?? prev.supplement_submitted_at,
                   };
                 });
                 const rankInfo = getStudentRankInfo(found.ma_sv, j.data);
@@ -430,23 +428,13 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                 localStorage.getItem(`student_status_${targetCode}`) === 'DA_KY' ||
                 localStorage.getItem(`student_status_${targetCode}`) === 'DA_BAN_GIAO'
               );
-              const targetStatus = isSignedLocally
-                ? (data.status === 'DA_BAN_GIAO' ? 'DA_BAN_GIAO' : 'DA_KY')
-                : (data.status || 'CHO_THAM_DINH');
-
-              setStatus((prev) => {
-                if (isSignedLocally) return prev === 'DA_BAN_GIAO' ? prev : 'DA_KY';
-                if (prev === 'DA_KY' || prev === 'DA_BAN_GIAO') {
-                  if (targetStatus !== 'HUY_SUAT' && targetStatus !== 'DA_BAN_GIAO') return prev;
-                }
-                return targetStatus;
+              const targetStatus = resolveNextAppStatus(status, data.status, {
+                isSignedLocally,
               });
+
+              setStatus((prev) => resolveNextAppStatus(prev, targetStatus, { isSignedLocally }));
               setStudentInfo((prev) => {
-                const resolvedStatus = isSignedLocally
-                  ? (prev.status === 'DA_BAN_GIAO' ? prev.status : 'DA_KY')
-                  : (prev.status === 'DA_KY' || prev.status === 'DA_BAN_GIAO')
-                  ? (targetStatus === 'HUY_SUAT' || targetStatus === 'DA_BAN_GIAO' ? targetStatus : prev.status)
-                  : targetStatus;
+                const resolvedStatus = resolveNextAppStatus(prev.status, targetStatus, { isSignedLocally });
                 const isNoPrio =
                   !prev.dien_uu_tien ||
                   prev.dien_uu_tien === 'KHONG' ||
@@ -528,23 +516,13 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
               localStorage.getItem(`student_status_${targetCode}`) === 'DA_KY' ||
               localStorage.getItem(`student_status_${targetCode}`) === 'DA_BAN_GIAO'
             );
-            const targetSigStatus = isSignedLocally
-              ? (sig.status === 'DA_BAN_GIAO' ? 'DA_BAN_GIAO' : 'DA_KY')
-              : (sig.status || 'CHO_THAM_DINH');
-
-            setStatus((prev) => {
-              if (isSignedLocally) return prev === 'DA_BAN_GIAO' ? prev : 'DA_KY';
-              if (prev === 'DA_KY' || prev === 'DA_BAN_GIAO') {
-                if (targetSigStatus !== 'HUY_SUAT' && targetSigStatus !== 'DA_BAN_GIAO') return prev;
-              }
-              return targetSigStatus;
+            const targetSigStatus = resolveNextAppStatus(status, sig.status, {
+              isSignedLocally,
             });
+
+            setStatus((prev) => resolveNextAppStatus(prev, targetSigStatus, { isSignedLocally }));
             setStudentInfo((prev) => {
-              const resolved = isSignedLocally
-                ? (prev.status === 'DA_BAN_GIAO' ? prev.status : 'DA_KY')
-                : (prev.status === 'DA_KY' || prev.status === 'DA_BAN_GIAO')
-                ? (targetSigStatus === 'HUY_SUAT' || targetSigStatus === 'DA_BAN_GIAO' ? targetSigStatus : prev.status)
-                : targetSigStatus;
+              const resolved = resolveNextAppStatus(prev.status, targetSigStatus, { isSignedLocally });
               const isNoPrio =
                 !prev.dien_uu_tien ||
                 prev.dien_uu_tien === 'KHONG' ||
@@ -622,6 +600,9 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
           aiConfidence: 0.35,
           ghi_chu_ly_do: undefined,
           aiResult: null,
+          is_supplemented: false,
+          has_reuploaded: false,
+          supplement_submitted_at: undefined,
         });
         setNotifications([]);
         setStatus('CHO_THAM_DINH');
@@ -703,12 +684,20 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
       if (res.success) {
         const isApproved = Boolean(res.isAutoApproved ?? ((res as any).aiAnalysis?.decision === 'THAM_DINH_DAT'));
         setStatus(isApproved ? 'THAM_DINH_DAT' : 'CHO_THAM_DINH');
-        if (isApproved && (res as any).awardedPoints) {
-          setStudentInfo((prev) => ({
+        setStudentInfo((prev) => {
+          const updated = {
             ...prev,
-            diem_uu_tien: (res as any).awardedPoints,
-          }));
-        }
+            status: (isApproved ? 'THAM_DINH_DAT' : 'CHO_THAM_DINH') as AppStatus,
+            is_supplemented: true,
+            has_reuploaded: true,
+            supplement_submitted_at: new Date().toISOString(),
+            diem_uu_tien: (isApproved && (res as any).awardedPoints) ? (res as any).awardedPoints : prev.diem_uu_tien,
+          };
+          try {
+            localStorage.setItem('last_submitted_student', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
         setWorkflowNotice(res.message);
         setShowUploadModal(false);
         setNewCccdBase64(null);
@@ -1048,6 +1037,29 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
   );
   const personalOtp = getStudentOtpCode(studentInfo.ma_sv);
 
+  // TÍNH TOÁN SỐ THỨ TỰ BƯỚC HIỆN TẠI (TỪ 1 ĐẾN 5 ĐỒNG NHẤT 100% VỚI NỘI DUNG CARD BÊN DƯỚI)
+  let currentStepNumber = 2;
+  if (isDeniedResidence) {
+    currentStepNumber = 1; // Bước 1: Tiếp nhận & Sàng lọc (Bị từ chối do HK Đà Nẵng)
+  } else if (isStudentSigned) {
+    // KHÓA CỨNG BƯỚC 5: Khi sinh viên đã ký hợp đồng OTP thành công, cố định ở Bước 5 (Tiếp nhận & Bàn giao)
+    currentStepNumber = 5;
+  } else if (isCancelled) {
+    currentStepNumber = 5; // Bị hủy suất
+  } else if (isStudentHandedOver) {
+    currentStepNumber = 5; // Đã bàn giao chìa khóa
+  } else if ((workflowState.isPublished || status === 'DA_PHAT_HANH') && isAdmitted) {
+    currentStepNumber = 4; // Bước 4: Mở cổng ký hợp đồng điện tử 72h (Trúng tuyển Top 120)
+  } else if (isApprovedEvidence || workflowState.isRankingsFinalized) {
+    currentStepNumber = 3; // Bước 3: Minh chứng đã duyệt đạt, đang chờ Trưởng ban duyệt B2 hoặc nằm trong danh sách chờ
+  } else if (isSupplement) {
+    currentStepNumber = 2; // Bước 2: Cần bổ sung minh chứng (48h)
+  } else if (isDisqualified) {
+    currentStepNumber = 2; // Bị loại do quá hạn 48h
+  } else {
+    currentStepNumber = 2; // Bước 2: Đang chờ Cán bộ QLSV rà soát
+  }
+
   // TIẾN TRÌNH 5 BƯỚC CỐ ĐỊNH CHUẨN XUYÊN SUỐT TOÀN QUY TRÌNH (KHÔNG NHẢY BƯỚC, KHÔNG ĐỔI SỐ LƯỢNG)
   const studentSteps = [
     {
@@ -1061,11 +1073,11 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
       desc:
         isDisqualified
           ? 'Không được xét (Quá hạn 48h)'
-          : status === 'CAN_BO_SUNG'
+          : isSupplement
           ? 'Cần bổ sung (Hạn 48h)'
-          : status === 'CHO_THAM_DINH'
-          ? 'Chờ cán bộ QLSV rà soát'
-          : 'Đã thẩm định đạt (✓)',
+          : currentStepNumber >= 3
+          ? 'Đã thẩm định đạt (✓)'
+          : 'Chờ cán bộ QLSV rà soát',
     },
     {
       num: 3,
@@ -1096,29 +1108,6 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
         : 'Bàn giao chìa khóa',
     },
   ];
-
-  // TÍNH TOÁN SỐ THỨ TỰ BƯỚC HIỆN TẠI (TỪ 1 ĐẾN 5 ĐỒNG NHẤT 100% VỚI NỘI DUNG CARD BÊN DƯỚI)
-  let currentStepNumber = 2;
-  if (isDeniedResidence) {
-    currentStepNumber = 1; // Bước 1: Tiếp nhận & Sàng lọc (Bị từ chối do HK Đà Nẵng)
-  } else if (isStudentSigned) {
-    // KHÓA CỨNG BƯỚC 5: Khi sinh viên đã ký hợp đồng OTP thành công, cố định ở Bước 5 (Tiếp nhận & Bàn giao)
-    currentStepNumber = 5;
-  } else if (isCancelled) {
-    currentStepNumber = 5; // Bị hủy suất
-  } else if (isStudentHandedOver) {
-    currentStepNumber = 5; // Đã bàn giao chìa khóa
-  } else if ((workflowState.isPublished || status === 'DA_PHAT_HANH') && isAdmitted) {
-    currentStepNumber = 4; // Bước 4: Mở cổng ký hợp đồng điện tử 72h (Trúng tuyển Top 120)
-  } else if (isApprovedEvidence || workflowState.isRankingsFinalized) {
-    currentStepNumber = 3; // Bước 3: Minh chứng đã duyệt đạt, đang chờ Trưởng ban duyệt B2 hoặc nằm trong danh sách chờ
-  } else if (isSupplement) {
-    currentStepNumber = 2; // Bước 2: Cần bổ sung minh chứng (48h)
-  } else if (isDisqualified) {
-    currentStepNumber = 2; // Bị loại do quá hạn 48h
-  } else {
-    currentStepNumber = 2; // Bước 2: Đang chờ Cán bộ QLSV rà soát
-  }
 
   // Điều kiện để ẩn cột "Thông tin hồ sơ đã ghi nhận" và hiển thị toàn màn hình Hợp đồng
   const isContractOrHandoverStep =
@@ -1566,8 +1555,8 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
           </div>
         )}
 
-        {/* THÔNG BÁO TIẾP NHẬN MINH CHỨNG BỔ SUNG (KHI ĐÃ NỘP VÀ ĐANG CHỜ CÁN BỘ QLSV RÀ SOÁT - KHÔNG CÒN NÚT TẢI LẠI) */}
-        {status === 'CHO_THAM_DINH' && notifications.some((n) => n.loai === 'YEU_CAU_BO_SUNG') && (
+        {/* THÔNG BÁO TIẾP NHẬN MINH CHỨNG BỔ SUNG (CHỈ HIỂN THỊ KHI SINH VIÊN ĐÃ THỰC SỰ GỬI TẢI LẠI TỆP) */}
+        {status === 'CHO_THAM_DINH' && (studentInfo.has_reuploaded === true || studentInfo.is_supplemented === true || Boolean(studentInfo.supplement_submitted_at)) && (
           <div className="p-4 bg-purple-50 border-2 border-purple-300 rounded-xl shadow-sm text-purple-950 space-y-2 animate-in fade-in">
             <div className="flex items-center gap-2">
               <span className="text-base">🔄</span>
@@ -2172,21 +2161,17 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                   <div className="pt-2 border-t border-slate-200 space-y-1.5">
                     <div className="flex justify-between items-center">
                       <span className="text-slate-500 text-xs">Đối chiếu AI Vision:</span>
-                      {isApprovedEvidence ? (
+                      {currentStepNumber >= 3 || isApprovedEvidence ? (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                           ✓ Đạt chuẩn (Đã thẩm định đạt)
                         </span>
-                      ) : status === 'CAN_BO_SUNG' || (studentInfo.aiResult && studentInfo.aiResult.decision === 'CAN_BO_SUNG') ? (
+                      ) : isSupplement || (studentInfo.aiResult && studentInfo.aiResult.decision === 'CAN_BO_SUNG') ? (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
                           ⚠️ Cần bổ sung minh chứng (48h)
                         </span>
-                      ) : status === 'CHO_THAM_DINH' || (studentInfo.aiResult && studentInfo.aiResult.confidence < 0.95) || studentInfo.aiConfidence < 0.95 ? (
+                      ) : (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
                           ⚠️ Chờ Cán bộ QLSV rà soát ({Math.round((studentInfo.aiResult?.confidence ?? studentInfo.aiConfidence ?? 0.2) * 100)}% &lt; 95%)
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                          ✓ Đạt chuẩn (Đã thẩm định đạt)
                         </span>
                       )}
                     </div>
@@ -2195,7 +2180,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                       {/* Họ tên */}
                       {(() => {
                         const nm = studentInfo.aiResult?.extracted_info?.name_matched ?? studentInfo.aiResult?.cccd_analysis?.name_matched;
-                        if (isApprovedEvidence) {
+                        if (currentStepNumber >= 3 || isApprovedEvidence) {
                           return (
                             <span className="px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">
                               Họ tên: ✓ Đã thẩm định đạt
@@ -2227,7 +2212,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                       {(() => {
                         const cm = studentInfo.aiResult?.extracted_info?.cccd_matched ?? studentInfo.aiResult?.cccd_analysis?.cccd_matched;
                         const hasKw = studentInfo.aiResult?.cccd_analysis?.has_cccd_keywords ?? studentInfo.aiResult?.has_cccd_keyword;
-                        if (isApprovedEvidence) {
+                        if (currentStepNumber >= 3 || isApprovedEvidence) {
                           return (
                             <span className="px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">
                               CCCD: ✓ Đã thẩm định đạt
@@ -2273,6 +2258,13 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                           return (
                             <span className="px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">
                               Giấy tờ: Diện chuẩn (0đ)
+                            </span>
+                          );
+                        }
+                        if (currentStepNumber >= 3 || isApprovedEvidence) {
+                          return (
+                            <span className="px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">
+                              Giấy tờ: ✓ Đã thẩm định đạt
                             </span>
                           );
                         }
@@ -2615,7 +2607,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                   </button>
                 </div>
               </div>
-            ) : (!isApprovedEvidence && (currentStepNumber === 2 || status === 'CHO_THAM_DINH')) ? (
+            ) : currentStepNumber === 2 ? (
               /* TRƯỜNG HỢP 2B: BƯỚC 2 - ĐANG CHỜ CÁN BỘ QLSV RÀ SOÁT MINH CHỨNG */
               <div className="bg-gradient-to-br from-amber-50 via-slate-50 to-blue-50 rounded-xl border border-amber-300 p-5 flex flex-col justify-between text-left space-y-3 shadow-xs">
                 <div className="space-y-2.5">

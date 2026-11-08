@@ -32,6 +32,7 @@ export interface StoredApplication {
   is_trung_tuyen: boolean;
   ghi_chu_ly_do?: string;
   is_supplemented?: boolean;
+  has_reuploaded?: boolean;
   is_supplement_review?: boolean;
   supplement_submitted_at?: string;
 }

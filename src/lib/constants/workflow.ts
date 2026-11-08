@@ -176,6 +176,90 @@ export function canTransitionStatus(current: AppStatus, next: AppStatus): boolea
   return VALID_STATUS_TRANSITIONS[current]?.includes(next) ?? false;
 }
 
+// KHÓA CỨNG TRỌNG SỐ THỨ TỰ BƯỚC QUY TRÌNH (BƯỚC 1 ĐẾN BƯỚC 5 THEO BPMN TO-BE)
+export const WORKFLOW_STEP_RANK: Record<AppStatus, number> = {
+  TU_CHOI_BO_TRI: 0, // Terminal Bước 1 (Hộ khẩu Đà Nẵng)
+  KHONG_DUOC_XET: 0, // Terminal Bước 2 (Quá hạn 48h bổ sung)
+  DA_NOP: 1,         // Bước 1: Đã nộp đơn
+  DA_TIEP_NHAN: 1,   // Bước 1: Đã tiếp nhận
+  CHO_THAM_DINH: 2,  // Bước 2: Chờ thẩm định minh chứng
+  CAN_BO_SUNG: 2,    // Bước 2: Cần bổ sung minh chứng (48h)
+  THAM_DINH_DAT: 3,  // Bước 3: Đã thẩm định đạt (Chờ Trưởng Ban ký)
+  DA_XEP_HANG: 3,    // Bước 3: Đã xếp hạng dự kiến
+  DA_CHOT: 3,        // Bước 3: QLSV đã chốt danh sách
+  BI_TRA_VE: 3,      // Bước 3: Trưởng ban yêu cầu điều chỉnh
+  DA_DUYET: 3,       // Bước 3: Trưởng ban đã ký quyết định B2
+  DA_PHAT_HANH: 4,   // Bước 4: Đã phát hành HĐ điện tử (Ký OTP trong 72h)
+  DA_KY: 5,          // Bước 5: Đã ký hợp đồng OTP thành công (Giữ chỗ phòng)
+  DA_BAN_GIAO: 5,    // Bước 5: Đã bàn giao phòng & nhận chìa khóa
+  HUY_SUAT: 5,       // Bước 5: Đã hủy suất (Từ chối hoặc quá hạn ký 72h)
+};
+
+// HÀM CHUẨN HÓA STATE MACHINE CHỐNG LỆCH PHA VÀ CHỐNG TỰ ĐỘNG ROLLBACK
+export function resolveNextAppStatus(
+  currentStatus: AppStatus | undefined,
+  incomingStatus: AppStatus | undefined,
+  options?: {
+    isSignedLocally?: boolean;
+    isApprovedLocally?: boolean;
+    hasReuploaded?: boolean;
+  }
+): AppStatus {
+  // 1. Ngoại lệ kết thúc: Không thể đảo ngược
+  if (currentStatus === 'TU_CHOI_BO_TRI' || incomingStatus === 'TU_CHOI_BO_TRI') {
+    return 'TU_CHOI_BO_TRI';
+  }
+  if (currentStatus === 'HUY_SUAT' || incomingStatus === 'HUY_SUAT') {
+    return 'HUY_SUAT';
+  }
+  if (currentStatus === 'KHONG_DUOC_XET' || incomingStatus === 'KHONG_DUOC_XET') {
+    return 'KHONG_DUOC_XET';
+  }
+
+  // 2. Bước 5: Bàn giao phòng
+  if (currentStatus === 'DA_BAN_GIAO' || incomingStatus === 'DA_BAN_GIAO') {
+    return 'DA_BAN_GIAO';
+  }
+
+  // 3. Bước 5: Đã ký hợp đồng OTP
+  // Khóa cứng Bước 5: Tuyệt đối không cho phép rollback về Bước 3 hay Bước 4 khi re-render hoặc F5
+  if (options?.isSignedLocally || currentStatus === 'DA_KY' || incomingStatus === 'DA_KY') {
+    return 'DA_KY';
+  }
+
+  // 4. Bước 4: Đã phát hành hợp đồng (72h)
+  if (incomingStatus === 'DA_PHAT_HANH' || (currentStatus === 'DA_PHAT_HANH' && incomingStatus !== 'CAN_BO_SUNG')) {
+    return 'DA_PHAT_HANH';
+  }
+
+  // 5. Bước 3: Minh chứng đã duyệt đạt (Cán bộ QLSV duyệt hoặc Trưởng ban duyệt)
+  const isApproved =
+    options?.isApprovedLocally ||
+    currentStatus === 'THAM_DINH_DAT' ||
+    currentStatus === 'DA_DUYET' ||
+    currentStatus === 'DA_XEP_HANG' ||
+    incomingStatus === 'THAM_DINH_DAT' ||
+    incomingStatus === 'DA_DUYET' ||
+    incomingStatus === 'DA_XEP_HANG';
+
+  if (isApproved) {
+    if (incomingStatus === 'CAN_BO_SUNG') {
+      return 'CAN_BO_SUNG';
+    }
+    return incomingStatus === 'DA_DUYET' ? 'DA_DUYET' : 'THAM_DINH_DAT';
+  }
+
+  // 6. Bước 2: Cần bổ sung hoặc Chờ thẩm định
+  if (incomingStatus === 'CAN_BO_SUNG' || currentStatus === 'CAN_BO_SUNG') {
+    if (options?.hasReuploaded && incomingStatus !== 'CAN_BO_SUNG') {
+      return 'CHO_THAM_DINH';
+    }
+    return incomingStatus || 'CAN_BO_SUNG';
+  }
+
+  return incomingStatus || currentStatus || 'CHO_THAM_DINH';
+}
+
 // ==============================================================================
 // 5. PHÂN BỔ PHÒNG NỘI TRÚ ĐỘC LẬP & DUY NHẤT CHO TỪNG SINH VIÊN (1 NGƯỜI 1 PHÒNG / GIƯỜNG)
 // ==============================================================================

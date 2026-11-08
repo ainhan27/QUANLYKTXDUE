@@ -59,18 +59,38 @@ export async function GET() {
                   (l.ma_sv === app.ma_sv || l.cccd === app.cccd))
             );
 
-            // Giữ đúng trạng thái thực tế: Trạng thái duyệt của Cán bộ (Database hoặc Local) luôn có hiệu lực tối thượng
-            const isApproved =
-              app.status === 'THAM_DINH_DAT' ||
-              localMatch?.status === 'THAM_DINH_DAT' ||
-              app.status === 'DA_PHE_DUYET' ||
-              app.status === 'DA_PHAT_HANH' ||
-              app.status === 'DA_KY' ||
-              app.status === 'DA_BAN_GIAO';
+            // Ưu tiên trạng thái mới nhất: Nếu có yêu cầu bổ sung hoặc vừa nộp bổ sung chờ thẩm định
+            let effectiveStatus: string = app.status || 'CHO_THAM_DINH';
+            if (localMatch?.status === 'CAN_BO_SUNG' || app.status === 'CAN_BO_SUNG') {
+              effectiveStatus = 'CAN_BO_SUNG';
+            } else if (localMatch?.is_supplement_review && localMatch?.status === 'CHO_THAM_DINH') {
+              effectiveStatus = 'CHO_THAM_DINH';
+            } else if (app.status === 'DA_BAN_GIAO' || localMatch?.status === 'DA_BAN_GIAO') {
+              effectiveStatus = 'DA_BAN_GIAO';
+            } else if (app.status === 'DA_KY' || localMatch?.status === 'DA_KY') {
+              effectiveStatus = 'DA_KY';
+            } else if (app.status === 'HUY_SUAT' || localMatch?.status === 'HUY_SUAT') {
+              effectiveStatus = 'HUY_SUAT';
+            } else if (app.status === 'DA_PHAT_HANH' || localMatch?.status === 'DA_PHAT_HANH') {
+              effectiveStatus = 'DA_PHAT_HANH';
+            } else if (app.status === 'DA_DUYET' || localMatch?.status === 'DA_DUYET') {
+              effectiveStatus = 'DA_DUYET';
+            } else if (app.status === 'THAM_DINH_DAT' || localMatch?.status === 'THAM_DINH_DAT') {
+              effectiveStatus = 'THAM_DINH_DAT';
+            } else if (app.status === 'TU_CHOI_BO_TRI' || localMatch?.status === 'TU_CHOI_BO_TRI') {
+              effectiveStatus = 'TU_CHOI_BO_TRI';
+            } else if (app.status === 'KHONG_DUOC_XET' || localMatch?.status === 'KHONG_DUOC_XET') {
+              effectiveStatus = 'KHONG_DUOC_XET';
+            } else {
+              effectiveStatus = localMatch?.status || app.status || 'CHO_THAM_DINH';
+            }
 
-            const effectiveStatus = isApproved
-              ? (app.status === 'THAM_DINH_DAT' || !app.status || app.status === 'CHO_THAM_DINH' ? 'THAM_DINH_DAT' : app.status)
-              : (localMatch?.status || app.status || 'CHO_THAM_DINH');
+            const isApproved =
+              effectiveStatus === 'THAM_DINH_DAT' ||
+              effectiveStatus === 'DA_DUYET' ||
+              effectiveStatus === 'DA_PHAT_HANH' ||
+              effectiveStatus === 'DA_KY' ||
+              effectiveStatus === 'DA_BAN_GIAO';
 
             if (localMatch) {
               cccdImg = cccdImg || localMatch.cccd_image_base64;
@@ -96,27 +116,27 @@ export async function GET() {
             const isNameValidFormat = cleanName.length >= 4 && cleanName.split(/\s+/).length >= 2 && !/^\d+$/.test(cleanName);
             const isCccdValidFormat = cleanCccd.length === 12 || cleanCccd.length === 9;
 
-            // Kiểm tra xem ảnh tải lên có phải là ảnh bài tập / slide / tài liệu học tập rác không
             const rawFileStr = typeof app.file_url === 'string' ? app.file_url.toLowerCase() : '';
             const cccdImgStr = typeof cccdImg === 'string' ? cccdImg.toLowerCase() : '';
-            const isJunkCccdImage =
-              cccdImgStr.includes('ham mat do') ||
-              cccdImgStr.includes('bai tap') ||
-              cccdImgStr.includes('chuong 4') ||
-              cccdImgStr.includes('xac suat') ||
-              cccdImgStr.includes('cuoc thi') ||
-              rawFileStr.includes('ham mat do') ||
-              rawFileStr.includes('bai tap') ||
-              rawFileStr.includes('cuoc thi');
 
-            // Đối với CCCD: Bắt buộc kiểm tra trường "CĂN CƯỚC CÔNG DÂN" và 12 số định danh khớp với form
-            const hasCccdTitle = !isJunkCccdImage && (
+            // Đối với CCCD: Kiểm tra tiêu đề CCCD hợp lệ trước
+            const hasCccdTitle = (
               isApproved ||
               cccdImgStr.includes('can cuoc cong dan') ||
               cccdImgStr.includes('can cuoc') ||
               cccdImgStr.includes('citizen identity card') ||
               cccdImgStr.includes('cong hoa xa hoi chu nghia') ||
+              rawFileStr.includes('can cuoc') ||
               isCccdValidFormat
+            );
+
+            // Chỉ coi là ảnh rác nếu KHÔNG CÓ tiêu đề CCCD và chứa các từ bài tập cụ thể
+            const isJunkCccdImage = !hasCccdTitle && (
+              cccdImgStr.includes('ham mat do') ||
+              cccdImgStr.includes('bai tap') ||
+              cccdImgStr.includes('on tap chuong') ||
+              rawFileStr.includes('ham mat do') ||
+              rawFileStr.includes('bai tap')
             );
 
             const isCccdMatched = isCccdValidFormat && !isJunkCccdImage;
@@ -284,6 +304,9 @@ export async function GET() {
               cccd_image_base64: cccdImg,
               priority_image_base64: priorityImg,
               ai_result: aiResultObj,
+              is_supplemented: Boolean(app.is_supplemented ?? localMatch?.is_supplemented),
+              has_reuploaded: Boolean(app.has_reuploaded ?? localMatch?.has_reuploaded ?? app.is_supplemented),
+              supplement_submitted_at: app.supplement_submitted_at ?? localMatch?.supplement_submitted_at ?? null,
             };
           });
           return NextResponse.json({ success: true, data: enriched, source: 'supabase' });
@@ -309,6 +332,9 @@ export async function GET() {
         dien_uu_tien_label: isNoPrio
           ? 'Không thuộc diện ưu tiên'
           : (app.dien_uu_tien_label || PRIORITY_POLICY_POINTS[app.dien_uu_tien]?.label || app.dien_uu_tien),
+        is_supplemented: Boolean(app.is_supplemented),
+        has_reuploaded: Boolean((app as any).has_reuploaded ?? app.is_supplemented),
+        supplement_submitted_at: app.supplement_submitted_at || null,
       };
     });
     return NextResponse.json({ success: true, data: enrichedList, source: 'local' });

@@ -1876,14 +1876,21 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                       const isCccdFormatValid = cleanCccd.length === 12 || cleanCccd.length === 9;
                       const isNameMatched = Boolean(currentItem.nameMatched);
                       const isCccdMatched = Boolean(currentItem.cccdMatched);
-                      const isJunkExercise = Boolean(
-                        currentItem.detectedOcrText?.toLowerCase().includes('bài tập') ||
-                        currentItem.detectedOcrText?.toLowerCase().includes('chương') ||
-                        currentItem.detectedOcrText?.toLowerCase().includes('cuộc thi') ||
-                        currentItem.detectedOcrText?.toLowerCase().includes('hàm mật độ') ||
-                        currentItem.aiWarnings?.some((w) => w.toLowerCase().includes('bài tập') || w.toLowerCase().includes('slide'))
+                      const hasCccdKw = Boolean(
+                        currentItem.cccdCheck?.hasKeyword ||
+                        (isNameMatched && isCccdMatched) ||
+                        currentItem.detectedOcrText?.toLowerCase().includes('căn cước công dân') ||
+                        currentItem.detectedOcrText?.toLowerCase().includes('citizen identity card') ||
+                        currentItem.detectedOcrText?.toLowerCase().includes('cộng hòa xã hội chủ nghĩa việt nam')
                       );
-                      const hasCccdKw = Boolean(currentItem.cccdCheck?.hasKeyword || (isNameMatched && isCccdMatched));
+                      const isJunkExercise = Boolean(
+                        !hasCccdKw && (
+                          currentItem.detectedOcrText?.toLowerCase().includes('bài tập') ||
+                          currentItem.detectedOcrText?.toLowerCase().includes('ôn tập chương') ||
+                          currentItem.detectedOcrText?.toLowerCase().includes('hàm mật độ') ||
+                          currentItem.aiWarnings?.some((w) => w.toLowerCase().includes('bài tập') || w.toLowerCase().includes('slide'))
+                        )
+                      );
                       const isCccdValid = !isImageBroken && hasCccdKw && isNameFormatValid && isCccdFormatValid && isNameMatched && isCccdMatched;
                       const isCccdInvalidImage = isImageBroken || isJunkExercise || !isNameFormatValid || !isCccdFormatValid;
 

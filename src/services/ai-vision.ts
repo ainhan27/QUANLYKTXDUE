@@ -614,23 +614,7 @@ Trả về JSON: { "is_valid": boolean, "name_matched": boolean, "cccd_matched":
   const normalized = normalizeText(ocrText);
   const lower = ocrText.toLowerCase();
 
-  // 1. PHÁT HIỆN CÁC DẤU HIỆU ẢNH BÀI TẬP, GIÁO TRÌNH, SLIDE, CON DẤU REJECTED (ẢNH KHÔNG HỢP LỆ)
-  const isJunkOrExerciseImage =
-    normalized.includes('chuong') ||
-    normalized.includes('bai tap') ||
-    normalized.includes('on tap') ||
-    normalized.includes('viet chuong trinh') ||
-    normalized.includes('ham mat do') ||
-    normalized.includes('xac suat') ||
-    normalized.includes('rejected') ||
-    normalized.includes('pngtree') ||
-    normalized.includes('slide') ||
-    normalized.includes('giao trinh') ||
-    normalized.includes('dap an') ||
-    normalized.includes('cuoc thi') ||
-    normalized.includes('trac nghiem');
-
-  // 2. KIỂM TRA TIÊU ĐỀ ĐẶC TRƯNG BẮT BUỘC CỦA CĂN CƯỚC CÔNG DÂN VIỆT NAM
+  // 1. KIỂM TRA TIÊU ĐỀ ĐẶC TRƯNG BẮT BUỘC CỦA CĂN CƯỚC CÔNG DÂN VIỆT NAM
   // Bắt buộc phải có ít nhất một trong các tiêu đề pháp lý chính quy:
   const hasStrictCccdTitle =
     normalized.includes('can cuoc cong dan') ||
@@ -641,6 +625,22 @@ Trả về JSON: { "is_valid": boolean, "name_matched": boolean, "cccd_matched":
     normalized.includes('bo cong an') ||
     normalized.includes('cuc canh sat') ||
     normalized.includes('cuc truong cuc canh sat');
+
+  // 2. PHÁT HIỆN CÁC DẤU HIỆU ẢNH BÀI TẬP, GIÁO TRÌNH, SLIDE, CON DẤU REJECTED (ẢNH KHÔNG HỢP LỆ)
+  // Chỉ kích hoạt khi KHÔNG PHẢI ảnh CCCD hợp lệ và có các cụm từ bài tập cụ thể
+  const hasSpecificJunkPhrase =
+    normalized.includes('bai tap') ||
+    normalized.includes('on tap chuong') ||
+    normalized.includes('viet chuong trinh') ||
+    normalized.includes('ham mat do') ||
+    normalized.includes('xac suat') ||
+    normalized.includes('rejected') ||
+    normalized.includes('pngtree') ||
+    normalized.includes('giao trinh') ||
+    normalized.includes('dap an') ||
+    normalized.includes('cuoc thi') ||
+    normalized.includes('trac nghiem');
+  const isJunkOrExerciseImage = !hasStrictCccdTitle && hasSpecificJunkPhrase;
 
   const hasPoliceKw = CCCD_POLICE_KEYWORDS.some((kw) => lower.includes(kw) || normalized.includes(normalizeText(kw)));
   const cleanDigits = (citizenId || '').replace(/\D/g, '');

@@ -233,22 +233,26 @@ export async function submitApplicationFullPipeline(payload: SubmitApplicationPa
               })
             : null;
 
-          await supabaseAdmin.from('applications').insert({
-            ma_sv,
-            ho_ten,
-            email,
-            cccd,
-            ngay_sinh,
-            gioi_tinh: scannedGender,
-            tinh_thanh,
-            dia_chi_thuong_tru,
-            dien_uu_tien,
-            diem_uu_tien: finalPoints,
-            status: applicationStatus,
-            file_url: filesPayload,
-            signature_base64: signatureBase64 || null,
-            ghi_chu_ly_do: aiResult.rejection_reason || aiResult.raw_reasoning,
-          });
+          await supabaseAdmin.from('applications').upsert(
+            {
+              ma_sv,
+              ho_ten,
+              email,
+              cccd,
+              ngay_sinh,
+              gioi_tinh: scannedGender,
+              tinh_thanh,
+              dia_chi_thuong_tru,
+              dien_uu_tien,
+              diem_uu_tien: finalPoints,
+              status: applicationStatus,
+              file_url: filesPayload,
+              signature_base64: signatureBase64 || null,
+              ghi_chu_ly_do: aiResult.rejection_reason || aiResult.raw_reasoning,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'ma_sv' }
+          );
 
           try {
             await supabaseAdmin.from('rankings').insert({
