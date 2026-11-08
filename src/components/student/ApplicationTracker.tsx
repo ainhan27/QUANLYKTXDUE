@@ -147,16 +147,11 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
       )
     );
     const rawStatus: AppStatus = app.status || 'CHO_THAM_DINH';
-    let finalStatus: AppStatus = isSignedLocally
+    // Server status is authoritative for application approval steps (1 -> 3)
+    // Anti-regression ONLY protects locally signed student contracts (Bước 4, 5)
+    const finalStatus: AppStatus = isSignedLocally
       ? (rawStatus === 'DA_BAN_GIAO' ? 'DA_BAN_GIAO' : 'DA_KY')
       : rawStatus;
-
-    // Chống lùi trạng thái so với state hiện tại (Anti-Regression Rule)
-    const prevPrio = STEP_PRIORITY[status] ?? 0;
-    const newPrio = STEP_PRIORITY[finalStatus] ?? 0;
-    if (prevPrio > newPrio && finalStatus !== 'HUY_SUAT') {
-      finalStatus = status;
-    }
 
     const confidence: number =
       app.ai_result?.confidence ??
@@ -227,6 +222,14 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
           );
           if (isSigned && (STEP_PRIORITY[parsed.status] ?? 0) < 4) {
             parsed.status = 'DA_KY';
+          }
+          const isNoPrio =
+            !parsed.dien_uu_tien ||
+            parsed.dien_uu_tien === 'KHONG' ||
+            parsed.dien_uu_tien?.toLowerCase().includes('không') ||
+            parsed.dien_uu_tien?.toLowerCase().includes('khong');
+          if (isNoPrio) {
+            parsed.diem_uu_tien = 0;
           }
           setStudentInfo((prev) => ({ ...prev, ...parsed }));
           if (parsed.status) {
@@ -316,21 +319,17 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                   if (isSignedLocally) {
                     return prev === 'DA_BAN_GIAO' ? prev : 'DA_KY';
                   }
-                  const prevPrio = STEP_PRIORITY[prev] ?? 0;
-                  const newPrio = STEP_PRIORITY[newStatus] ?? 0;
-                  // Anti-regression guard: Không bao giờ để background fetch kéo lùi trạng thái quy trình
-                  if (prevPrio > newPrio && newStatus !== 'HUY_SUAT') {
-                    return prev;
+                  // Khóa chống lùi chỉ bảo vệ hợp đồng điện tử đã ký (DA_KY, DA_BAN_GIAO)
+                  if (prev === 'DA_KY' || prev === 'DA_BAN_GIAO') {
+                    if (newStatus !== 'HUY_SUAT' && newStatus !== 'DA_BAN_GIAO') return prev;
                   }
                   return newStatus;
                 });
                 setStudentInfo((prev) => {
-                  const prevPrio = STEP_PRIORITY[prev.status] ?? 0;
-                  const newPrio = STEP_PRIORITY[newStatus] ?? 0;
                   const resolvedStatus = isSignedLocally
                     ? (prev.status === 'DA_BAN_GIAO' ? prev.status : 'DA_KY')
-                    : (prevPrio > newPrio && newStatus !== 'HUY_SUAT')
-                    ? prev.status
+                    : (prev.status === 'DA_KY' || prev.status === 'DA_BAN_GIAO')
+                    ? (newStatus === 'HUY_SUAT' || newStatus === 'DA_BAN_GIAO' ? newStatus : prev.status)
                     : newStatus;
                   const isNoPrio =
                     !found.dien_uu_tien ||
@@ -404,23 +403,27 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
 
               setStatus((prev) => {
                 if (isSignedLocally) return prev === 'DA_BAN_GIAO' ? prev : 'DA_KY';
-                const prevPrio = STEP_PRIORITY[prev] ?? 0;
-                const newPrio = STEP_PRIORITY[targetStatus] ?? 0;
-                if (prevPrio > newPrio && targetStatus !== 'HUY_SUAT') return prev;
+                if (prev === 'DA_KY' || prev === 'DA_BAN_GIAO') {
+                  if (targetStatus !== 'HUY_SUAT' && targetStatus !== 'DA_BAN_GIAO') return prev;
+                }
                 return targetStatus;
               });
               setStudentInfo((prev) => {
-                const prevPrio = STEP_PRIORITY[prev.status] ?? 0;
-                const newPrio = STEP_PRIORITY[targetStatus] ?? 0;
                 const resolvedStatus = isSignedLocally
                   ? (prev.status === 'DA_BAN_GIAO' ? prev.status : 'DA_KY')
-                  : (prevPrio > newPrio && targetStatus !== 'HUY_SUAT')
-                  ? prev.status
+                  : (prev.status === 'DA_KY' || prev.status === 'DA_BAN_GIAO')
+                  ? (targetStatus === 'HUY_SUAT' || targetStatus === 'DA_BAN_GIAO' ? targetStatus : prev.status)
                   : targetStatus;
+                const isNoPrio =
+                  !prev.dien_uu_tien ||
+                  prev.dien_uu_tien === 'KHONG' ||
+                  prev.dien_uu_tien?.toLowerCase().includes('không') ||
+                  prev.dien_uu_tien?.toLowerCase().includes('khong');
+                const resolvedPts = isNoPrio ? 0 : (data.points ?? data.diem_uu_tien ?? prev.diem_uu_tien);
                 const updated = {
                   ...prev,
                   status: resolvedStatus,
-                  diem_uu_tien: data.points ?? data.diem_uu_tien ?? prev.diem_uu_tien,
+                  diem_uu_tien: resolvedPts,
                 };
                 try {
                   localStorage.setItem('last_submitted_student', JSON.stringify(updated));
@@ -430,28 +433,31 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
             }
           } else if (data.type === 'ALL_EVIDENCE_APPROVED') {
             setIsBeingReviewed(false);
-            // Cán bộ duyệt toàn bộ minh chứng: CHỈ áp dụng cho những hồ sơ chưa được duyệt (bước 1, 2)
-            setStatus((prev) => {
-              if (prev === 'CHO_THAM_DINH' || prev === 'CAN_BO_SUNG') {
-                return 'THAM_DINH_DAT';
-              }
-              return prev;
-            });
+            // Cán bộ duyệt toàn bộ minh chứng: CHỈ áp dụng cho những hồ sơ hợp lệ (không lỗi OCR sai lệch)
             setStudentInfo((prev) => {
+              const hasMismatch =
+                prev.aiConfidence < 0.95 ||
+                prev.aiResult?.extracted_info?.name_matched === false ||
+                prev.aiResult?.extracted_info?.cccd_matched === false;
+              if (hasMismatch) {
+                // Không tự động duyệt nếu AI phát hiện sai lệch thông tin CCCD
+                return prev;
+              }
               if (prev.status === 'CHO_THAM_DINH' || prev.status === 'CAN_BO_SUNG') {
-                  const isNoPrio =
-                    !prev.dien_uu_tien ||
-                    prev.dien_uu_tien === 'KHONG' ||
-                    prev.dien_uu_tien?.toLowerCase().includes('không') ||
-                    prev.dien_uu_tien?.toLowerCase().includes('khong');
-                  const updated = {
-                    ...prev,
-                    status: 'THAM_DINH_DAT' as AppStatus,
-                    diem_uu_tien: isNoPrio ? 0 : (prev.diem_uu_tien > 0 ? prev.diem_uu_tien : 35),
-                  };
+                const isNoPrio =
+                  !prev.dien_uu_tien ||
+                  prev.dien_uu_tien === 'KHONG' ||
+                  prev.dien_uu_tien?.toLowerCase().includes('không') ||
+                  prev.dien_uu_tien?.toLowerCase().includes('khong');
+                const updated = {
+                  ...prev,
+                  status: 'THAM_DINH_DAT' as AppStatus,
+                  diem_uu_tien: isNoPrio ? 0 : (prev.diem_uu_tien > 0 ? prev.diem_uu_tien : 35),
+                };
                 try {
                   localStorage.setItem('last_submitted_student', JSON.stringify(updated));
                 } catch {}
+                setStatus('THAM_DINH_DAT');
                 return updated;
               }
               return prev;
@@ -495,23 +501,27 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
 
             setStatus((prev) => {
               if (isSignedLocally) return prev === 'DA_BAN_GIAO' ? prev : 'DA_KY';
-              const prevPrio = STEP_PRIORITY[prev] ?? 0;
-              const newPrio = STEP_PRIORITY[targetSigStatus] ?? 0;
-              if (prevPrio > newPrio && targetSigStatus !== 'HUY_SUAT') return prev;
+              if (prev === 'DA_KY' || prev === 'DA_BAN_GIAO') {
+                if (targetSigStatus !== 'HUY_SUAT' && targetSigStatus !== 'DA_BAN_GIAO') return prev;
+              }
               return targetSigStatus;
             });
             setStudentInfo((prev) => {
-              const prevPrio = STEP_PRIORITY[prev.status] ?? 0;
-              const newPrio = STEP_PRIORITY[targetSigStatus] ?? 0;
               const resolved = isSignedLocally
                 ? (prev.status === 'DA_BAN_GIAO' ? prev.status : 'DA_KY')
-                : (prevPrio > newPrio && targetSigStatus !== 'HUY_SUAT')
-                ? prev.status
+                : (prev.status === 'DA_KY' || prev.status === 'DA_BAN_GIAO')
+                ? (targetSigStatus === 'HUY_SUAT' || targetSigStatus === 'DA_BAN_GIAO' ? targetSigStatus : prev.status)
                 : targetSigStatus;
+              const isNoPrio =
+                !prev.dien_uu_tien ||
+                prev.dien_uu_tien === 'KHONG' ||
+                prev.dien_uu_tien?.toLowerCase().includes('không') ||
+                prev.dien_uu_tien?.toLowerCase().includes('khong');
+              const resolvedPts = isNoPrio ? 0 : (sig.points ?? sig.diem_uu_tien ?? prev.diem_uu_tien);
               return {
                 ...prev,
                 status: resolved,
-                diem_uu_tien: sig.points ?? sig.diem_uu_tien ?? prev.diem_uu_tien,
+                diem_uu_tien: resolvedPts,
               };
             });
           }
@@ -2542,7 +2552,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                   </button>
                 </div>
               </div>
-            ) : status === 'CHO_THAM_DINH' ? (
+            ) : (currentStepNumber === 2 || status === 'CHO_THAM_DINH') ? (
               /* TRƯỜNG HỢP 2B: BƯỚC 2 - ĐANG CHỜ CÁN BỘ QLSV RÀ SOÁT MINH CHỨNG */
               <div className="bg-gradient-to-br from-amber-50 via-slate-50 to-blue-50 rounded-xl border border-amber-300 p-5 flex flex-col justify-between text-left space-y-3 shadow-xs">
                 <div className="space-y-2.5">

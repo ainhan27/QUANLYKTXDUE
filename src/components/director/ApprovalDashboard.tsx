@@ -173,11 +173,22 @@ export default function ApprovalDashboard() {
           setPendingEvidenceCount(0);
           setPendingStudents([]);
           setAllCandidates((prev) =>
-            prev.map((c) =>
-              c.status === 'CHO_THAM_DINH' || c.status === 'CAN_BO_SUNG'
-                ? { ...c, status: 'THAM_DINH_DAT', diem_uu_tien: c.diem_uu_tien > 0 ? c.diem_uu_tien : 35 }
-                : c
-            )
+            prev.map((c) => {
+              if (c.status === 'CHO_THAM_DINH' || c.status === 'CAN_BO_SUNG') {
+                const isNoPrio =
+                  !c.dien_uu_tien ||
+                  c.dien_uu_tien === 'KHONG' ||
+                  c.dien_uu_tien?.toLowerCase().includes('khong') ||
+                  c.dien_uu_tien?.toLowerCase().includes('không') ||
+                  (c as any).dien_uu_tien_label?.toLowerCase().includes('không');
+                return {
+                  ...c,
+                  status: 'THAM_DINH_DAT',
+                  diem_uu_tien: isNoPrio ? 0 : (c.diem_uu_tien > 0 ? c.diem_uu_tien : 35),
+                };
+              }
+              return c;
+            })
           );
         } else if (e.data?.type === 'DIRECTOR_APPROVED') {
           setWorkflowState((prev) => ({ ...prev, isRankingsFinalized: true }));
@@ -237,11 +248,22 @@ export default function ApprovalDashboard() {
       setPendingEvidenceCount(0);
       setPendingStudents([]);
       setAllCandidates((prev) =>
-        prev.map((c) =>
-          c.status === 'CHO_THAM_DINH' || c.status === 'CAN_BO_SUNG'
-            ? { ...c, status: 'THAM_DINH_DAT', diem_uu_tien: c.diem_uu_tien > 0 ? c.diem_uu_tien : 35 }
-            : c
-        )
+        prev.map((c) => {
+          if (c.status === 'CHO_THAM_DINH' || c.status === 'CAN_BO_SUNG') {
+            const isNoPrio =
+              !c.dien_uu_tien ||
+              c.dien_uu_tien === 'KHONG' ||
+              c.dien_uu_tien?.toLowerCase().includes('khong') ||
+              c.dien_uu_tien?.toLowerCase().includes('không') ||
+              (c as any).dien_uu_tien_label?.toLowerCase().includes('không');
+            return {
+              ...c,
+              status: 'THAM_DINH_DAT',
+              diem_uu_tien: isNoPrio ? 0 : (c.diem_uu_tien > 0 ? c.diem_uu_tien : 35),
+            };
+          }
+          return c;
+        })
       );
       setStatusMessage('✓ Đã thẩm định đạt 100% minh chứng! Hệ thống đã mở khóa để Trưởng ban ký Quyết định phê duyệt.');
       await fetchWorkflowAndApplications();

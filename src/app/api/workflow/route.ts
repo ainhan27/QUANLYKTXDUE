@@ -129,7 +129,17 @@ export async function POST(request: Request) {
       apps.forEach((a) => {
         if (a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG') {
           a.status = 'THAM_DINH_DAT';
-          if (!a.diem_uu_tien || a.diem_uu_tien === 0) a.diem_uu_tien = 35;
+          const isNoPrio =
+            !a.dien_uu_tien ||
+            a.dien_uu_tien === 'KHONG' ||
+            a.dien_uu_tien?.toLowerCase().includes('khong') ||
+            a.dien_uu_tien?.toLowerCase().includes('không') ||
+            a.dien_uu_tien_label?.toLowerCase().includes('không');
+          if (isNoPrio) {
+            a.diem_uu_tien = 0;
+          } else if (!a.diem_uu_tien || a.diem_uu_tien === 0) {
+            a.diem_uu_tien = 35;
+          }
           saveApplicationToStore(a);
         }
       });
