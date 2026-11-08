@@ -55,6 +55,8 @@ export interface AIVisionAnalysisResponse {
   document_type: string;
   confidence: number;
   detected_raw_text: string;
+  detected_cccd_text?: string;
+  detected_priority_text?: string;
   extracted_info: {
     ho_ten?: string;
     so_dinh_danh?: string;

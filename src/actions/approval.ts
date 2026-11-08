@@ -29,9 +29,14 @@ export async function approveRoundAndPublishAction(roundId: string) {
       }
     });
 
-    const supabaseAdmin = createAdminClient();
+    const isSupabaseReady = Boolean(
+      process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id') &&
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+    const supabaseAdmin = isSupabaseReady ? createAdminClient() : null;
     try {
-      if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      if (supabaseAdmin) {
         await supabaseAdmin
           .from('applications')
           .update({ status: 'THAM_DINH_DAT', diem_uu_tien: 35 })
@@ -41,7 +46,7 @@ export async function approveRoundAndPublishAction(roundId: string) {
 
     // 1. Cập nhật đợt tuyển sang trạng thái DA_DUYET
     try {
-      if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
+      if (supabaseAdmin) {
         await supabaseAdmin
           .from('approval_rounds')
           .update({
