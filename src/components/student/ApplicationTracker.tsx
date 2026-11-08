@@ -1012,8 +1012,14 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
   const isDeniedResidence = status === 'TU_CHOI_BO_TRI';
   const isDisqualified = status === 'KHONG_DUOC_XET';
   const isExceptionState = isCancelled || isDeniedResidence || isDisqualified;
-  const isSupplement = status === 'CAN_BO_SUNG';
+  const effectiveAppStatus = (studentInfo.status && studentInfo.status !== 'CHO_THAM_DINH') ? studentInfo.status : status;
+  const isSupplement = effectiveAppStatus === 'CAN_BO_SUNG' || status === 'CAN_BO_SUNG';
   const isApprovedEvidence =
+    effectiveAppStatus === 'THAM_DINH_DAT' ||
+    effectiveAppStatus === 'DA_DUYET' ||
+    effectiveAppStatus === 'DA_PHAT_HANH' ||
+    effectiveAppStatus === 'DA_KY' ||
+    effectiveAppStatus === 'DA_BAN_GIAO' ||
     status === 'THAM_DINH_DAT' ||
     status === 'DA_DUYET' ||
     status === 'DA_PHAT_HANH' ||
@@ -1050,7 +1056,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
     currentStepNumber = 5; // Đã bàn giao chìa khóa
   } else if ((workflowState.isPublished || status === 'DA_PHAT_HANH') && isAdmitted) {
     currentStepNumber = 4; // Bước 4: Mở cổng ký hợp đồng điện tử 72h (Trúng tuyển Top 120)
-  } else if (isApprovedEvidence || workflowState.isRankingsFinalized) {
+  } else if (isApprovedEvidence) {
     currentStepNumber = 3; // Bước 3: Minh chứng đã duyệt đạt, đang chờ Trưởng ban duyệt B2 hoặc nằm trong danh sách chờ
   } else if (isSupplement) {
     currentStepNumber = 2; // Bước 2: Cần bổ sung minh chứng (48h)

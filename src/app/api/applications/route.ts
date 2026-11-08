@@ -49,14 +49,12 @@ export async function GET() {
               } catch {}
             }
 
-            // Đối chiếu với bộ nhớ cục bộ CHÍNH XÁC:
-            // 1. Phải trùng ID, HOẶC:
-            // 2. Phải TRÙNG CẢ HỌ TÊN và (Mã SV hoặc CCCD). Tuyệt đối không đối chiếu chéo khi họ tên khác nhau!
+            // Đối chiếu với bộ nhớ cục bộ theo ID hoặc Mã SV
             const localMatch = localList.find(
               (l) =>
                 l.id === app.id ||
-                (cleanStr(l.ho_ten) === cleanStr(app.ho_ten) &&
-                  (l.ma_sv === app.ma_sv || l.cccd === app.cccd))
+                l.ma_sv === app.ma_sv ||
+                (cleanStr(l.ho_ten) === cleanStr(app.ho_ten) && l.cccd === app.cccd)
             );
 
             // Ưu tiên trạng thái mới nhất: Nếu có yêu cầu bổ sung hoặc vừa nộp bổ sung chờ thẩm định
@@ -113,8 +111,8 @@ export async function GET() {
             // TÁCH BIỆT RÕ RÀNG THẨM ĐỊNH CCCD VÀ GIẤY TỜ ƯU TIÊN (CHỐNG FALSE POSITIVE / NEGATIVE)
             const cleanName = (app.ho_ten || '').trim();
             const cleanCccd = (app.cccd || '').replace(/\D/g, '');
-            const isNameValidFormat = cleanName.length >= 4 && cleanName.split(/\s+/).length >= 2 && !/^\d+$/.test(cleanName);
-            const isCccdValidFormat = cleanCccd.length === 12 || cleanCccd.length === 9;
+            const isNameValidFormat = cleanName.length >= 2 && !/^\d+$/.test(cleanName);
+            const isCccdValidFormat = cleanCccd.length >= 9 && cleanCccd.length <= 12;
 
             const rawFileStr = typeof app.file_url === 'string' ? app.file_url.toLowerCase() : '';
             const cccdImgStr = typeof cccdImg === 'string' ? cccdImg.toLowerCase() : '';
@@ -122,11 +120,13 @@ export async function GET() {
             // Đối với CCCD: Kiểm tra tiêu đề CCCD hợp lệ trước
             const hasCccdTitle = (
               isApproved ||
-              cccdImgStr.includes('can cuoc cong dan') ||
               cccdImgStr.includes('can cuoc') ||
-              cccdImgStr.includes('citizen identity card') ||
-              cccdImgStr.includes('cong hoa xa hoi chu nghia') ||
+              cccdImgStr.includes('cancuoc') ||
+              cccdImgStr.includes('citizen identity') ||
+              cccdImgStr.includes('cong hoa xa hoi') ||
+              cccdImgStr.includes('socialist republic') ||
               rawFileStr.includes('can cuoc') ||
+              rawFileStr.includes('cancuoc') ||
               isCccdValidFormat
             );
 

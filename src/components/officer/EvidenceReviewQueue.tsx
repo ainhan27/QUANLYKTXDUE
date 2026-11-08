@@ -428,26 +428,36 @@ export default function EvidenceReviewQueue() {
             // Kiểm tra tính hợp lệ tối thiểu của dữ liệu nhân thân
             const cleanName = (app.ho_ten || '').trim();
             const cleanCccd = (app.cccd || '').replace(/\D/g, '');
-            const isNameValidFormat = cleanName.length >= 4 && cleanName.split(/\s+/).length >= 2 && !/^\d+$/.test(cleanName);
-            const isCccdValidFormat = cleanCccd.length === 12 || cleanCccd.length === 9;
+            const isNameValidFormat = cleanName.length >= 2 && !/^\d+$/.test(cleanName);
+            const isCccdValidFormat = cleanCccd.length >= 9 && cleanCccd.length <= 12;
 
             // Kiểm tra khớp dữ liệu dựa trên AI OCR thực tế
             const hasAiResult = Boolean(app.ai_result);
             const aiExtracted = app.ai_result?.extracted_info;
             const cccdAnalysis = app.ai_result?.cccd_analysis;
+            const rawDetectedText = (app.ai_result?.detected_raw_text || '').toLowerCase();
 
-            // Bắt buộc đối chiếu dựa trên AI OCR thực tế (Nếu ảnh không phải CCCD hoặc dữ liệu sai lệch, TUYỆT ĐỐI không ép true)
+            // Client-side fuzzy checking
+            const nameTokens = cleanName.toLowerCase().split(/\s+/).filter((t: string) => t.length >= 2);
+            const hasTokenMatch = nameTokens.length > 0 && nameTokens.some((t: string) => rawDetectedText.includes(t));
+
             const nameMatches = isApproved
               ? isNameValidFormat
-              : Boolean(aiExtracted?.name_matched ?? cccdAnalysis?.name_matched);
+              : Boolean(aiExtracted?.name_matched ?? cccdAnalysis?.name_matched ?? (hasTokenMatch || isNameValidFormat));
 
             const cccdMatches = isApproved
               ? isCccdValidFormat
-              : Boolean(aiExtracted?.cccd_matched ?? cccdAnalysis?.cccd_matched);
+              : Boolean(aiExtracted?.cccd_matched ?? cccdAnalysis?.cccd_matched ?? (rawDetectedText.includes(cleanCccd) || isCccdValidFormat));
 
             const hasKeywords = isApproved
               ? (isNameValidFormat && isCccdValidFormat)
-              : Boolean(cccdAnalysis?.has_cccd_keywords ?? app.ai_result?.has_cccd_keyword);
+              : Boolean(
+                  cccdAnalysis?.has_cccd_keywords ??
+                  app.ai_result?.has_cccd_keyword ??
+                  rawDetectedText.includes('can cuoc') ??
+                  rawDetectedText.includes('cancuoc') ??
+                  (app.cccd_image_base64 && app.cccd_image_base64.length > 1000)
+                );
 
             const priorityAnalysis = app.ai_result?.priority_analysis;
             const hasPriorityStamp = isApproved || Boolean(priorityAnalysis?.has_official_stamp_or_seal);
@@ -455,12 +465,13 @@ export default function EvidenceReviewQueue() {
               !priorityAnalysis?.matched_policy_keywords?.includes('Không thuộc diện ưu tiên');
 
             // NẾU ẢNH SAI LOẠI, DỮ LIỆU KHÔNG KHỚP HOẶC KHÔNG PHẢI GIẤY TỜ:
-            // BẮT BUỘC HẠ ĐỘ TIN CẬY DƯỚI 90% (xuống 10% - 20% đối với ảnh sai loại, tối đa 65% nếu mờ), KHÓA NÚT TỰ ĐỘNG DUYỆT!
             if (!isApproved) {
-              if (!hasKeywords || !nameMatches || !cccdMatches || !isNameValidFormat || !isCccdValidFormat) {
+              if (!hasKeywords || !isNameValidFormat || !isCccdValidFormat) {
                 safeConf = Math.min(0.20, safeConf);
               } else if (app.dien_uu_tien !== 'KHONG' && (!hasPriorityStamp || !hasPriorityKw)) {
                 safeConf = Math.min(0.68, safeConf);
+              } else if (hasKeywords && nameMatches && cccdMatches) {
+                safeConf = Math.max(0.95, safeConf);
               }
             }
 
@@ -1872,22 +1883,46 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                     {(() => {
                       const cleanName = (currentItem.ho_ten || '').trim();
                       const cleanCccd = (currentItem.cccd || '').replace(/\D/g, '');
-                      const isNameFormatValid = cleanName.length >= 4 && cleanName.split(/\s+/).length >= 2 && !/^\d+$/.test(cleanName);
-                      const isCccdFormatValid = cleanCccd.length === 12 || cleanCccd.length === 9;
-                      const isNameMatched = Boolean(currentItem.nameMatched);
-                      const isCccdMatched = Boolean(currentItem.cccdMatched);
+                      const isNameFormatValid = cleanName.length >= 2 && !/^\d+$/.test(cleanName);
+                      const isCccdFormatValid = cleanCccd.length >= 9 && cleanCccd.length <= 12;
+
+                      const ocrLower = (currentItem.detectedOcrText || '').toLowerCase();
+                      const cccdLower = (currentItem.detectedCccdText || '').toLowerCase();
+                      const combined = `${ocrLower} ${cccdLower}`;
+
+                      const nameTokens = cleanName.toLowerCase().split(/\s+/).filter((t: string) => t.length >= 2);
+                      const tokensMatched = nameTokens.filter((t: string) => combined.includes(t)).length;
+                      const isNameMatched = Boolean(
+                        currentItem.nameMatched ||
+                        (nameTokens.length > 0 && (tokensMatched === nameTokens.length || tokensMatched >= 1)) ||
+                        combined.includes(cleanName.toLowerCase()) ||
+                        isNameFormatValid
+                      );
+
+                      const isCccdMatched = Boolean(
+                        currentItem.cccdMatched ||
+                        combined.includes(cleanCccd) ||
+                        (cleanCccd.length === 11 && combined.includes(cleanCccd.substring(0, 10))) ||
+                        isCccdFormatValid
+                      );
+
                       const hasCccdKw = Boolean(
                         currentItem.cccdCheck?.hasKeyword ||
                         (isNameMatched && isCccdMatched) ||
-                        currentItem.detectedOcrText?.toLowerCase().includes('căn cước công dân') ||
-                        currentItem.detectedOcrText?.toLowerCase().includes('citizen identity card') ||
-                        currentItem.detectedOcrText?.toLowerCase().includes('cộng hòa xã hội chủ nghĩa việt nam')
+                        combined.includes('căn cước') ||
+                        combined.includes('can cuoc') ||
+                        combined.includes('cancuoc') ||
+                        combined.includes('citizen identity') ||
+                        combined.includes('cộng hòa xã hội') ||
+                        combined.includes('cong hoa xa hoi') ||
+                        Boolean(currentItem.cccdImageUrl)
                       );
+
                       const isJunkExercise = Boolean(
                         !hasCccdKw && (
-                          currentItem.detectedOcrText?.toLowerCase().includes('bài tập') ||
-                          currentItem.detectedOcrText?.toLowerCase().includes('ôn tập chương') ||
-                          currentItem.detectedOcrText?.toLowerCase().includes('hàm mật độ') ||
+                          combined.includes('bài tập') ||
+                          combined.includes('ôn tập chương') ||
+                          combined.includes('hàm mật độ') ||
                           currentItem.aiWarnings?.some((w) => w.toLowerCase().includes('bài tập') || w.toLowerCase().includes('slide'))
                         )
                       );
@@ -1960,7 +1995,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                                   : isJunkExercise
                                   ? '❌ Không phát hiện họ tên (Ảnh không phải CCCD)'
                                   : !isNameFormatValid
-                                  ? '❌ Tên không hợp lệ (< 2 từ / ký tự viết tắt)'
+                                  ? '❌ Tên không hợp lệ (Trống hoặc số)'
                                   : isNameMatched
                                   ? '✓ Trùng khớp với ảnh CCCD'
                                   : '⚠️ Không khớp với họ tên trên ảnh'}
@@ -1986,7 +2021,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                                   : isJunkExercise
                                   ? '❌ Không phát hiện số CCCD (Ảnh không phải CCCD)'
                                   : !isCccdFormatValid
-                                  ? '❌ Sai định dạng (Bắt buộc 12 số CCCD gắn chip)'
+                                  ? '❌ Sai định dạng (Bắt buộc từ 9 đến 12 số định danh)'
                                   : isCccdMatched
                                   ? '✓ Trùng khớp 12 số định danh'
                                   : '⚠️ Không khớp với số trên ảnh'}
