@@ -1103,28 +1103,21 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
     currentStepNumber = 1; // Bước 1: Tiếp nhận & Sàng lọc (Bị từ chối do HK Đà Nẵng)
   } else if (isStudentSigned) {
     // KHÓA CỨNG BƯỚC 5: Khi sinh viên đã ký hợp đồng OTP thành công, cố định ở Bước 5 (Tiếp nhận & Bàn giao)
-    // TUYỆT ĐỐI NGĂN CHẶN STATE REGRESSION LÙI VỀ BƯỚC 3 HAY BƯỚC 4 DO RE-RENDER HAY CACHE CŨ!
     currentStepNumber = 5;
   } else if (isCancelled) {
     currentStepNumber = 5; // Bị hủy suất
-  } else if (
-    isPendingReview ||
-    isSupplement ||
-    isDisqualified ||
-    (status !== 'DA_PHAT_HANH' && (
-      studentInfo.aiConfidence < 0.95 ||
-      studentInfo.aiResult?.extracted_info?.name_matched === false ||
-      studentInfo.aiResult?.extracted_info?.cccd_matched === false
-    ))
-  ) {
-    // ƯU TIÊN: Khi hồ sơ còn đang chờ thẩm định hoặc cần bổ sung hoặc bị loại hoặc AI quét không khớp, sinh viên đứng ở Bước 2
-    currentStepNumber = 2;
+  } else if (isStudentHandedOver) {
+    currentStepNumber = 5; // Đã bàn giao chìa khóa
   } else if ((workflowState.isPublished || status === 'DA_PHAT_HANH') && isAdmitted) {
     currentStepNumber = 4; // Bước 4: Mở cổng ký hợp đồng điện tử 72h (Trúng tuyển Top 120)
-  } else if (isApprovedEvidence || workflowState.isRankingsFinalized || studentInfo.diem_uu_tien > 0) {
+  } else if (isApprovedEvidence || workflowState.isRankingsFinalized) {
     currentStepNumber = 3; // Bước 3: Minh chứng đã duyệt đạt, đang chờ Trưởng ban duyệt B2 hoặc nằm trong danh sách chờ
+  } else if (isSupplement) {
+    currentStepNumber = 2; // Bước 2: Cần bổ sung minh chứng (48h)
+  } else if (isDisqualified) {
+    currentStepNumber = 2; // Bị loại do quá hạn 48h
   } else {
-    currentStepNumber = 2; // Mặc định ở Bước 2
+    currentStepNumber = 2; // Bước 2: Đang chờ Cán bộ QLSV rà soát
   }
 
   // Điều kiện để ẩn cột "Thông tin hồ sơ đã ghi nhận" và hiển thị toàn màn hình Hợp đồng
@@ -2179,7 +2172,11 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                   <div className="pt-2 border-t border-slate-200 space-y-1.5">
                     <div className="flex justify-between items-center">
                       <span className="text-slate-500 text-xs">Đối chiếu AI Vision:</span>
-                      {status === 'CAN_BO_SUNG' || (studentInfo.aiResult && studentInfo.aiResult.decision === 'CAN_BO_SUNG') ? (
+                      {isApprovedEvidence ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          ✓ Đạt chuẩn (Đã thẩm định đạt)
+                        </span>
+                      ) : status === 'CAN_BO_SUNG' || (studentInfo.aiResult && studentInfo.aiResult.decision === 'CAN_BO_SUNG') ? (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
                           ⚠️ Cần bổ sung minh chứng (48h)
                         </span>
@@ -2198,6 +2195,13 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                       {/* Họ tên */}
                       {(() => {
                         const nm = studentInfo.aiResult?.extracted_info?.name_matched ?? studentInfo.aiResult?.cccd_analysis?.name_matched;
+                        if (isApprovedEvidence) {
+                          return (
+                            <span className="px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">
+                              Họ tên: ✓ Đã thẩm định đạt
+                            </span>
+                          );
+                        }
                         if (nm === false) {
                           return (
                             <span className="px-1.5 py-0.5 rounded border bg-rose-50 text-rose-800 border-rose-200">
@@ -2205,7 +2209,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                             </span>
                           );
                         }
-                        if (nm === true || (nm === undefined && isApprovedEvidence)) {
+                        if (nm === true) {
                           return (
                             <span className="px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">
                               Họ tên: ✓ Khớp
@@ -2223,6 +2227,13 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                       {(() => {
                         const cm = studentInfo.aiResult?.extracted_info?.cccd_matched ?? studentInfo.aiResult?.cccd_analysis?.cccd_matched;
                         const hasKw = studentInfo.aiResult?.cccd_analysis?.has_cccd_keywords ?? studentInfo.aiResult?.has_cccd_keyword;
+                        if (isApprovedEvidence) {
+                          return (
+                            <span className="px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">
+                              CCCD: ✓ Đã thẩm định đạt
+                            </span>
+                          );
+                        }
                         if (hasKw === false) {
                           return (
                             <span className="px-1.5 py-0.5 rounded border bg-rose-50 text-rose-800 border-rose-200">
@@ -2237,7 +2248,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                             </span>
                           );
                         }
-                        if (cm === true || (cm === undefined && isApprovedEvidence)) {
+                        if (cm === true) {
                           return (
                             <span className="px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">
                               CCCD: ✓ Khớp
@@ -2604,7 +2615,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                   </button>
                 </div>
               </div>
-            ) : (currentStepNumber === 2 || status === 'CHO_THAM_DINH') ? (
+            ) : (!isApprovedEvidence && (currentStepNumber === 2 || status === 'CHO_THAM_DINH')) ? (
               /* TRƯỜNG HỢP 2B: BƯỚC 2 - ĐANG CHỜ CÁN BỘ QLSV RÀ SOÁT MINH CHỨNG */
               <div className="bg-gradient-to-br from-amber-50 via-slate-50 to-blue-50 rounded-xl border border-amber-300 p-5 flex flex-col justify-between text-left space-y-3 shadow-xs">
                 <div className="space-y-2.5">
