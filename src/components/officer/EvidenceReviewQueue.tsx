@@ -836,7 +836,7 @@ Hệ thống thẩm định minh chứng tự động và Bộ phận Quản lý
 
 🚨 LƯU Ý BẮT BUỘC: Hết thời hạn 48 giờ nêu trên, nếu không nhận được minh chứng hợp lệ bổ sung, hệ thống sẽ tự động chuyển hồ sơ sang trạng thái "KHÔNG ĐƯỢC XÉT" và hủy điểm ưu tiên dự kiến.
 
-Vui lòng truy cập Cổng Tân Sinh Viên KTX DUE tại http://localhost:3000/student để tải lại ảnh minh chứng.
+Vui lòng truy cập Cổng Tân Sinh Viên KTX DUE tại https://ktx-due-quantly.vercel.app/student để tải lại ảnh minh chứng.
 
 Trân trọng,
 Bộ phận Quản lý Sinh viên – Ban Quản trị KTX DUE
@@ -2592,7 +2592,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                               target="_blank"
                               className="text-blue-700 font-semibold underline"
                             >
-                              http://localhost:3000/student
+                              https://ktx-due-quantly.vercel.app/student
                             </a>
                           </li>
                           <li>

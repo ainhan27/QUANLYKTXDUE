@@ -45,7 +45,7 @@ export async function approveRoundAndPublishAction(roundId: string) {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
         await supabaseAdmin
           .from('applications')
-          .update({ status: 'THAM_DINH_DAT', diem_uu_tien: 35 })
+          .update({ status: 'THAM_DINH_DAT' })
           .in('status', ['CHO_THAM_DINH', 'CAN_BO_SUNG']);
       }
     } catch {}
@@ -205,7 +205,7 @@ export async function directorApproveRoundAction(roundId: string = 'round-k50-do
         const supabaseAdmin = createAdminClient();
         await supabaseAdmin
           .from('applications')
-          .update({ status: 'THAM_DINH_DAT', diem_uu_tien: 35 })
+          .update({ status: 'THAM_DINH_DAT' })
           .in('status', ['CHO_THAM_DINH', 'CAN_BO_SUNG']);
       } catch (err) {
         console.warn('Lỗi cập nhật Supabase trong directorApprove:', err);
@@ -1090,9 +1090,15 @@ export async function approveEvidenceAction(applicationId: string, studentCode?:
       }
     }
 
-    let awardedPoints = bonusPoints ?? (app?.dien_uu_tien === 'KHONG' ? 0 : 35);
+    const isNoPrioApp =
+      !app?.dien_uu_tien ||
+      app.dien_uu_tien === 'KHONG' ||
+      app.dien_uu_tien?.toLowerCase().includes('khong') ||
+      app.dien_uu_tien?.toLowerCase().includes('không') ||
+      app.dien_uu_tien_label?.toLowerCase().includes('không');
+    let awardedPoints = isNoPrioApp ? 0 : (bonusPoints ?? (app?.diem_uu_tien || 35));
     if (app) {
-      if (app.dien_uu_tien === 'KHONG' || app.dien_uu_tien_label?.toLowerCase().includes('không')) {
+      if (isNoPrioApp) {
         awardedPoints = 0;
       } else if (!bonusPoints) {
         const policyPts = PRIORITY_POLICY_POINTS[app.dien_uu_tien]?.points;

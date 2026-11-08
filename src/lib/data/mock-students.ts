@@ -138,17 +138,24 @@ export function computeMergedRankings(storedApps: any[] = [], quota = 120): Rank
 
     const isPendingReview = s.status === 'CHO_THAM_DINH' || s.status === 'CAN_BO_SUNG';
     const isCancelled = s.status === 'HUY_SUAT' || s.status === 'TU_CHOI_BO_TRI';
-    // Điểm ưu tiên: nếu đang chờ rà soát hoặc đã hủy thì tạm tính 0đ; khi đã duyệt đạt thì bắt buộc cộng đủ điểm theo diện
-    let activePoints = (isPendingReview || isCancelled) ? 0 : (s.diem_uu_tien ?? 0);
-    if (!isPendingReview && !isCancelled && activePoints === 0 && s.dien_uu_tien && s.dien_uu_tien !== 'KHONG') {
+    const isNoPrioApplicant =
+      !s.dien_uu_tien ||
+      s.dien_uu_tien === 'KHONG' ||
+      s.dien_uu_tien?.toLowerCase().includes('khong') ||
+      s.dien_uu_tien?.toLowerCase().includes('không') ||
+      s.dien_uu_tien_label?.toLowerCase().includes('không');
+
+    // Điểm ưu tiên: nếu không ưu tiên, đang chờ rà soát hoặc đã hủy thì bắt buộc là 0đ; khi duyệt đạt diện chính sách mới tính điểm
+    let activePoints = (isPendingReview || isCancelled || isNoPrioApplicant) ? 0 : (s.diem_uu_tien ?? 0);
+    if (!isPendingReview && !isCancelled && !isNoPrioApplicant && activePoints === 0 && s.dien_uu_tien) {
       if (s.dien_uu_tien === 'CON_THUONG_BINH_LIET_SI') activePoints = 40;
       else if (s.dien_uu_tien === 'HO_NGHEO_CAN_NGHEO') activePoints = 35;
       else if (s.dien_uu_tien === 'VUNG_SAU_XA_HAI_DAO') activePoints = 30;
       else if (s.dien_uu_tien === 'DAN_TOC_THIEU_SO') activePoints = 25;
       else if (s.dien_uu_tien === 'NGOAI_TINH_XA') activePoints = 20;
-      else if (s.dien_uu_tien_label?.toLowerCase().includes('nghèo')) activePoints = 35;
       else if (s.dien_uu_tien_label?.toLowerCase().includes('thương binh') || s.dien_uu_tien_label?.toLowerCase().includes('liệt sĩ')) activePoints = 40;
-      else activePoints = 35;
+      else if (s.dien_uu_tien_label?.toLowerCase().includes('nghèo')) activePoints = 35;
+      else activePoints = 0; // Tuyệt đối không gán 35đ cho diện không xác định!
     }
 
     const existingIdx = merged.findIndex((m) => m.ma_sv === s.ma_sv || m.id === s.id);

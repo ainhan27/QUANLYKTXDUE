@@ -144,7 +144,7 @@ export async function POST(request: Request) {
           const supabase = createAdminClient();
           await supabase
             .from('applications')
-            .update({ status: 'THAM_DINH_DAT', diem_uu_tien: 35 })
+            .update({ status: 'THAM_DINH_DAT' })
             .in('status', ['CHO_THAM_DINH', 'CAN_BO_SUNG']);
         } catch (e) {
           console.warn('Lỗi cập nhật Supabase trong approve_all_pending:', e);
@@ -156,10 +156,21 @@ export async function POST(request: Request) {
 
     if (action === 'approve_evidence') {
       const { applicationId, studentCode, points } = body;
-      const pts = Number(points) || 35;
       const { getAllStoredApplications, saveApplicationToStore } = await import('@/lib/data/live-store');
       const apps = getAllStoredApplications();
       const target = apps.find((a) => a.id === applicationId || (studentCode && a.ma_sv === studentCode));
+      
+      const targetIsNoPrio =
+        !target?.dien_uu_tien ||
+        target?.dien_uu_tien === 'KHONG' ||
+        target?.dien_uu_tien?.toLowerCase().includes('khong') ||
+        target?.dien_uu_tien?.toLowerCase().includes('không') ||
+        target?.dien_uu_tien_label?.toLowerCase().includes('không');
+
+      const pts = targetIsNoPrio
+        ? 0
+        : (typeof points === 'number' && points >= 0 ? points : (Number(points) >= 0 ? Number(points) : (target?.diem_uu_tien || 35)));
+
       if (target) {
         target.status = 'THAM_DINH_DAT';
         target.diem_uu_tien = pts;
