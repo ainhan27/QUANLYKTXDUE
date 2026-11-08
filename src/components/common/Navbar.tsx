@@ -23,15 +23,9 @@ export default function Navbar({ currentRole = 'SV', userName = 'Sinh viên DUE'
   const router = useRouter();
 
   // Khởi tạo vai trò chuẩn xác ngay từ pathname để không bị nhầm vai trò Sinh viên trên trang Cán bộ
+  // Chỉ dựa vào pathname để server và client render giống nhau (tránh lỗi hydration);
+  // vai trò lưu trong localStorage được đồng bộ trong useEffect bên dưới.
   const [role, setRole] = useState<UserRole>(() => {
-    if (typeof window !== 'undefined') {
-      const p = window.location.pathname;
-      if (p.startsWith('/officer')) return 'QLSV';
-      if (p.startsWith('/director')) return 'TB';
-      if (p.startsWith('/student')) return 'SV';
-      const stored = localStorage.getItem('ktx_current_role') as UserRole;
-      if (stored && ['SV', 'QLSV', 'TB'].includes(stored)) return stored;
-    }
     if (pathname?.startsWith('/officer')) return 'QLSV';
     if (pathname?.startsWith('/director')) return 'TB';
     return 'SV';
