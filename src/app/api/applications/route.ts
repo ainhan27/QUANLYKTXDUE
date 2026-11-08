@@ -145,7 +145,13 @@ export async function GET() {
 
             // Đối với Giấy ưu tiên: Kiểm tra từ khóa chính sách và con dấu mộc đỏ riêng biệt
             const priorityImgStr = typeof priorityImg === 'string' ? priorityImg.toLowerCase() : '';
-            const isNoPriorityPolicy = !app.dien_uu_tien || app.dien_uu_tien === 'KHONG' || app.diem_uu_tien === 0;
+            const isNoPriorityPolicy =
+              !app.dien_uu_tien ||
+              app.dien_uu_tien === 'KHONG' ||
+              app.dien_uu_tien === 'KHONG_UU_TIEN' ||
+              app.dien_uu_tien.toLowerCase().includes('khong') ||
+              app.dien_uu_tien.toLowerCase().includes('không') ||
+              app.dien_uu_tien_label?.toLowerCase().includes('không');
             const isJunkPriorityImage = !isNoPriorityPolicy && (
               priorityImgStr.includes('ham mat do') ||
               priorityImgStr.includes('bai tap') ||
@@ -288,8 +294,8 @@ export async function GET() {
             let resolvedDiemUuTien = app.diem_uu_tien ?? 0;
             if (isNoPrioApplicant) {
               resolvedDiemUuTien = 0;
-            } else if (app.status === 'THAM_DINH_DAT' && resolvedDiemUuTien === 0) {
-              resolvedDiemUuTien = PRIORITY_POLICY_POINTS[app.dien_uu_tien]?.points || 30;
+            } else if ((isApproved || effectiveStatus === 'THAM_DINH_DAT') && resolvedDiemUuTien === 0) {
+              resolvedDiemUuTien = PRIORITY_POLICY_POINTS[app.dien_uu_tien]?.points || 35;
             }
 
             return {

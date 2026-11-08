@@ -272,9 +272,15 @@ export default function ApplicationForm({ onSuccess }: ApplicationFormProps) {
           dien_uu_tien: PRIORITY_POLICY_POINTS[formData.dien_uu_tien]?.label || 'Không thuộc diện ưu tiên',
           diem_uu_tien: res.finalPoints ?? 0,
           status: res.status,
+          cccd_image_base64: cccdPreview || null,
+          priority_image_base64: priorityPreview || null,
           ai_result: res.aiResult || null,
           aiConfidence: res.aiResult?.confidence,
         };
+        try {
+          if (cccdPreview) localStorage.setItem(`student_cccd_image_${formData.ma_sv.trim()}`, cccdPreview);
+          if (priorityPreview) localStorage.setItem(`student_priority_image_${formData.ma_sv.trim()}`, priorityPreview);
+        } catch {}
         localStorage.setItem('last_submitted_student', JSON.stringify(studentPayload));
         localStorage.setItem('active_student_session_code', formData.ma_sv.trim());
         localStorage.setItem('student_page_tab', 'tracker');

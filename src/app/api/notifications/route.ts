@@ -21,11 +21,12 @@ export async function GET(request: NextRequest) {
     } else if (email) {
       data = getNotificationsForStudent(email, studentName);
     } else {
-      data = getAllStoredNotifications();
+      data = searchParams.get('all') === 'true' ? getAllStoredNotifications() : [];
     }
 
     // Đồng bộ thêm các thông báo từ CSDL Supabase Cloud (nếu có cấu hình)
     if (
+      (studentCode || email) &&
       process.env.NEXT_PUBLIC_SUPABASE_URL &&
       !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id') &&
       process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -39,24 +40,32 @@ export async function GET(request: NextRequest) {
           .neq('status', 'SYSTEM')
           .order('created_at', { ascending: false });
 
-        if (studentCode && email) {
-          query = query.or(`recipient_email.eq.${email},noi_dung.ilike.%${studentCode}%,tieu_de.ilike.%${studentCode}%`);
+        if (email) {
+          query = query.eq('recipient_email', email.trim());
         } else if (studentCode) {
-          query = query.or(`noi_dung.ilike.%${studentCode}%,tieu_de.ilike.%${studentCode}%`);
-        } else if (email) {
-          query = query.eq('recipient_email', email);
+          query = query.ilike('tieu_de', `%${studentCode.trim()}%`);
         }
 
         const { data: sbNotifs } = await query;
         if (sbNotifs && sbNotifs.length > 0) {
           const cleanName = studentName.toLowerCase().trim();
           for (const sn of sbNotifs) {
+            const nd = (sn.noi_dung || '').toLowerCase();
+            const td = (sn.tieu_de || '').toLowerCase();
+
+            // Nếu query có studentCode nhưng nội dung/tiêu đề gửi cho MSSV khác:
+            if (studentCode) {
+              const mssvMatch = nd.match(/mssv:\s*<strong>(\d{8,15})<\/strong>/i) || nd.match(/mssv:\s*(\d{8,15})/i) || td.match(/mssv:\s*(\d{8,15})/i);
+              if (mssvMatch && mssvMatch[1] !== studentCode.trim()) {
+                continue; // Bỏ qua email của sinh viên khác có cùng email test
+              }
+            }
+
             // Lọc nếu nội dung hoặc tiêu đề gửi cho người khác
-            if (cleanName && sn.noi_dung) {
-              const nd = sn.noi_dung.toLowerCase();
-              if (nd.includes('kính gửi sinh viên') || nd.includes('chào sinh viên') || nd.includes('chào bạn')) {
+            if (cleanName) {
+              if (nd.includes('kính gửi sinh viên') || nd.includes('chào bạn') || nd.includes('chào sinh viên') || td.includes('sinh viên')) {
                 const studentTokens = cleanName.split(/\s+/).filter(Boolean);
-                const hasName = studentTokens.some((t) => nd.includes(t));
+                const hasName = studentTokens.some((t) => nd.includes(t) || td.includes(t));
                 if (!hasName) continue;
               }
             }
@@ -71,8 +80,8 @@ export async function GET(request: NextRequest) {
                 id: sn.id,
                 application_id: sn.application_id,
                 recipient_email: sn.recipient_email,
-                student_code: studentCode,
-                student_name: studentName,
+                student_code: studentCode || sn.student_code,
+                student_name: studentName || sn.student_name,
                 tieu_de: sn.tieu_de,
                 noi_dung: sn.noi_dung,
                 loai: sn.loai,

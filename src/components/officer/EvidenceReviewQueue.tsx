@@ -9,7 +9,7 @@
 // ==============================================================================
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { AI_THRESHOLDS, getAssignedRoomForStudent, getStudentOtpCode } from '@/lib/constants/workflow';
+import { AI_THRESHOLDS, getAssignedRoomForStudent, getStudentOtpCode, PRIORITY_POLICY_POINTS } from '@/lib/constants/workflow';
 import { computeMergedRankings } from '@/lib/data/mock-students';
 import { sendSupplementRequestAction, approveEvidenceAction, officerSendBatchEmailsAction } from '@/actions/approval';
 
@@ -481,7 +481,10 @@ export default function EvidenceReviewQueue() {
                 ? `data:image/jpeg;base64,${app.cccd_image_base64}`
                 : undefined;
 
-            // Fake CCCD SVG generation removed per user request: only show real uploaded images
+            if (!cccdImgUrl && typeof window !== 'undefined' && app.ma_sv) {
+              const localImg = localStorage.getItem(`student_cccd_image_${app.ma_sv}`);
+              if (localImg) cccdImgUrl = localImg.startsWith('data:') ? localImg : `data:image/jpeg;base64,${localImg}`;
+            }
 
             let priorityImgUrl = app.priority_image_base64
               ? app.priority_image_base64.startsWith('data:')
@@ -491,7 +494,18 @@ export default function EvidenceReviewQueue() {
                   : undefined
               : undefined;
 
-            // Fake Priority SVG generation removed per user request: only show real uploaded images
+            if (!priorityImgUrl && typeof window !== 'undefined' && app.ma_sv) {
+              const localImg = localStorage.getItem(`student_priority_image_${app.ma_sv}`);
+              if (localImg) priorityImgUrl = localImg.startsWith('data:') ? localImg : `data:image/jpeg;base64,${localImg}`;
+            }
+
+            const isAppNoPriority =
+              !app.dien_uu_tien ||
+              app.dien_uu_tien === 'KHONG' ||
+              app.dien_uu_tien === 'KHONG_UU_TIEN' ||
+              app.dien_uu_tien?.toLowerCase().includes('không') ||
+              app.dien_uu_tien?.toLowerCase().includes('khong') ||
+              app.dien_uu_tien_label?.toLowerCase().includes('không');
 
             return {
               id: app.id,
@@ -519,7 +533,7 @@ export default function EvidenceReviewQueue() {
               cccdMatched: cccdMatches,
               detectedOcrText: app.ai_result?.detected_raw_text || (app.file_url ? 'Đã đọc văn bản từ ảnh thực tế' : 'Chưa có ảnh hoặc chưa quét OCR'),
               detectedCccdText: app.ai_result?.detected_cccd_text || (app.cccd_image_base64 || cccdImgUrl ? `CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\nCĂN CƯỚC CÔNG DÂN\nSố / No.: ${app.cccd}\nHọ và tên: ${app.ho_ten}\nNơi thường trú: ${app.dia_chi_thuong_tru || 'Đà Nẵng'}` : ''),
-              detectedPriorityText: app.ai_result?.detected_priority_text || ((app.dien_uu_tien === 'KHONG' || app.diem_uu_tien === 0) ? 'Hồ sơ tiêu chuẩn: Sinh viên không đăng ký diện ưu tiên (0đ).' : (priorityImgUrl ? `CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nUBND XÃ/PHƯỜNG ...\nGIẤY CHỨNG NHẬN DIỆN CHÍNH SÁCH ƯU TIÊN\n${app.dien_uu_tien_label || app.dien_uu_tien}\nHọ và tên sinh viên: ${app.ho_ten}\n(Đã xác nhận mộc tròn đỏ của cơ quan thẩm quyền)` : '')),
+              detectedPriorityText: app.ai_result?.detected_priority_text || (isAppNoPriority ? 'Hồ sơ tiêu chuẩn: Sinh viên không đăng ký diện ưu tiên (0đ).' : (priorityImgUrl ? `CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nUBND XÃ/PHƯỜNG ...\nGIẤY CHỨNG NHẬN DIỆN CHÍNH SÁCH ƯU TIÊN\n${app.dien_uu_tien_label || app.dien_uu_tien}\nHọ và tên sinh viên: ${app.ho_ten}\n(Đã xác nhận mộc tròn đỏ của cơ quan thẩm quyền)` : '')),
               cccdCheck: {
                 hasKeyword: hasKeywords,
                 hasPoliceChief: isApproved || Boolean(app.ai_result?.cccd_analysis?.has_police_chief_keyword),
@@ -528,11 +542,11 @@ export default function EvidenceReviewQueue() {
                   : (app.ai_result?.cccd_analysis?.notes || 'Xác thực định danh CCCD do Bộ Công An cấp (Không yêu cầu mộc đỏ UBND).'),
               },
               priorityCheck: {
-                matchedKeywords: app.ai_result?.priority_analysis?.matched_policy_keywords || (app.dien_uu_tien === 'KHONG' ? ['Không thuộc diện ưu tiên'] : [app.dien_uu_tien_label || app.dien_uu_tien]),
-                hasOfficialStamp: (app.dien_uu_tien === 'KHONG' || app.diem_uu_tien === 0)
+                matchedKeywords: app.ai_result?.priority_analysis?.matched_policy_keywords || (isAppNoPriority ? ['Không thuộc diện ưu tiên'] : [app.dien_uu_tien_label || app.dien_uu_tien]),
+                hasOfficialStamp: isAppNoPriority
                   ? false
                   : (isApproved || Boolean(app.ai_result?.priority_analysis?.has_official_stamp_or_seal)),
-                note: (app.dien_uu_tien === 'KHONG' || app.diem_uu_tien === 0)
+                note: isAppNoPriority
                   ? 'Không đăng ký diện ưu tiên (0đ). Không yêu cầu mộc đỏ.'
                   : (isApproved ? 'Giấy tờ hợp lệ: Nhận diện mộc đỏ pháp lý và nội dung xác nhận diện ưu tiên.' : (app.ai_result?.priority_analysis?.notes || 'Đã kiểm tra con dấu của cơ quan thẩm quyền.')),
               },
@@ -710,7 +724,7 @@ export default function EvidenceReviewQueue() {
         nameMatched: true,
         cccdMatched: true,
         isSupplementReview: false,
-        diem_uu_tien: (!item.dien_uu_tien || item.dien_uu_tien === 'KHONG' || item.dien_uu_tien.toLowerCase().includes('khong') || item.dien_uu_tien.toLowerCase().includes('không') || item.diem_uu_tien === 0) ? 0 : (item.diem_uu_tien && item.diem_uu_tien > 0 ? item.diem_uu_tien : 35),
+        diem_uu_tien: (!item.dien_uu_tien || item.dien_uu_tien === 'KHONG' || item.dien_uu_tien.toLowerCase().includes('khong') || item.dien_uu_tien.toLowerCase().includes('không')) ? 0 : (item.diem_uu_tien && item.diem_uu_tien > 0 ? item.diem_uu_tien : (PRIORITY_POLICY_POINTS[item.dien_uu_tien]?.points || 35)),
       }))
     );
 
@@ -954,14 +968,15 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
     if (!currentItem || isApproving) return;
     setIsApproving(true);
     const targetItem = currentItem;
-    const isNoPrio = !targetItem.dien_uu_tien ||
+    const isNoPrio =
+      !targetItem.dien_uu_tien ||
       targetItem.dien_uu_tien === 'KHONG' ||
+      targetItem.dien_uu_tien === 'KHONG_UU_TIEN' ||
       targetItem.dien_uu_tien.toLowerCase().includes('khong') ||
-      targetItem.dien_uu_tien.toLowerCase().includes('không') ||
-      targetItem.diem_uu_tien === 0;
+      targetItem.dien_uu_tien.toLowerCase().includes('không');
     const awardedPts = isNoPrio
       ? 0
-      : (targetItem.diem_uu_tien && targetItem.diem_uu_tien > 0 ? targetItem.diem_uu_tien : 35);
+      : (targetItem.diem_uu_tien && targetItem.diem_uu_tien > 0 ? targetItem.diem_uu_tien : (PRIORITY_POLICY_POINTS[targetItem.dien_uu_tien]?.points || 35));
 
     // 1. TỨC THÌ 0MS: HIỆN THÔNG BÁO THÀNH CÔNG VÀ CHUYỂN HỒ SƠ NGAY LẬP TỨC
     setActionNotice(
@@ -1759,7 +1774,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                           </div>
                           <h4 className="text-sm font-bold text-slate-700">Chưa có ảnh minh chứng ưu tiên</h4>
                           <p className="text-xs text-slate-500 max-w-sm">
-                            {currentItem.dien_uu_tien === 'KHONG' || currentItem.diem_uu_tien === 0
+                            {currentItem.dien_uu_tien === 'KHONG' || currentItem.dien_uu_tien?.toLowerCase().includes('không') || currentItem.dien_uu_tien?.toLowerCase().includes('khong')
                               ? 'Sinh viên không đăng ký diện ưu tiên (0đ), không yêu cầu giấy tờ minh chứng.'
                               : 'Hồ sơ chưa có tệp ảnh minh chứng diện ưu tiên.'}
                           </p>
@@ -1835,9 +1850,11 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                 brokenImages[`${currentItem.id}-priority`]
               );
               const isNoPriority =
+                !currentItem.dien_uu_tien ||
                 currentItem.dien_uu_tien === 'KHONG' ||
+                currentItem.dien_uu_tien === 'KHONG_UU_TIEN' ||
                 currentItem.dien_uu_tien?.toLowerCase().includes('không') ||
-                currentItem.diem_uu_tien === 0;
+                currentItem.dien_uu_tien?.toLowerCase().includes('khong');
 
               return (
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col justify-between space-y-4">
@@ -2232,7 +2249,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                           <p className="font-mono text-[11px] text-slate-700 whitespace-pre-wrap max-h-24 overflow-y-auto bg-white p-2 rounded border border-amber-100">
                             {isImageBroken
                               ? '(Không thể trích xuất do tệp ảnh bị lỗi)'
-                              : (currentItem.detectedPriorityText || (currentItem.dien_uu_tien === 'KHONG' || currentItem.diem_uu_tien === 0 ? 'Hồ sơ tiêu chuẩn: Không đăng ký diện ưu tiên (0đ).' : '(Không có văn bản trích xuất)'))}
+                              : (currentItem.detectedPriorityText || (isNoPriority ? 'Hồ sơ tiêu chuẩn: Không đăng ký diện ưu tiên (0đ).' : '(Không có văn bản trích xuất)'))}
                           </p>
                         </div>
                       </div>

@@ -389,27 +389,45 @@ export function saveNotificationToStore(notif: StoredNotification): boolean {
 
 export function getNotificationsForStudent(studentCodeOrEmail: string, studentName?: string): StoredNotification[] {
   const all = getAllStoredNotifications();
-  if (!studentCodeOrEmail) return all;
+  if (!studentCodeOrEmail) return [];
   const q = studentCodeOrEmail.toLowerCase().trim();
   const cleanName = studentName ? studentName.toLowerCase().trim() : '';
 
   const matched = all.filter((n) => {
-    // 1. Phải khớp mã sinh viên hoặc email
-    const matchesCode = n.student_code && n.student_code.toLowerCase().trim() === q;
-    const matchesEmail = n.recipient_email && n.recipient_email.toLowerCase().trim() === q;
-    if (!matchesCode && !matchesEmail) return false;
+    const nCode = (n.student_code || '').toLowerCase().trim();
+    const nEmail = (n.recipient_email || '').toLowerCase().trim();
 
-    // 2. Chống lẫn lộn danh tính (Cross-Identity Guard):
-    // Nếu có Họ tên sinh viên hiện tại truyền vào và thông báo có lưu student_name,
-    // kiểm tra xem có sự trùng khớp danh tính không. Nếu tên hoàn toàn khác (ví dụ: Mai thảo vs Nguyễn Ngọc Quỳnh Vy),
-    // loại bỏ ngay lập tức thông báo cũ của người dùng khác.
-    if (cleanName && n.student_name) {
-      const nName = n.student_name.toLowerCase().trim();
-      if (nName !== cleanName) {
+    // 1. Nếu query là mã sinh viên (chuỗi số >= 6 chữ số)
+    const isStudentCodeQuery = /^\d{6,15}$/.test(q);
+    if (isStudentCodeQuery) {
+      if (nCode && nCode !== q) return false;
+      if (!nCode && !nEmail.includes(q)) return false;
+    } else {
+      const matchesCode = Boolean(nCode && nCode === q);
+      const matchesEmail = Boolean(nEmail && nEmail === q);
+      if (!matchesCode && !matchesEmail) return false;
+    }
+
+    // 2. Chống lẫn lộn danh tính giữa các sinh viên dùng chung email test
+    if (cleanName) {
+      if (n.student_name) {
+        const nName = n.student_name.toLowerCase().trim();
+        if (nName !== cleanName) {
+          const studentTokens = cleanName.split(/\s+/).filter(Boolean);
+          const notifTokens = nName.split(/\s+/).filter(Boolean);
+          const hasCommonToken = studentTokens.some((t) => notifTokens.includes(t));
+          if (!hasCommonToken) {
+            return false;
+          }
+        }
+      }
+      const titleLower = (n.tieu_de || '').toLowerCase();
+      const contentLower = (n.noi_dung || '').toLowerCase();
+      // Nếu tiêu đề hoặc nội dung nói rõ tên một sinh viên khác:
+      if (titleLower.includes('sinh viên ') || contentLower.includes('sinh viên ')) {
         const studentTokens = cleanName.split(/\s+/).filter(Boolean);
-        const notifTokens = nName.split(/\s+/).filter(Boolean);
-        const hasCommonToken = studentTokens.some((t) => notifTokens.includes(t));
-        if (!hasCommonToken) {
+        const hasToken = studentTokens.some((t) => titleLower.includes(t) || contentLower.includes(t));
+        if (!hasToken) {
           return false;
         }
       }

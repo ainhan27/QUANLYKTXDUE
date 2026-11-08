@@ -193,8 +193,10 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
       aiConfidence: confidence,
       ghi_chu_ly_do: app.ghi_chu_ly_do,
       aiResult: app.ai_result || app.aiResult || null,
+      cccd_image_base64: app.cccd_image_base64 || (typeof window !== 'undefined' ? localStorage.getItem(`student_cccd_image_${app.ma_sv}`) : null) || null,
+      priority_image_base64: app.priority_image_base64 || (typeof window !== 'undefined' ? localStorage.getItem(`student_priority_image_${app.ma_sv}`) : null) || null,
       is_supplemented: Boolean(app.is_supplemented),
-      has_reuploaded: Boolean(app.has_reuploaded ?? app.is_supplemented),
+      has_reuploaded: Boolean(app.has_reuploaded),
       supplement_submitted_at: app.supplement_submitted_at || undefined,
     };
     setStudentInfo(resolved);
@@ -230,7 +232,6 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
   // Nạp thông tin sinh viên thực tế vừa submit từ CSDL hoặc localStorage
   useEffect(() => {
     fetchWorkflow();
-    fetchNotifications();
 
     // 0. Khôi phục ngay từ localStorage để tránh chớp trạng thái khi reload trang
     try {
@@ -238,6 +239,12 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
       if (lastRaw) {
         const parsed = JSON.parse(lastRaw);
         if (parsed && (parsed.ma_sv || parsed.ho_ten)) {
+          if (!parsed.cccd_image_base64 && parsed.ma_sv) {
+            parsed.cccd_image_base64 = localStorage.getItem(`student_cccd_image_${parsed.ma_sv}`) || null;
+          }
+          if (!parsed.priority_image_base64 && parsed.ma_sv) {
+            parsed.priority_image_base64 = localStorage.getItem(`student_priority_image_${parsed.ma_sv}`) || null;
+          }
           const isSigned = parsed.ma_sv && (
             localStorage.getItem(`student_signed_${parsed.ma_sv}`) === 'true' ||
             localStorage.getItem(`student_status_${parsed.ma_sv}`) === 'DA_KY' ||
@@ -268,6 +275,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
           if (parsed.status) {
             setStatus(parsed.status);
           }
+          fetchNotifications(parsed.ma_sv, parsed.email, parsed.ho_ten);
         }
       }
       const isDirectorFinalized = localStorage.getItem('ktx_director_finalized') === 'true';
@@ -1012,15 +1020,12 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
   const isDeniedResidence = status === 'TU_CHOI_BO_TRI';
   const isDisqualified = status === 'KHONG_DUOC_XET';
   const isExceptionState = isCancelled || isDeniedResidence || isDisqualified;
-  const effectiveAppStatus = (studentInfo.status && studentInfo.status !== 'CHO_THAM_DINH') ? studentInfo.status : status;
-  const isSupplement = effectiveAppStatus === 'CAN_BO_SUNG' || status === 'CAN_BO_SUNG';
+  const effectiveAppStatus = status;
+  const isSupplement = status === 'CAN_BO_SUNG';
   const isApprovedEvidence =
-    effectiveAppStatus === 'THAM_DINH_DAT' ||
-    effectiveAppStatus === 'DA_DUYET' ||
-    effectiveAppStatus === 'DA_PHAT_HANH' ||
-    effectiveAppStatus === 'DA_KY' ||
-    effectiveAppStatus === 'DA_BAN_GIAO' ||
     status === 'THAM_DINH_DAT' ||
+    status === 'DA_XEP_HANG' ||
+    status === 'DA_CHOT' ||
     status === 'DA_DUYET' ||
     status === 'DA_PHAT_HANH' ||
     status === 'DA_KY' ||
@@ -1562,7 +1567,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
         )}
 
         {/* THÔNG BÁO TIẾP NHẬN MINH CHỨNG BỔ SUNG (CHỈ HIỂN THỊ KHI SINH VIÊN ĐÃ THỰC SỰ GỬI TẢI LẠI TỆP) */}
-        {status === 'CHO_THAM_DINH' && (studentInfo.has_reuploaded === true || studentInfo.is_supplemented === true || Boolean(studentInfo.supplement_submitted_at)) && (
+        {status === 'CHO_THAM_DINH' && studentInfo.has_reuploaded === true && Boolean(studentInfo.supplement_submitted_at) && (
           <div className="p-4 bg-purple-50 border-2 border-purple-300 rounded-xl shadow-sm text-purple-950 space-y-2 animate-in fade-in">
             <div className="flex items-center gap-2">
               <span className="text-base">🔄</span>
@@ -2167,7 +2172,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                   <div className="pt-2 border-t border-slate-200 space-y-1.5">
                     <div className="flex justify-between items-center">
                       <span className="text-slate-500 text-xs">Đối chiếu AI Vision:</span>
-                      {currentStepNumber >= 3 || isApprovedEvidence ? (
+                      {isApprovedEvidence ? (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                           ✓ Đạt chuẩn (Đã thẩm định đạt)
                         </span>
@@ -2186,7 +2191,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                       {/* Họ tên */}
                       {(() => {
                         const nm = studentInfo.aiResult?.extracted_info?.name_matched ?? studentInfo.aiResult?.cccd_analysis?.name_matched;
-                        if (currentStepNumber >= 3 || isApprovedEvidence) {
+                        if (isApprovedEvidence) {
                           return (
                             <span className="px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">
                               Họ tên: ✓ Đã thẩm định đạt
@@ -2218,7 +2223,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                       {(() => {
                         const cm = studentInfo.aiResult?.extracted_info?.cccd_matched ?? studentInfo.aiResult?.cccd_analysis?.cccd_matched;
                         const hasKw = studentInfo.aiResult?.cccd_analysis?.has_cccd_keywords ?? studentInfo.aiResult?.has_cccd_keyword;
-                        if (currentStepNumber >= 3 || isApprovedEvidence) {
+                        if (isApprovedEvidence) {
                           return (
                             <span className="px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">
                               CCCD: ✓ Đã thẩm định đạt
@@ -2267,7 +2272,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                             </span>
                           );
                         }
-                        if (currentStepNumber >= 3 || isApprovedEvidence) {
+                        if (isApprovedEvidence) {
                           return (
                             <span className="px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">
                               Giấy tờ: ✓ Đã thẩm định đạt
