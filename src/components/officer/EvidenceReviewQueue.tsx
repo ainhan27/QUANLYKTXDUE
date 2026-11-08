@@ -212,42 +212,23 @@ export function generateRealisticPrioritySvg(fullName: string, policyName: strin
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
+export const isAlreadyReviewedOrPassed = (status?: string): boolean => {
+  if (!status) return false;
+  return [
+    'THAM_DINH_DAT',
+    'DA_PHE_DUYET',
+    'DA_PHAT_HANH',
+    'CHO_KY',
+    'DA_KY',
+    'DA_BAN_GIAO',
+    'HOAN_TAT',
+    'TU_CHOI_BO_TRI',
+    'KHONG_DUOC_XET',
+  ].includes(status);
+};
+
 export default function EvidenceReviewQueue() {
   const [queue, setQueue] = useState<QueueItem[]>([
-    {
-      id: 'app-50k-001',
-      khoa: 'Khoa Quản trị Kinh doanh',
-      ma_sv: '251121536108',
-      ho_ten: 'Trần Minh Khang',
-      email: 'khang.tm@due.udn.vn',
-      cccd: '048204009988',
-      dien_uu_tien: 'Hộ nghèo, cận nghèo theo chuẩn QG',
-      diem_uu_tien: 35,
-      isSupplemented: false,
-      isSupplementReview: false,
-      cccdImageUrl: '',
-      priorityImageUrl: '',
-      aiConfidence: 0.74,
-      aiDocType: 'Giấy chứng nhận hộ cận nghèo năm 2025',
-      aiExtractedName: 'Trần Minh Khang',
-      aiExtractedCccd: '048204009988',
-      detectedOcrText: 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM ... CĂN CƯỚC CÔNG DÂN Số: 048204009988 ... CỤC TRƯỞNG CỤC CẢNH SÁT QLHC VỀ TRẬT TỰ XÃ HỘI ... UBND XÃ DUY NGHĨA CHỨNG NHẬN HỘ CẬN NGHÈO 2025 (KÝ VÀ ĐÓNG DẤU ĐỎ)',
-      cccdCheck: {
-        hasKeyword: true,
-        hasPoliceChief: true,
-        note: 'Hợp lệ: Đã phát hiện "Căn cước công dân" & "Cục trưởng Cục Cảnh sát". Không yêu cầu dấu đỏ.',
-      },
-      priorityCheck: {
-        matchedKeywords: ['hộ cận nghèo', 'chuẩn nghèo'],
-        hasOfficialStamp: false,
-        note: '⚠️ Con dấu đỏ góc dưới bị mờ, hệ thống chưa nhận diện rõ mộc tròn của UBND.',
-      },
-      aiWarnings: ['Con dấu góc dưới bên phải hơi mờ cần đối chiếu', 'Độ tương phản ảnh trung bình (< 95%)'],
-      draftEmail: {
-        subject: '[KTX DUE] Yêu Cầu Bổ Sung Minh Chứng Trong 48 Giờ – Sinh Viên Trần Minh Khang',
-        bodyHtml: '<p>Kính gửi sinh viên <strong>Trần Minh Khang</strong>,</p><p>Minh chứng của bạn cần bổ sung ảnh chụp rõ con dấu mộc đỏ của cơ quan thẩm quyền.</p>',
-      },
-    },
     {
       id: 'app-49k-045',
       khoa: 'Khoa Quản trị Kinh doanh',
@@ -479,9 +460,7 @@ export default function EvidenceReviewQueue() {
                 ? `data:image/jpeg;base64,${app.cccd_image_base64}`
                 : undefined;
 
-            if (!cccdImgUrl && isNameValidFormat && isCccdValidFormat) {
-              cccdImgUrl = generateRealisticCccdSvg(app.ho_ten, app.cccd, app.gioi_tinh || 'Nữ', app.ngay_sinh || '12/05/2006');
-            }
+            // Fake CCCD SVG generation removed per user request: only show real uploaded images
 
             let priorityImgUrl = app.priority_image_base64
               ? app.priority_image_base64.startsWith('data:')
@@ -491,9 +470,7 @@ export default function EvidenceReviewQueue() {
                   : undefined
               : undefined;
 
-            if (!priorityImgUrl && app.dien_uu_tien !== 'KHONG' && isNameValidFormat) {
-              priorityImgUrl = generateRealisticPrioritySvg(app.ho_ten, app.dien_uu_tien_label || app.dien_uu_tien, app.ma_sv);
-            }
+            // Fake Priority SVG generation removed per user request: only show real uploaded images
 
             return {
               id: app.id,
@@ -555,7 +532,7 @@ export default function EvidenceReviewQueue() {
             if (!prevQueue || prevQueue.length === 0) return newItems;
             return newItems.map((newItem) => {
               const existing = prevQueue.find((q) => q.id === newItem.id || q.ma_sv === newItem.ma_sv);
-              if (existing && existing.status === 'THAM_DINH_DAT' && newItem.status !== 'THAM_DINH_DAT') {
+              if (existing && isAlreadyReviewedOrPassed(existing.status) && !isAlreadyReviewedOrPassed(newItem.status)) {
                 return {
                   ...newItem,
                   status: 'THAM_DINH_DAT',
@@ -614,22 +591,22 @@ export default function EvidenceReviewQueue() {
   // 1. MINH CHỨNG BỔ SUNG CẦN DUYỆT (< 95%) - TAB RIÊNG THEO YÊU CẦU NGƯỜI DÙNG
   const supplementReviewItems = queue.filter(
     (x) =>
-      x.status !== 'THAM_DINH_DAT' &&
-      (x.isSupplementReview || (x.isSupplemented && (x.status === 'CHO_THAM_DINH' || x.aiConfidence < 0.95)))
+      !isAlreadyReviewedOrPassed(x.status) &&
+      (x.isSupplementReview || (x.isSupplemented && (x.status === 'CHO_THAM_DINH' || x.status === 'CAN_BO_SUNG' || x.aiConfidence < 0.95)))
   );
 
   // 2. HỒ SƠ BAN ĐẦU CẦN RÀ SOÁT (< 95%)
   const initialReviewItems = queue.filter(
     (x) =>
-      x.status !== 'THAM_DINH_DAT' &&
+      !isAlreadyReviewedOrPassed(x.status) &&
       !x.isSupplementReview &&
       !x.isSupplemented &&
       (x.status === 'CHO_THAM_DINH' || x.aiConfidence < 0.95)
   );
 
-  // 3. AI TỰ ĐỘNG CHO QUA (>= 95%)
+  // 3. AI TỰ ĐỘNG CHO QUA (>= 95%) HOẶC ĐÃ THẨM ĐỊNH XONG
   const autoApprovedItems = queue.filter(
-    (x) => x.status === 'THAM_DINH_DAT' || (x.status !== 'CHO_THAM_DINH' && x.aiConfidence >= 0.95)
+    (x) => isAlreadyReviewedOrPassed(x.status) || (x.status !== 'CHO_THAM_DINH' && x.status !== 'CAN_BO_SUNG' && x.aiConfidence >= 0.95)
   );
 
   const totalPendingReview = initialReviewItems.length + supplementReviewItems.length;
@@ -637,20 +614,20 @@ export default function EvidenceReviewQueue() {
   const filteredQueue = queue.filter((item) => {
     if (filterMode === 'SUPPLEMENT_REVIEW') {
       return (
-        item.status !== 'THAM_DINH_DAT' &&
-        (item.isSupplementReview || (item.isSupplemented && (item.status === 'CHO_THAM_DINH' || item.aiConfidence < 0.95)))
+        !isAlreadyReviewedOrPassed(item.status) &&
+        (item.isSupplementReview || (item.isSupplemented && (item.status === 'CHO_THAM_DINH' || item.status === 'CAN_BO_SUNG' || item.aiConfidence < 0.95)))
       );
     }
     if (filterMode === 'INITIAL_REVIEW' || filterMode === 'MANUAL_REVIEW') {
       return (
-        item.status !== 'THAM_DINH_DAT' &&
+        !isAlreadyReviewedOrPassed(item.status) &&
         !item.isSupplementReview &&
         !item.isSupplemented &&
         (item.status === 'CHO_THAM_DINH' || item.aiConfidence < 0.95)
       );
     }
     if (filterMode === 'AUTO_APPROVED') {
-      return item.status === 'THAM_DINH_DAT' || (item.status !== 'CHO_THAM_DINH' && item.aiConfidence >= 0.95);
+      return isAlreadyReviewedOrPassed(item.status) || (item.status !== 'CHO_THAM_DINH' && item.status !== 'CAN_BO_SUNG' && item.aiConfidence >= 0.95);
     }
     return true;
   });
@@ -676,7 +653,7 @@ export default function EvidenceReviewQueue() {
         nameMatched: true,
         cccdMatched: true,
         isSupplementReview: false,
-        diem_uu_tien: (item.diem_uu_tien && item.diem_uu_tien > 0) ? item.diem_uu_tien : (item.dien_uu_tien === 'KHONG' ? 0 : 35),
+        diem_uu_tien: (!item.dien_uu_tien || item.dien_uu_tien === 'KHONG' || item.dien_uu_tien.toLowerCase().includes('khong') || item.dien_uu_tien.toLowerCase().includes('không') || item.diem_uu_tien === 0) ? 0 : (item.diem_uu_tien && item.diem_uu_tien > 0 ? item.diem_uu_tien : 35),
       }))
     );
 
@@ -920,9 +897,14 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
     if (!currentItem || isApproving) return;
     setIsApproving(true);
     const targetItem = currentItem;
-    const awardedPts = (targetItem.diem_uu_tien && targetItem.diem_uu_tien > 0)
-      ? targetItem.diem_uu_tien
-      : (targetItem.dien_uu_tien === 'KHONG' ? 0 : 35);
+    const isNoPrio = !targetItem.dien_uu_tien ||
+      targetItem.dien_uu_tien === 'KHONG' ||
+      targetItem.dien_uu_tien.toLowerCase().includes('khong') ||
+      targetItem.dien_uu_tien.toLowerCase().includes('không') ||
+      targetItem.diem_uu_tien === 0;
+    const awardedPts = isNoPrio
+      ? 0
+      : (targetItem.diem_uu_tien && targetItem.diem_uu_tien > 0 ? targetItem.diem_uu_tien : 35);
 
     // 1. TỨC THÌ 0MS: HIỆN THÔNG BÁO THÀNH CÔNG VÀ CHUYỂN HỒ SƠ NGAY LẬP TỨC
     setActionNotice(
@@ -1751,6 +1733,38 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
 
             {/* CỘT PHẢI: KẾT QUẢ PHÂN TÍCH AI VISION, VĂN BẢN OCR & NÚT HÀNH ĐỘNG */}
             {(() => {
+              // ĐÃ DUYỆT ĐẠT: Hiển thị banner khóa cứng, KHÔNG render lại toàn bộ AI Vision panel
+              if (currentItem.status === 'THAM_DINH_DAT') {
+                return (
+                  <div className="bg-white rounded-xl shadow-sm border-2 border-emerald-300 p-6 flex flex-col items-center justify-center space-y-4 min-h-[300px]">
+                    <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-4xl shadow-sm">
+                      ✅
+                    </div>
+                    <div className="text-center space-y-1">
+                      <h3 className="text-lg font-black text-emerald-900">HỒ SƠ ĐÃ DUYỆT ĐẠT</h3>
+                      <p className="text-sm font-semibold text-emerald-700">
+                        Minh chứng của sinh viên <strong>{currentItem.ho_ten}</strong> đã được Cán bộ QLSV xác nhận hợp lệ.
+                      </p>
+                      <p className="text-xs text-emerald-600">
+                        Điểm ưu tiên đã cộng: <strong>+{currentItem.diem_uu_tien}đ</strong> · Đã cập nhật Bảng xếp hạng.
+                      </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      <a
+                        href="/ranking"
+                        className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg font-bold text-xs shadow transition flex items-center space-x-1.5"
+                      >
+                        <span>📊</span>
+                        <span>Xem trên Bảng xếp hạng →</span>
+                      </a>
+                    </div>
+                    <div className="mt-2 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 text-center">
+                      🔒 Trạng thái duyệt đã được khóa cứng vào CSDL. Không thể duyệt lại hoặc thay đổi.
+                    </div>
+                  </div>
+                );
+              }
+
               const isImageBroken = Boolean(
                 brokenImages[currentItem.id] ||
                 brokenImages[`${currentItem.id}-cccd`] ||

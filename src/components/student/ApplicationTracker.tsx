@@ -330,9 +330,22 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                     : (prevPrio > newPrio && newStatus !== 'HUY_SUAT')
                     ? prev.status
                     : newStatus;
-                  const resolvedPts = (resolvedStatus === 'THAM_DINH_DAT' && (!found.diem_uu_tien || found.diem_uu_tien === 0))
-                    ? (prev.diem_uu_tien > 0 ? prev.diem_uu_tien : 35)
-                    : (found.diem_uu_tien ?? prev.diem_uu_tien);
+                  const isNoPrio =
+                    !found.dien_uu_tien ||
+                    found.dien_uu_tien === 'KHONG' ||
+                    found.dien_uu_tien?.toLowerCase().includes('không') ||
+                    found.dien_uu_tien?.toLowerCase().includes('khong') ||
+                    found.dien_uu_tien_label?.toLowerCase().includes('không') ||
+                    prev.dien_uu_tien === 'KHONG' ||
+                    prev.dien_uu_tien?.toLowerCase().includes('không');
+
+                  const resolvedPts = isNoPrio
+                    ? 0
+                    : (found.diem_uu_tien && found.diem_uu_tien > 0)
+                    ? found.diem_uu_tien
+                    : (prev.diem_uu_tien && prev.diem_uu_tien > 0)
+                    ? prev.diem_uu_tien
+                    : 0;
 
                   if (
                     prev.status === resolvedStatus &&
@@ -423,11 +436,16 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
             });
             setStudentInfo((prev) => {
               if (prev.status === 'CHO_THAM_DINH' || prev.status === 'CAN_BO_SUNG') {
-                const updated = {
-                  ...prev,
-                  status: 'THAM_DINH_DAT' as AppStatus,
-                  diem_uu_tien: prev.diem_uu_tien > 0 ? prev.diem_uu_tien : 35,
-                };
+                  const isNoPrio =
+                    !prev.dien_uu_tien ||
+                    prev.dien_uu_tien === 'KHONG' ||
+                    prev.dien_uu_tien?.toLowerCase().includes('không') ||
+                    prev.dien_uu_tien?.toLowerCase().includes('khong');
+                  const updated = {
+                    ...prev,
+                    status: 'THAM_DINH_DAT' as AppStatus,
+                    diem_uu_tien: isNoPrio ? 0 : (prev.diem_uu_tien > 0 ? prev.diem_uu_tien : 35),
+                  };
                 try {
                   localStorage.setItem('last_submitted_student', JSON.stringify(updated));
                 } catch {}

@@ -12,6 +12,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendWorkflowEmail } from '@/services/email';
 import { AppStatus } from '@/types/database';
+import { PRIORITY_POLICY_POINTS } from '@/lib/constants/workflow';
 
 const isUuid = (val: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
@@ -24,19 +25,24 @@ export async function approveRoundAndPublishAction(roundId: string) {
     storedApps.forEach((a) => {
       if (a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG') {
         a.status = 'THAM_DINH_DAT';
-        if (!a.diem_uu_tien || a.diem_uu_tien === 0) a.diem_uu_tien = 35;
+        const isNoPrio =
+          !a.dien_uu_tien ||
+          a.dien_uu_tien === 'KHONG' ||
+          a.dien_uu_tien?.toLowerCase().includes('khong') ||
+          a.dien_uu_tien?.toLowerCase().includes('không') ||
+          a.dien_uu_tien_label?.toLowerCase().includes('không');
+        if (isNoPrio) {
+          a.diem_uu_tien = 0;
+        } else if (!a.diem_uu_tien || a.diem_uu_tien === 0) {
+          a.diem_uu_tien = PRIORITY_POLICY_POINTS[a.dien_uu_tien]?.points || 30;
+        }
         saveApplicationToStore(a);
       }
     });
 
-    const isSupabaseReady = Boolean(
-      process.env.NEXT_PUBLIC_SUPABASE_URL &&
-        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id') &&
-        process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-    const supabaseAdmin = isSupabaseReady ? createAdminClient() : null;
+    const supabaseAdmin = createAdminClient();
     try {
-      if (supabaseAdmin) {
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
         await supabaseAdmin
           .from('applications')
           .update({ status: 'THAM_DINH_DAT', diem_uu_tien: 35 })
@@ -46,7 +52,7 @@ export async function approveRoundAndPublishAction(roundId: string) {
 
     // 1. Cập nhật đợt tuyển sang trạng thái DA_DUYET
     try {
-      if (supabaseAdmin) {
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
         await supabaseAdmin
           .from('approval_rounds')
           .update({
@@ -179,7 +185,17 @@ export async function directorApproveRoundAction(roundId: string = 'round-k50-do
     storedApps.forEach((a) => {
       if (a.status === 'CHO_THAM_DINH' || a.status === 'CAN_BO_SUNG') {
         a.status = 'THAM_DINH_DAT';
-        if (!a.diem_uu_tien || a.diem_uu_tien === 0) a.diem_uu_tien = 35;
+        const isNoPrio =
+          !a.dien_uu_tien ||
+          a.dien_uu_tien === 'KHONG' ||
+          a.dien_uu_tien?.toLowerCase().includes('khong') ||
+          a.dien_uu_tien?.toLowerCase().includes('không') ||
+          a.dien_uu_tien_label?.toLowerCase().includes('không');
+        if (isNoPrio) {
+          a.diem_uu_tien = 0;
+        } else if (!a.diem_uu_tien || a.diem_uu_tien === 0) {
+          a.diem_uu_tien = PRIORITY_POLICY_POINTS[a.dien_uu_tien]?.points || 30;
+        }
         saveApplicationToStore(a);
       }
     });
@@ -1211,29 +1227,37 @@ export async function submitSupplementEvidenceAction(params: {
     const isAutoApproved = confidence >= 0.95 && aiAnalysis.decision === 'THAM_DINH_DAT';
 
     const { PRIORITY_POLICY_POINTS } = await import('@/lib/constants/workflow');
-    let awardedPoints = app?.dien_uu_tien === 'KHONG' ? 0 : 35;
-    if (app?.dien_uu_tien === 'KHONG' || app?.dien_uu_tien_label?.toLowerCase().includes('không')) {
-      awardedPoints = 0;
-    } else {
+    const isNoPrioSup =
+      !app ||
+      !app.dien_uu_tien ||
+      app.dien_uu_tien === 'KHONG' ||
+      app.dien_uu_tien?.toLowerCase().includes('khong') ||
+      app.dien_uu_tien?.toLowerCase().includes('không') ||
+      app.dien_uu_tien_label?.toLowerCase().includes('không');
+
+    let awardedPoints = 0;
+    if (app && !isNoPrioSup) {
       const policyPts = PRIORITY_POLICY_POINTS[app.dien_uu_tien]?.points;
       if (policyPts && policyPts > 0) {
         awardedPoints = policyPts;
       } else if (
-      app.dien_uu_tien_label?.toLowerCase().includes('liệt sĩ') ||
-      app.dien_uu_tien_label?.toLowerCase().includes('thương binh')
-    ) {
-      awardedPoints = 40;
-    } else if (app.dien_uu_tien_label?.toLowerCase().includes('nghèo')) {
-      awardedPoints = 35;
-    } else if (
-      app.dien_uu_tien_label?.toLowerCase().includes('vùng sâu') ||
-      app.dien_uu_tien_label?.toLowerCase().includes('hải đảo')
-    ) {
-      awardedPoints = 30;
-    } else if (app.diem_uu_tien > 0) {
-      awardedPoints = app.diem_uu_tien;
+        app.dien_uu_tien_label?.toLowerCase().includes('liệt sĩ') ||
+        app.dien_uu_tien_label?.toLowerCase().includes('thương binh')
+      ) {
+        awardedPoints = 40;
+      } else if (app.dien_uu_tien_label?.toLowerCase().includes('nghèo')) {
+        awardedPoints = 35;
+      } else if (
+        app.dien_uu_tien_label?.toLowerCase().includes('vùng sâu') ||
+        app.dien_uu_tien_label?.toLowerCase().includes('hải đảo')
+      ) {
+        awardedPoints = 30;
+      } else if (app.diem_uu_tien > 0) {
+        awardedPoints = app.diem_uu_tien;
+      } else {
+        awardedPoints = 30;
+      }
     }
-  }
 
     app.cccd_image_base64 = cccdImg;
     if (priorityImg) app.priority_image_base64 = priorityImg;
