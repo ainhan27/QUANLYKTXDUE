@@ -500,7 +500,7 @@ export async function analyzeCccdImage(
       const genAiCall = (async () => {
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
-          model: 'gemini-3.8-flash',
+          model: 'gemini-1.5-flash',
           generationConfig: { temperature: 0.1, responseMimeType: 'application/json' },
         });
 
@@ -524,7 +524,7 @@ Trả về JSON: { "is_valid": boolean, "name_matched": boolean, "cccd_matched":
         return extractCleanJson(result.response.text().trim());
       })();
 
-      const geminiRes = await withTimeout(genAiCall, 3500, 'Gemini CCCD');
+      const geminiRes = await withTimeout(genAiCall, 5000, 'Gemini CCCD');
       if (geminiRes) {
         const isNameMatched = Boolean(geminiRes.name_matched);
         const isCccdMatched = Boolean(geminiRes.cccd_matched);
@@ -563,8 +563,8 @@ Trả về JSON: { "is_valid": boolean, "name_matched": boolean, "cccd_matched":
     }
   }
 
-  // B. Quét nhanh bằng OCR Singleton (Tối đa 1.5s)
-  const ocrText = await fastOcrScan(cleanBase64, 1500);
+  // B. Quét nhanh bằng OCR Singleton (Tối đa 4s)
+  const ocrText = await fastOcrScan(cleanBase64, 4000);
 
   // Khi OCR không khả dụng hoặc ảnh không có ký tự rõ nét
   if (!ocrText || ocrText.trim().length === 0) {
@@ -627,6 +627,7 @@ Trả về JSON: { "is_valid": boolean, "name_matched": boolean, "cccd_matched":
     normalized.includes('slide') ||
     normalized.includes('giao trinh') ||
     normalized.includes('dap an') ||
+    normalized.includes('cuoc thi') ||
     normalized.includes('trac nghiem');
 
   // 2. KIỂM TRA TIÊU ĐỀ ĐẶC TRƯNG BẮT BUỘC CỦA CĂN CƯỚC CÔNG DÂN VIỆT NAM
@@ -642,28 +643,51 @@ Trả về JSON: { "is_valid": boolean, "name_matched": boolean, "cccd_matched":
     normalized.includes('cuc truong cuc canh sat');
 
   const hasPoliceKw = CCCD_POLICE_KEYWORDS.some((kw) => lower.includes(kw) || normalized.includes(normalizeText(kw)));
-  const hasCccdKw = hasStrictCccdTitle || hasPoliceKw;
+  const cleanDigits = (citizenId || '').replace(/\D/g, '');
+  const hasMatchedNumber = cleanDigits.length >= 9 && (lower.replace(/\D/g, '').includes(cleanDigits) || normalized.replace(/\D/g, '').includes(cleanDigits));
+  const nameCheckEarly = verifyNameMatch(studentName, ocrText);
+  const hasMatchedName = nameCheckEarly.isMatch;
+  const hasCccdKw = hasStrictCccdTitle || hasPoliceKw || (hasMatchedNumber && hasMatchedName);
 
   const scannedGender = extractGenderFromCccd(citizenId, ocrText);
 
-  // NẾU ẢNH TẢI LÊN KHÔNG CHỨA TIÊU ĐỀ CCCD / QUỐC HIỆU HOẶC LÀ ẢNH BÀI TẬP/SLIDE/ẢNH LINH TINH:
-  // LẬP TỨC BÁO "ẢNH KHÔNG HỢP LỆ", HẠ ĐỘ TIN CẬY DƯỚI 90% (VỀ 10%), KHÓA TỰ ĐỘNG DUYỆT!
-  if (!hasCccdKw || isJunkOrExerciseImage) {
+  // NẾU LÀ ẢNH BÀI TẬP / SLIDE / ẢNH KHÔNG HỢP LỆ:
+  if (isJunkOrExerciseImage) {
     return {
       is_valid: false,
       has_cccd_keywords: false,
       has_police_chief_keyword: false,
-      extracted_name: '(Không phát hiện thông tin CCCD)',
+      extracted_name: '(Phát hiện ảnh bài tập/slide)',
       extracted_cccd: '(Không phát hiện số CCCD)',
       extracted_gender: scannedGender,
       name_matched: false,
       cccd_matched: false,
       matched_fields: [],
-      mismatched_fields: ['Ảnh tải lên không hợp lệ: Không phát hiện tiêu đề "CĂN CƯỚC CÔNG DÂN" hoặc phát hiện tài liệu học tập/bài tập/ảnh không đúng quy định'],
+      mismatched_fields: ['Ảnh tải lên không hợp lệ: Phát hiện tài liệu học tập, bài tập hoặc slide không phải Căn cước công dân'],
       confidence: 0.10,
-      detected_text: ocrText.substring(0, 300) || '(Ảnh tải lên không chứa nội dung định danh CCCD)',
+      detected_text: ocrText.substring(0, 300) || '(Ảnh bài tập / slide)',
       requires_red_stamp: false,
-      notes: 'Ảnh không hợp lệ: Không phát hiện tiêu đề "CĂN CƯỚC CÔNG DÂN" hoặc số định danh 12 số hợp lệ (Phát hiện ảnh bài tập/slide hoặc hình ảnh sai loại). Đã khóa tự động duyệt và chuyển Cán bộ QLSV rà soát thủ công / Yêu cầu bổ sung.',
+      notes: 'Ảnh không hợp lệ: Phát hiện tài liệu học tập/bài tập/slide không phải CCCD. Đã khóa tự động duyệt và chuyển Cán bộ QLSV rà soát thủ công / Yêu cầu bổ sung.',
+    };
+  }
+
+  // NẾU ẢNH CHƯA TRÍCH XUẤT ĐƯỢC TIÊU ĐỀ CCCD VÀ CHƯA KHỚP SỐ/TÊN:
+  if (!hasCccdKw) {
+    return {
+      is_valid: false,
+      has_cccd_keywords: false,
+      has_police_chief_keyword: false,
+      extracted_name: studentName,
+      extracted_cccd: citizenId,
+      extracted_gender: scannedGender,
+      name_matched: false,
+      cccd_matched: false,
+      matched_fields: ['Đã tiếp nhận tệp ảnh CCCD'],
+      mismatched_fields: ['Ảnh CCCD mờ hoặc chưa nhận diện rõ tiêu đề "CĂN CƯỚC CÔNG DÂN"'],
+      confidence: 0.65,
+      detected_text: ocrText.substring(0, 300) || '(Ảnh CCCD mờ hoặc chưa trích xuất được tiêu đề)',
+      requires_red_stamp: false,
+      notes: 'Ảnh CCCD chưa trích xuất rõ tiêu đề hoặc chữ bị mờ. Chuyển Cán bộ QLSV rà soát đối chiếu thủ công.',
     };
   }
 

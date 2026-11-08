@@ -715,6 +715,25 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
         setNewPriorityBase64(null);
         await fetchNotifications();
 
+        // Phát tín hiệu đồng bộ tức thì 0ms sang Cán bộ QLSV
+        if (typeof window !== 'undefined') {
+          const syncData = {
+            type: 'SUPPLEMENT_SUBMITTED',
+            studentCode: studentInfo.ma_sv,
+            ma_sv: studentInfo.ma_sv,
+            status: isApproved ? 'THAM_DINH_DAT' : 'CHO_THAM_DINH',
+            timestamp: Date.now(),
+          };
+          if ('BroadcastChannel' in window) {
+            const bc = new BroadcastChannel('ktx_sync');
+            bc.postMessage(syncData);
+            setTimeout(() => bc.close(), 100);
+          }
+          try {
+            localStorage.setItem('ktx_sync_signal', JSON.stringify(syncData));
+          } catch {}
+        }
+
         // Tự động tải lại CSDL và xếp hạng mới để hiển thị thứ hạng đã thăng hạng
         try {
           const appRes = await fetch('/api/applications');

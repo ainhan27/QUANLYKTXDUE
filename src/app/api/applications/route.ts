@@ -104,8 +104,10 @@ export async function GET() {
               cccdImgStr.includes('bai tap') ||
               cccdImgStr.includes('chuong 4') ||
               cccdImgStr.includes('xac suat') ||
+              cccdImgStr.includes('cuoc thi') ||
               rawFileStr.includes('ham mat do') ||
-              rawFileStr.includes('bai tap');
+              rawFileStr.includes('bai tap') ||
+              rawFileStr.includes('cuoc thi');
 
             // Đối với CCCD: Bắt buộc kiểm tra trường "CĂN CƯỚC CÔNG DÂN" và 12 số định danh khớp với form
             const hasCccdTitle = !isJunkCccdImage && (
@@ -191,8 +193,10 @@ export async function GET() {
                     ? ['Ảnh không chứa tiêu đề Căn cước công dân hoặc sai định dạng']
                     : [],
                 },
-                mismatch_warnings: !isCccdStrictValid
-                  ? ['Ảnh không hợp lệ: Không phát hiện tiêu đề "CĂN CƯỚC CÔNG DÂN" hoặc phát hiện tài liệu học tập, bài tập, slide.']
+                mismatch_warnings: isJunkCccdImage
+                  ? ['Ảnh không hợp lệ: Phát hiện tài liệu học tập, bài tập, slide không phải Căn cước công dân.']
+                  : !isCccdStrictValid
+                  ? ['Ảnh CCCD mờ hoặc chưa nhận diện rõ tiêu đề "CĂN CƯỚC CÔNG DÂN". Cần Cán bộ QLSV rà soát đối chiếu.']
                   : !isNoPriorityPolicy && !hasPriorityStamp
                   ? ['⚠️ Con dấu đỏ góc dưới bị mờ, hệ thống chưa nhận diện rõ mộc tròn của UBND.']
                   : [],
@@ -201,7 +205,7 @@ export async function GET() {
                   : (isCccdStrictValid && (isNoPriorityPolicy || hasPriorityStamp))
                   ? 'THAM_DINH_DAT'
                   : 'CHO_THAM_DINH',
-                rejection_reason: isCccdStrictValid ? null : 'Ảnh tải lên không phải Căn cước công dân hợp lệ.',
+                rejection_reason: isCccdStrictValid ? null : (isJunkCccdImage ? 'Ảnh tải lên là tài liệu bài tập, không phải CCCD.' : 'Ảnh CCCD chưa rõ tiêu đề.'),
                 raw_reasoning: `CCCD: ${isCccdStrictValid ? 'Họ tên và số CCCD trùng khớp 100%' : 'Sai lệch'}. Minh chứng ưu tiên: ${isNoPriorityPolicy ? 'Không đăng ký (0đ)' : hasPriorityStamp ? 'Hợp lệ có mộc đỏ' : 'Thiếu mộc đỏ'}.`,
                 cccd_analysis: {
                   is_valid: isCccdStrictValid,
@@ -215,14 +219,18 @@ export async function GET() {
                   matched_fields: isCccdStrictValid
                     ? ['Họ và tên trùng khớp với ảnh CCCD', 'Số CCCD trùng khớp 12 số định danh']
                     : [],
-                  mismatched_fields: !isCccdStrictValid
-                    ? ['Không phát hiện tiêu đề CCCD hoặc sai định dạng']
+                  mismatched_fields: isJunkCccdImage
+                    ? ['Ảnh không hợp lệ (Phát hiện tài liệu học tập, bài tập, slide)']
+                    : !isCccdStrictValid
+                    ? ['Ảnh CCCD mờ hoặc chưa nhận diện rõ tiêu đề']
                     : [],
-                  confidence: isCccdStrictValid ? 0.98 : 0.20,
+                  confidence: isCccdStrictValid ? 0.98 : (isJunkCccdImage ? 0.10 : 0.65),
                   detected_text: cccdDetectedText,
                   notes: isCccdStrictValid
                     ? 'Dữ liệu họ tên và số CCCD trùng khớp 100% với ảnh chụp. Thẻ do Bộ Công An cấp (có chip/mã vạch), không yêu cầu mộc tròn đỏ UBND.'
-                    : 'Ảnh không hợp lệ: Không phát hiện tiêu đề "CĂN CƯỚC CÔNG DÂN" hoặc phát hiện tài liệu học tập, bài tập, slide.',
+                    : isJunkCccdImage
+                    ? 'Ảnh không hợp lệ: Phát hiện tài liệu học tập, bài tập, slide không phải Căn cước công dân.'
+                    : 'Ảnh CCCD mờ hoặc chưa trích xuất rõ tiêu đề. Chuyển Cán bộ QLSV rà soát đối chiếu trực tiếp.',
                   requires_red_stamp: false,
                 },
                 priority_analysis: {

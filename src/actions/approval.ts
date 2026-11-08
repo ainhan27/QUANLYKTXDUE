@@ -1282,13 +1282,20 @@ export async function submitSupplementEvidenceAction(params: {
       try {
         if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
           const supabaseAdmin = createAdminClient();
+          const filesPayload = JSON.stringify({
+            cccd: cccdImg || null,
+            priority: priorityImg || null,
+            ai_result: aiAnalysis || null,
+          });
           await supabaseAdmin
             .from('applications')
             .update({
               status: 'THAM_DINH_DAT',
               diem_uu_tien: awardedPoints,
+              file_url: filesPayload,
+              ghi_chu_ly_do: aiAnalysis.rejection_reason || aiAnalysis.raw_reasoning || null,
             })
-            .eq('id', app.id);
+            .eq('ma_sv', studentCode);
         }
       } catch (e) {
         console.warn('DB update supplemented approved:', e);
@@ -1325,12 +1332,19 @@ export async function submitSupplementEvidenceAction(params: {
       try {
         if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')) {
           const supabaseAdmin = createAdminClient();
+          const filesPayload = JSON.stringify({
+            cccd: cccdImg || null,
+            priority: priorityImg || null,
+            ai_result: aiAnalysis || null,
+          });
           await supabaseAdmin
             .from('applications')
             .update({
               status: 'CHO_THAM_DINH',
+              file_url: filesPayload,
+              ghi_chu_ly_do: aiAnalysis.rejection_reason || aiAnalysis.raw_reasoning || null,
             })
-            .eq('id', app.id);
+            .eq('ma_sv', studentCode);
         }
       } catch (e) {
         console.warn('DB update supplemented pending:', e);

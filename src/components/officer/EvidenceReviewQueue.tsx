@@ -575,14 +575,36 @@ export default function EvidenceReviewQueue() {
       bc.onmessage = (e) => {
         if (
           e.data?.type === 'APPLICATION_SUBMITTED' ||
+          e.data?.type === 'SUPPLEMENT_SUBMITTED' ||
           e.data?.type === 'STATUS_UPDATED' ||
           e.data?.type === 'ALL_EVIDENCE_APPROVED' ||
           e.data?.type === 'DIRECTOR_APPROVED'
         ) {
           fetchWorkflow();
           loadApplications();
+          if (e.data?.type === 'SUPPLEMENT_SUBMITTED') {
+            setFilterMode('SUPPLEMENT_REVIEW');
+            setCurrentIndex(0);
+          }
         }
       };
+    }
+
+    const handleStorageSync = (e: StorageEvent) => {
+      if (e.key === 'ktx_sync_signal' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          fetchWorkflow();
+          loadApplications();
+          if (parsed.type === 'SUPPLEMENT_SUBMITTED') {
+            setFilterMode('SUPPLEMENT_REVIEW');
+            setCurrentIndex(0);
+          }
+        } catch {}
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageSync);
     }
 
     try {
@@ -596,6 +618,9 @@ export default function EvidenceReviewQueue() {
       clearInterval(intervalWf);
       clearInterval(intervalApps);
       if (bc) bc.close();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorageSync);
+      }
     };
   }, [loadApplications]);
 
@@ -618,12 +643,19 @@ export default function EvidenceReviewQueue() {
       (x.status === 'CHO_THAM_DINH' || x.aiConfidence < 0.95)
   );
 
-  // 3. AI TỰ ĐỘNG CHO QUA (>= 95%) HOẶC ĐÃ THẨM ĐỊNH XONG
+  // 3. AI TỰ ĐỘNG CHO QUA (>= 95%)
   const autoApprovedItems = queue.filter(
-    (x) => isAlreadyReviewedOrPassed(x.status) || (x.status !== 'CHO_THAM_DINH' && x.status !== 'CAN_BO_SUNG' && x.aiConfidence >= 0.95)
+    (x) => x.aiConfidence >= 0.95
   );
 
   const totalPendingReview = initialReviewItems.length + supplementReviewItems.length;
+
+  useEffect(() => {
+    if (filterMode === 'INITIAL_REVIEW' && initialReviewItems.length === 0 && supplementReviewItems.length > 0) {
+      setFilterMode('SUPPLEMENT_REVIEW');
+      setCurrentIndex(0);
+    }
+  }, [filterMode, initialReviewItems.length, supplementReviewItems.length]);
 
   const filteredQueue = queue.filter((item) => {
     if (filterMode === 'SUPPLEMENT_REVIEW') {
@@ -641,7 +673,7 @@ export default function EvidenceReviewQueue() {
       );
     }
     if (filterMode === 'AUTO_APPROVED') {
-      return isAlreadyReviewedOrPassed(item.status) || (item.status !== 'CHO_THAM_DINH' && item.status !== 'CAN_BO_SUNG' && item.aiConfidence >= 0.95);
+      return item.aiConfidence >= 0.95;
     }
     return true;
   });
@@ -1439,7 +1471,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
               : (currentItem.status === 'THAM_DINH_DAT' ? 0.98 : 0.70);
             const safePercent = Math.round(safeConfVal * 100);
 
-            if (currentItem.status === 'THAM_DINH_DAT') {
+            if (isAlreadyReviewedOrPassed(currentItem.status) || filterMode === 'AUTO_APPROVED') {
               return (
                 <div className="bg-emerald-50 border border-emerald-300 text-emerald-950 rounded-xl p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
                   <div className="flex items-center space-x-2.5">
@@ -1447,11 +1479,17 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                     <div>
                       <span className="font-bold text-emerald-900">
                         {safeConfVal >= 0.95
-                          ? `AI Thẩm Định Đạt ${safePercent}% (Trùng khớp 100% dữ liệu)`
-                          : `Cán Bộ QLSV Đã Duyệt Đạt (+${currentItem.diem_uu_tien}đ)`}
+                          ? `✓ AI Đã Tự Động Thông Qua (${safePercent}% ≥ 95% - Trùng khớp 100% dữ liệu)`
+                          : currentItem.status === 'DA_PHAT_HANH'
+                          ? `✓ Đã Phát Hành Quyết Định Tuyển Sinh (+${currentItem.diem_uu_tien}đ)`
+                          : currentItem.status === 'DA_KY'
+                          ? `✓ Sinh Viên Đã Ký Hợp Đồng OTP (+${currentItem.diem_uu_tien}đ)`
+                          : currentItem.status === 'DA_BAN_GIAO'
+                          ? `✓ Đã Bàn Giao Phòng & Chìa Khóa`
+                          : `✓ Cán Bộ QLSV Đã Duyệt Đạt (+${currentItem.diem_uu_tien}đ)`}
                       </span>
                       <p className="text-emerald-700 text-[11px] mt-0.5">
-                        Hồ sơ đã được thẩm định đạt chuẩn và ghi nhận vào Bảng xếp hạng tuyển sinh.
+                        Hồ sơ đã được phê duyệt hợp lệ và ghi nhận vào Bảng xếp hạng. Không cần thẩm định lại.
                       </p>
                     </div>
                   </div>
@@ -1836,18 +1874,25 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                       const cleanCccd = (currentItem.cccd || '').replace(/\D/g, '');
                       const isNameFormatValid = cleanName.length >= 4 && cleanName.split(/\s+/).length >= 2 && !/^\d+$/.test(cleanName);
                       const isCccdFormatValid = cleanCccd.length === 12 || cleanCccd.length === 9;
-                      const hasCccdKw = Boolean(currentItem.cccdCheck?.hasKeyword);
                       const isNameMatched = Boolean(currentItem.nameMatched);
                       const isCccdMatched = Boolean(currentItem.cccdMatched);
+                      const isJunkExercise = Boolean(
+                        currentItem.detectedOcrText?.toLowerCase().includes('bài tập') ||
+                        currentItem.detectedOcrText?.toLowerCase().includes('chương') ||
+                        currentItem.detectedOcrText?.toLowerCase().includes('cuộc thi') ||
+                        currentItem.detectedOcrText?.toLowerCase().includes('hàm mật độ') ||
+                        currentItem.aiWarnings?.some((w) => w.toLowerCase().includes('bài tập') || w.toLowerCase().includes('slide'))
+                      );
+                      const hasCccdKw = Boolean(currentItem.cccdCheck?.hasKeyword || (isNameMatched && isCccdMatched));
                       const isCccdValid = !isImageBroken && hasCccdKw && isNameFormatValid && isCccdFormatValid && isNameMatched && isCccdMatched;
-                      const isCccdInvalidImage = isImageBroken || !hasCccdKw || !isNameFormatValid || !isCccdFormatValid;
+                      const isCccdInvalidImage = isImageBroken || isJunkExercise || !isNameFormatValid || !isCccdFormatValid;
 
                       return (
                         <div
                           className={`p-3.5 rounded-xl text-xs space-y-2.5 border transition-all ${
-                            isImageBroken
+                            isImageBroken || isJunkExercise
                               ? 'bg-rose-50/90 border-rose-300'
-                              : !hasCccdKw || !isNameFormatValid || !isCccdFormatValid
+                              : !isNameFormatValid || !isCccdFormatValid
                               ? 'bg-rose-50/80 border-rose-300'
                               : isCccdValid
                               ? 'bg-emerald-50/70 border-emerald-300'
@@ -1864,9 +1909,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                             </div>
                             <span
                               className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-bold border shadow-xs ${
-                                isImageBroken
-                                  ? 'bg-rose-100 text-rose-800 border-rose-300'
-                                  : !hasCccdKw
+                                isImageBroken || isJunkExercise
                                   ? 'bg-rose-100 text-rose-800 border-rose-300'
                                   : !isNameFormatValid || !isCccdFormatValid
                                   ? 'bg-rose-100 text-rose-800 border-rose-300'
@@ -1877,8 +1920,10 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                             >
                               {isImageBroken
                                 ? '❌ Tệp ảnh bị lỗi / hỏng'
-                                : !hasCccdKw
+                                : isJunkExercise
                                 ? '❌ Ảnh không hợp lệ (Sai loại / Bài tập)'
+                                : !hasCccdKw
+                                ? '⚠️ Chưa nhận diện rõ tiêu đề CCCD'
                                 : !isNameFormatValid || !isCccdFormatValid
                                 ? '❌ Khai báo sai định dạng'
                                 : isCccdValid
@@ -1894,9 +1939,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                               <strong className="text-slate-900 block truncate text-xs">{currentItem.ho_ten}</strong>
                               <span
                                 className={`inline-flex items-center text-[10px] font-bold mt-1 ${
-                                  isImageBroken
-                                    ? 'text-rose-600'
-                                    : !hasCccdKw
+                                  isImageBroken || isJunkExercise
                                     ? 'text-rose-600'
                                     : !isNameFormatValid
                                     ? 'text-rose-600'
@@ -1907,7 +1950,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                               >
                                 {isImageBroken
                                   ? '❌ Không thể đối chiếu (Ảnh lỗi)'
-                                  : !hasCccdKw
+                                  : isJunkExercise
                                   ? '❌ Không phát hiện họ tên (Ảnh không phải CCCD)'
                                   : !isNameFormatValid
                                   ? '❌ Tên không hợp lệ (< 2 từ / ký tự viết tắt)'
@@ -1922,9 +1965,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                               <strong className="text-slate-900 font-mono block truncate text-xs">{currentItem.cccd}</strong>
                               <span
                                 className={`inline-flex items-center text-[10px] font-bold mt-1 ${
-                                  isImageBroken
-                                    ? 'text-rose-600'
-                                    : !hasCccdKw
+                                  isImageBroken || isJunkExercise
                                     ? 'text-rose-600'
                                     : !isCccdFormatValid
                                     ? 'text-rose-600'
@@ -1935,7 +1976,7 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                               >
                                 {isImageBroken
                                   ? '❌ Không thể đối chiếu (Ảnh lỗi)'
-                                  : !hasCccdKw
+                                  : isJunkExercise
                                   ? '❌ Không phát hiện số CCCD (Ảnh không phải CCCD)'
                                   : !isCccdFormatValid
                                   ? '❌ Sai định dạng (Bắt buộc 12 số CCCD gắn chip)'
@@ -1952,9 +1993,13 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
                               <p className="text-rose-700 font-semibold">
                                 Tệp ảnh CCCD không tải được hoặc đường dẫn bị hỏng. AI đã khóa nút tự động duyệt. Cán bộ cần kiểm tra file gốc hoặc yêu cầu sinh viên bổ sung.
                               </p>
-                            ) : !hasCccdKw ? (
+                            ) : isJunkExercise ? (
                               <p className="text-rose-700 font-semibold">
-                                ❌ Ảnh không hợp lệ: Không phát hiện tiêu đề "CĂN CƯỚC CÔNG DÂN" hoặc phát hiện tài liệu học tập, bài tập, slide, ảnh con dấu sai loại. Hệ thống đã tự động hạ độ tin cậy xuống dưới 90% và chuyển Cán bộ QLSV rà soát thủ công / Yêu cầu bổ sung.
+                                ❌ Ảnh không hợp lệ: Phát hiện tài liệu học tập, bài tập, slide không phải Căn cước công dân. Hệ thống đã khóa tự động duyệt và chuyển Cán bộ QLSV rà soát / Yêu cầu bổ sung.
+                              </p>
+                            ) : !hasCccdKw ? (
+                              <p className="text-amber-800 font-semibold">
+                                ⚠️ Ảnh CCCD bị mờ hoặc chưa trích xuất rõ tiêu đề. Cán bộ QLSV đối chiếu trực tiếp thông tin trên ảnh trước khi duyệt đạt.
                               </p>
                             ) : isCccdValid ? (
                               <p className="text-emerald-800 font-medium">
