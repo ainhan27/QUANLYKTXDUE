@@ -59,15 +59,18 @@ export async function GET() {
                   (l.ma_sv === app.ma_sv || l.cccd === app.cccd))
             );
 
-            // Giữ đúng trạng thái thực tế: Nếu localMatch đang chờ duyệt hoặc bổ sung thì không ép đạt
-            const isApproved = (app.status === 'THAM_DINH_DAT' || localMatch?.status === 'THAM_DINH_DAT') &&
-              localMatch?.status !== 'CHO_THAM_DINH' &&
-              localMatch?.status !== 'CAN_BO_SUNG';
-            const effectiveStatus = (localMatch && (localMatch.status === 'CHO_THAM_DINH' || localMatch.status === 'CAN_BO_SUNG'))
-              ? localMatch.status
-              : isApproved
-              ? 'THAM_DINH_DAT'
-              : app.status;
+            // Giữ đúng trạng thái thực tế: Trạng thái duyệt của Cán bộ (Database hoặc Local) luôn có hiệu lực tối thượng
+            const isApproved =
+              app.status === 'THAM_DINH_DAT' ||
+              localMatch?.status === 'THAM_DINH_DAT' ||
+              app.status === 'DA_PHE_DUYET' ||
+              app.status === 'DA_PHAT_HANH' ||
+              app.status === 'DA_KY' ||
+              app.status === 'DA_BAN_GIAO';
+
+            const effectiveStatus = isApproved
+              ? (app.status === 'THAM_DINH_DAT' || !app.status || app.status === 'CHO_THAM_DINH' ? 'THAM_DINH_DAT' : app.status)
+              : (localMatch?.status || app.status || 'CHO_THAM_DINH');
 
             if (localMatch) {
               cccdImg = cccdImg || localMatch.cccd_image_base64;
@@ -263,6 +266,7 @@ export async function GET() {
 
             return {
               ...app,
+              status: effectiveStatus,
               diem_uu_tien: resolvedDiemUuTien,
               dien_uu_tien_label: isNoPrioApplicant
                 ? 'Không thuộc diện ưu tiên'

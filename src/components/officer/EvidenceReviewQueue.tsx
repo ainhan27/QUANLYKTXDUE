@@ -408,12 +408,22 @@ export default function EvidenceReviewQueue() {
               setSelectedStudentPreview(activeCode);
             }
           } catch {}
+
+          let approvedIds: string[] = [];
+          try {
+            approvedIds = JSON.parse(localStorage.getItem('officer_approved_ids') || '[]');
+          } catch {}
+
           const newItems: QueueItem[] = json.data.map((app: any) => {
-            const isApproved = app.status === 'THAM_DINH_DAT';
+            const isApprovedLocally = approvedIds.includes(app.id) || (app.ma_sv && approvedIds.includes(app.ma_sv));
+            const isApproved = isApprovedLocally || isAlreadyReviewedOrPassed(app.status);
+            const resolvedStatus = isApproved
+              ? (app.status === 'CHO_THAM_DINH' || !app.status ? 'THAM_DINH_DAT' : app.status)
+              : app.status;
             const rawConf = Number(app.ai_result?.confidence);
-            let safeConf = Number.isFinite(rawConf) && !isNaN(rawConf)
-              ? rawConf
-              : (isApproved ? 0.98 : 0.70);
+            let safeConf = isApproved
+              ? 0.98
+              : (Number.isFinite(rawConf) && !isNaN(rawConf) ? rawConf : 0.70);
 
             // Kiểm tra tính hợp lệ tối thiểu của dữ liệu nhân thân
             const cleanName = (app.ho_ten || '').trim();
@@ -481,7 +491,7 @@ export default function EvidenceReviewQueue() {
               cccd: app.cccd,
               dien_uu_tien: app.dien_uu_tien_label || app.dien_uu_tien,
               diem_uu_tien: app.diem_uu_tien,
-              status: app.status,
+              status: resolvedStatus,
               isSupplemented: Boolean(app.is_supplemented),
               isSupplementReview: Boolean(
                 app.is_supplement_review ||
@@ -532,11 +542,15 @@ export default function EvidenceReviewQueue() {
             if (!prevQueue || prevQueue.length === 0) return newItems;
             return newItems.map((newItem) => {
               const existing = prevQueue.find((q) => q.id === newItem.id || q.ma_sv === newItem.ma_sv);
-              if (existing && isAlreadyReviewedOrPassed(existing.status) && !isAlreadyReviewedOrPassed(newItem.status)) {
+              if (
+                (existing && isAlreadyReviewedOrPassed(existing.status)) ||
+                approvedIds.includes(newItem.id) ||
+                approvedIds.includes(newItem.ma_sv)
+              ) {
                 return {
                   ...newItem,
-                  status: 'THAM_DINH_DAT',
-                  aiConfidence: Math.max(0.96, existing.aiConfidence || 0.96),
+                  status: isAlreadyReviewedOrPassed(newItem.status) ? newItem.status : 'THAM_DINH_DAT',
+                  aiConfidence: Math.max(0.96, existing?.aiConfidence || newItem.aiConfidence || 0.96),
                   nameMatched: true,
                   cccdMatched: true,
                 };
@@ -940,7 +954,8 @@ Trường Đại học Kinh tế – Đại học Đà Nẵng
       try {
         const raw = localStorage.getItem('officer_approved_ids') || '[]';
         const list = JSON.parse(raw);
-        list.push(targetItem.id);
+        if (!list.includes(targetItem.id)) list.push(targetItem.id);
+        if (targetItem.ma_sv && !list.includes(targetItem.ma_sv)) list.push(targetItem.ma_sv);
         localStorage.setItem('officer_approved_ids', JSON.stringify(list));
 
         const syncData = {

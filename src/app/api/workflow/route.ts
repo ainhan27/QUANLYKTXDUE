@@ -195,12 +195,15 @@ export async function POST(request: Request) {
         try {
           const { createAdminClient } = await import('@/lib/supabase/admin');
           const supabase = createAdminClient();
+          const isUuid = (val: string) =>
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
           if (studentCode) {
             await supabase
               .from('applications')
               .update({ status: 'THAM_DINH_DAT', diem_uu_tien: pts })
-              .or(`id.eq.${applicationId},ma_sv.eq.${studentCode}`);
-          } else {
+              .eq('ma_sv', studentCode);
+          } else if (isUuid(applicationId)) {
             await supabase
               .from('applications')
               .update({ status: 'THAM_DINH_DAT', diem_uu_tien: pts })

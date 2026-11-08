@@ -139,6 +139,15 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
   // HÀM CHUYỂN ĐỔI HỒ SƠ SINH VIÊN HIỂN THỊ (CỐ ĐỊNH PHIÊN KHÔNG NHẢY TÀI KHOẢN)
   const applyStudent = (app: any, list: any[] = allApplications) => {
     if (!app) return;
+    let approvedIds: string[] = [];
+    try {
+      approvedIds = JSON.parse(localStorage.getItem('officer_approved_ids') || '[]');
+    } catch {}
+    const isApprovedLocally = approvedIds.includes(app.id) || (app.ma_sv && approvedIds.includes(app.ma_sv));
+    const effectiveAppStatus = isApprovedLocally
+      ? (app.status === 'CHO_THAM_DINH' || !app.status ? 'THAM_DINH_DAT' : app.status)
+      : app.status;
+
     const isSignedLocally = typeof window !== 'undefined' && Boolean(
       app.ma_sv && (
         localStorage.getItem(`student_signed_${app.ma_sv}`) === 'true' ||
@@ -146,7 +155,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
         localStorage.getItem(`student_status_${app.ma_sv}`) === 'DA_BAN_GIAO'
       )
     );
-    const rawStatus: AppStatus = app.status || 'CHO_THAM_DINH';
+    const rawStatus: AppStatus = effectiveAppStatus || 'CHO_THAM_DINH';
     // Server status is authoritative for application approval steps (1 -> 3)
     // Anti-regression ONLY protects locally signed student contracts (Bước 4, 5)
     const finalStatus: AppStatus = isSignedLocally
@@ -158,12 +167,19 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
       app.aiConfidence ??
       (finalStatus === 'THAM_DINH_DAT' || finalStatus === 'DA_KY' || finalStatus === 'DA_BAN_GIAO' ? 0.98 : 0.35);
 
+    const isNoPrio =
+      !app.dien_uu_tien ||
+      app.dien_uu_tien === 'KHONG' ||
+      app.dien_uu_tien?.toLowerCase().includes('khong') ||
+      app.dien_uu_tien?.toLowerCase().includes('không') ||
+      app.dien_uu_tien_label?.toLowerCase().includes('không');
+
     const resolved = {
       ho_ten: app.ho_ten || '',
       ma_sv: app.ma_sv || '',
       cccd: app.cccd || '',
-      dien_uu_tien: app.dien_uu_tien_label || app.dien_uu_tien || 'Không thuộc diện ưu tiên',
-      diem_uu_tien: app.diem_uu_tien ?? 0,
+      dien_uu_tien: isNoPrio ? 'Không thuộc diện ưu tiên' : (app.dien_uu_tien_label || app.dien_uu_tien),
+      diem_uu_tien: isNoPrio ? 0 : (app.diem_uu_tien ?? 0),
       email: app.email || (app.ma_sv ? `${app.ma_sv.toLowerCase()}@due.udn.vn` : ''),
       khoa: app.khoa || '50K - Quản trị Kinh doanh',
       dia_chi_thuong_tru: app.dia_chi_thuong_tru || 'Quảng Nam',
@@ -220,6 +236,16 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
             localStorage.getItem(`student_status_${parsed.ma_sv}`) === 'DA_KY' ||
             localStorage.getItem(`student_status_${parsed.ma_sv}`) === 'DA_BAN_GIAO'
           );
+          let approvedIds: string[] = [];
+          try {
+            approvedIds = JSON.parse(localStorage.getItem('officer_approved_ids') || '[]');
+          } catch {}
+          if (
+            (approvedIds.includes(parsed.ma_sv) || approvedIds.includes(parsed.id)) &&
+            (parsed.status === 'CHO_THAM_DINH' || !parsed.status)
+          ) {
+            parsed.status = 'THAM_DINH_DAT';
+          }
           if (isSigned && (STEP_PRIORITY[parsed.status] ?? 0) < 4) {
             parsed.status = 'DA_KY';
           }
@@ -310,7 +336,14 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                   localStorage.getItem(`student_status_${targetCode}`) === 'DA_KY' ||
                   localStorage.getItem(`student_status_${targetCode}`) === 'DA_BAN_GIAO'
                 );
-                const rawNewStatus = found.status || 'CHO_THAM_DINH';
+                let approvedIds: string[] = [];
+                try {
+                  approvedIds = JSON.parse(localStorage.getItem('officer_approved_ids') || '[]');
+                } catch {}
+                const isApprovedLocally = approvedIds.includes(found.id) || (targetCode && approvedIds.includes(targetCode));
+                const rawNewStatus = (isApprovedLocally && (found.status === 'CHO_THAM_DINH' || !found.status))
+                  ? 'THAM_DINH_DAT'
+                  : (found.status || 'CHO_THAM_DINH');
                 const newStatus = isSignedLocally
                   ? (rawNewStatus === 'DA_BAN_GIAO' ? 'DA_BAN_GIAO' : 'DA_KY')
                   : rawNewStatus;
