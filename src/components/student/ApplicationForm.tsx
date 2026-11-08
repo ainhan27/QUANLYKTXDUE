@@ -272,6 +272,8 @@ export default function ApplicationForm({ onSuccess }: ApplicationFormProps) {
           dien_uu_tien: PRIORITY_POLICY_POINTS[formData.dien_uu_tien]?.label || 'Không thuộc diện ưu tiên',
           diem_uu_tien: res.finalPoints ?? 0,
           status: res.status,
+          ai_result: res.aiResult || null,
+          aiConfidence: res.aiResult?.confidence,
         };
         localStorage.setItem('last_submitted_student', JSON.stringify(studentPayload));
         localStorage.setItem('active_student_session_code', formData.ma_sv.trim());

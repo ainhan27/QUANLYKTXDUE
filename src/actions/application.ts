@@ -150,8 +150,7 @@ export async function submitApplicationFullPipeline(payload: SubmitApplicationPa
       // Phân loại tự động theo ngưỡng 95% (Quy tắc nghiệp vụ KTX DUE):
       // - Chấm TRÊN 95% (>= 0.95) độ tin cậy VÀ không sai lệch: TỰ ĐỘNG CHO QUA
       // - Chấm DƯỚI 95% (< 0.95) hoặc sai lệch đối tượng/khu vực/không có tiêu đề CCCD: BẮT BUỘC CÁN BỘ QLSV RÀ SOÁT
-      let applicationStatus: AppStatus = 'CHO_THAM_DINH';
-      const isAutoApproved =
+      const isCccdStrictValid =
         aiResult.confidence >= 0.95 &&
         aiResult.decision === 'THAM_DINH_DAT' &&
         Boolean(aiResult.cccd_analysis?.is_valid) &&
@@ -159,9 +158,23 @@ export async function submitApplicationFullPipeline(payload: SubmitApplicationPa
         Boolean(aiResult.cccd_analysis?.name_matched) &&
         Boolean(aiResult.cccd_analysis?.cccd_matched);
 
+      const isPriorityStrictValid =
+        dien_uu_tien === 'KHONG' ||
+        (Boolean(priorityImageBase64) &&
+         Boolean(aiResult.priority_analysis?.is_valid) &&
+         Boolean(aiResult.priority_analysis?.has_official_stamp_or_seal) &&
+         (aiResult.priority_analysis?.matched_policy_keywords?.length ?? 0) > 0 &&
+         Boolean(aiResult.priority_analysis?.name_matched));
+
+      const isAutoApproved = isCccdStrictValid && isPriorityStrictValid;
+
+      let applicationStatus: AppStatus = 'CHO_THAM_DINH';
       if (isAutoApproved) {
         applicationStatus = 'THAM_DINH_DAT';
-      } else if (aiResult.decision === 'CAN_BO_SUNG') {
+      } else if (
+        aiResult.decision === 'CAN_BO_SUNG' ||
+        (dien_uu_tien !== 'KHONG' && (!priorityImageBase64 || !aiResult.priority_analysis?.has_official_stamp_or_seal))
+      ) {
         applicationStatus = 'CAN_BO_SUNG';
       } else {
         applicationStatus = 'CHO_THAM_DINH';

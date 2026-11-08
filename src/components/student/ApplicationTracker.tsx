@@ -43,6 +43,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
     status: 'CHO_THAM_DINH' as AppStatus,
     aiConfidence: 0.35,
     ghi_chu_ly_do: undefined as string | undefined,
+    aiResult: null as any,
   });
 
   const [studentRank, setStudentRank] = useState<number>(325);
@@ -176,6 +177,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
       status: finalStatus,
       aiConfidence: confidence,
       ghi_chu_ly_do: app.ghi_chu_ly_do,
+      aiResult: app.ai_result || app.aiResult || null,
     };
     setStudentInfo(resolved);
     setStatus(finalStatus);
@@ -362,6 +364,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                     gioi_tinh: found.gioi_tinh || prev.gioi_tinh || 'Nữ',
                     diem_uu_tien: resolvedPts,
                     aiConfidence: found.ai_result?.confidence ?? prev.aiConfidence,
+                    aiResult: found.ai_result ?? prev.aiResult ?? null,
                   };
                 });
                 const rankInfo = getStudentRankInfo(found.ma_sv, j.data);
@@ -575,6 +578,7 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
           status: 'CHO_THAM_DINH',
           aiConfidence: 0.35,
           ghi_chu_ly_do: undefined,
+          aiResult: null,
         });
         setNotifications([]);
         setStatus('CHO_THAM_DINH');
@@ -1041,8 +1045,17 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
     currentStepNumber = 5;
   } else if (isCancelled) {
     currentStepNumber = 5; // Bị hủy suất
-  } else if (isPendingReview || isSupplement || isDisqualified) {
-    // ƯU TIÊN: Khi hồ sơ còn đang chờ thẩm định hoặc cần bổ sung hoặc bị loại, sinh viên đứng ở Bước 2
+  } else if (
+    isPendingReview ||
+    isSupplement ||
+    isDisqualified ||
+    (status !== 'DA_PHAT_HANH' && (
+      studentInfo.aiConfidence < 0.95 ||
+      studentInfo.aiResult?.extracted_info?.name_matched === false ||
+      studentInfo.aiResult?.extracted_info?.cccd_matched === false
+    ))
+  ) {
+    // ƯU TIÊN: Khi hồ sơ còn đang chờ thẩm định hoặc cần bổ sung hoặc bị loại hoặc AI quét không khớp, sinh viên đứng ở Bước 2
     currentStepNumber = 2;
   } else if ((workflowState.isPublished || status === 'DA_PHAT_HANH') && isAdmitted) {
     currentStepNumber = 4; // Bước 4: Mở cổng ký hợp đồng điện tử 72h (Trúng tuyển Top 120)
@@ -2104,53 +2117,114 @@ export default function ApplicationTracker({ initialStatus = 'CHO_THAM_DINH' }: 
                   <div className="pt-2 border-t border-slate-200 space-y-1.5">
                     <div className="flex justify-between items-center">
                       <span className="text-slate-500 text-xs">Đối chiếu AI Vision:</span>
-                      {isApprovedEvidence || (studentInfo.diem_uu_tien > 0 && status !== 'CHO_THAM_DINH' && status !== 'CAN_BO_SUNG') ? (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                          ✓ Đạt chuẩn (Đã thẩm định đạt)
-                        </span>
-                      ) : status === 'CAN_BO_SUNG' ? (
+                      {status === 'CAN_BO_SUNG' || (studentInfo.aiResult && studentInfo.aiResult.decision === 'CAN_BO_SUNG') ? (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
                           ⚠️ Cần bổ sung minh chứng (48h)
                         </span>
-                      ) : (
+                      ) : status === 'CHO_THAM_DINH' || (studentInfo.aiResult && studentInfo.aiResult.confidence < 0.95) || studentInfo.aiConfidence < 0.95 ? (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                          Đang rà soát đối chiếu (&lt; 95%)
+                          ⚠️ Chờ Cán bộ QLSV rà soát ({Math.round((studentInfo.aiResult?.confidence ?? studentInfo.aiConfidence ?? 0.2) * 100)}% &lt; 95%)
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          ✓ Đạt chuẩn (Đã thẩm định đạt)
                         </span>
                       )}
                     </div>
                     {/* Chip đối chiếu dữ liệu tự động */}
                     <div className="flex flex-wrap gap-1 text-[10px]">
-                      <span className={`px-1.5 py-0.5 rounded border ${
-                        status === 'CHO_THAM_DINH'
-                          ? 'bg-amber-50 text-amber-800 border-amber-200'
-                          : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      }`}>
-                        Họ tên: {status === 'CHO_THAM_DINH' ? '⚠️ Chờ đối chiếu' : studentInfo.ho_ten ? '✓ Khớp' : '---'}
-                      </span>
-                      <span className={`px-1.5 py-0.5 rounded border ${
-                        status === 'CHO_THAM_DINH'
-                          ? 'bg-amber-50 text-amber-800 border-amber-200'
-                          : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      }`}>
-                        CCCD: {status === 'CHO_THAM_DINH' ? '⚠️ Chờ đối chiếu' : studentInfo.cccd ? '✓ Khớp' : '---'}
-                      </span>
-                      <span className={`px-1.5 py-0.5 rounded border ${
-                        status === 'CAN_BO_SUNG'
-                          ? 'bg-rose-50 text-rose-800 border-rose-200'
-                          : status === 'CHO_THAM_DINH'
-                          ? 'bg-amber-50 text-amber-800 border-amber-200'
-                          : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      }`}>
-                        Giấy tờ: {
-                          status === 'CAN_BO_SUNG'
-                            ? '⚠️ Thiếu mộc đỏ'
-                            : status === 'CHO_THAM_DINH'
-                            ? '⚠️ Đang xác thực'
-                            : studentInfo.dien_uu_tien?.includes('Không')
-                            ? 'Diện chuẩn'
-                            : '✓ Mộc đỏ hợp lệ'
+                      {/* Họ tên */}
+                      {(() => {
+                        const nm = studentInfo.aiResult?.extracted_info?.name_matched ?? studentInfo.aiResult?.cccd_analysis?.name_matched;
+                        if (nm === false) {
+                          return (
+                            <span className="px-1.5 py-0.5 rounded border bg-rose-50 text-rose-800 border-rose-200">
+                              Họ tên: ❌ Không khớp
+                            </span>
+                          );
                         }
-                      </span>
+                        if (nm === true || (nm === undefined && isApprovedEvidence)) {
+                          return (
+                            <span className="px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">
+                              Họ tên: ✓ Khớp
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="px-1.5 py-0.5 rounded border bg-amber-50 text-amber-800 border-amber-200">
+                            Họ tên: ⚠️ Chờ đối chiếu
+                          </span>
+                        );
+                      })()}
+
+                      {/* CCCD */}
+                      {(() => {
+                        const cm = studentInfo.aiResult?.extracted_info?.cccd_matched ?? studentInfo.aiResult?.cccd_analysis?.cccd_matched;
+                        const hasKw = studentInfo.aiResult?.cccd_analysis?.has_cccd_keywords ?? studentInfo.aiResult?.has_cccd_keyword;
+                        if (hasKw === false) {
+                          return (
+                            <span className="px-1.5 py-0.5 rounded border bg-rose-50 text-rose-800 border-rose-200">
+                              CCCD: ❌ Thiếu chữ CCCD
+                            </span>
+                          );
+                        }
+                        if (cm === false) {
+                          return (
+                            <span className="px-1.5 py-0.5 rounded border bg-rose-50 text-rose-800 border-rose-200">
+                              CCCD: ❌ Không khớp
+                            </span>
+                          );
+                        }
+                        if (cm === true || (cm === undefined && isApprovedEvidence)) {
+                          return (
+                            <span className="px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">
+                              CCCD: ✓ Khớp
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="px-1.5 py-0.5 rounded border bg-amber-50 text-amber-800 border-amber-200">
+                            CCCD: ⚠️ Chờ đối chiếu
+                          </span>
+                        );
+                      })()}
+
+                      {/* Giấy tờ */}
+                      {(() => {
+                        const isNoPrio =
+                          !studentInfo.dien_uu_tien ||
+                          studentInfo.dien_uu_tien === 'KHONG' ||
+                          studentInfo.dien_uu_tien.toLowerCase().includes('không') ||
+                          studentInfo.dien_uu_tien.toLowerCase().includes('khong');
+                        if (isNoPrio) {
+                          return (
+                            <span className="px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">
+                              Giấy tờ: Diện chuẩn (0đ)
+                            </span>
+                          );
+                        }
+                        const hasSeal = studentInfo.aiResult?.priority_analysis?.has_official_stamp_or_seal;
+                        const isValid = studentInfo.aiResult?.priority_analysis?.is_valid;
+                        if (status === 'CAN_BO_SUNG' || hasSeal === false) {
+                          return (
+                            <span className="px-1.5 py-0.5 rounded border bg-rose-50 text-rose-800 border-rose-200">
+                              Giấy tờ: ⚠️ Thiếu mộc đỏ
+                            </span>
+                          );
+                        }
+                        if (hasSeal && isValid) {
+                          return (
+                            <span className="px-1.5 py-0.5 rounded border bg-emerald-50 text-emerald-800 border-emerald-200">
+                              Giấy tờ: ✓ Có mộc đỏ
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="px-1.5 py-0.5 rounded border bg-amber-50 text-amber-800 border-amber-200">
+                            Giấy tờ: ⚠️ Đang xác thực
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>

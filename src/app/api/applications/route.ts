@@ -59,9 +59,15 @@ export async function GET() {
                   (l.ma_sv === app.ma_sv || l.cccd === app.cccd))
             );
 
-            // KHÓA CỨNG TRẠNG THÁI DUYỆT ĐẠT: Tuyệt đối không để reset khi refresh hoặc chuyển tab
-            const isApproved = app.status === 'THAM_DINH_DAT' || localMatch?.status === 'THAM_DINH_DAT';
-            const effectiveStatus = isApproved ? 'THAM_DINH_DAT' : app.status;
+            // Giữ đúng trạng thái thực tế: Nếu localMatch đang chờ duyệt hoặc bổ sung thì không ép đạt
+            const isApproved = (app.status === 'THAM_DINH_DAT' || localMatch?.status === 'THAM_DINH_DAT') &&
+              localMatch?.status !== 'CHO_THAM_DINH' &&
+              localMatch?.status !== 'CAN_BO_SUNG';
+            const effectiveStatus = (localMatch && (localMatch.status === 'CHO_THAM_DINH' || localMatch.status === 'CAN_BO_SUNG'))
+              ? localMatch.status
+              : isApproved
+              ? 'THAM_DINH_DAT'
+              : app.status;
 
             if (localMatch) {
               cccdImg = cccdImg || localMatch.cccd_image_base64;
@@ -151,93 +157,95 @@ export async function GET() {
               calculatedConfidence = 0.98;
             }
 
-            aiResultObj = {
-              is_valid_document: isCccdStrictValid && (isNoPriorityPolicy || hasPriorityStamp),
-              has_cccd_keyword: hasCccdTitle,
-              matched_policy_keywords: isNoPriorityPolicy ? ['Không thuộc diện ưu tiên'] : [app.dien_uu_tien_label || app.dien_uu_tien],
-              document_type: isApproved
-                ? 'Căn cước công dân & Giấy tờ hợp lệ'
-                : isCccdStrictValid
-                ? 'Căn cước công dân đạt chuẩn (Khớp 100%)'
-                : 'Ảnh CCCD sai loại / Cần đối soát',
-              confidence: isApproved ? 0.98 : calculatedConfidence,
-              detected_raw_text: `[CCCD]: ${cccdDetectedText}\n\n[GIẤY ƯU TIÊN]: ${priorityDetectedText}`,
-              detected_cccd_text: cccdDetectedText,
-              detected_priority_text: priorityDetectedText,
-              extracted_info: {
-                ho_ten: app.ho_ten,
-                so_dinh_danh: app.cccd,
-                ngay_sinh: app.ngay_sinh || 'Theo hồ sơ',
-                que_quan: app.tinh_thanh || 'Theo hồ sơ',
-                doi_tuong_chinh_sach: app.dien_uu_tien_label || app.dien_uu_tien,
-                name_matched: isNameMatched,
-                cccd_matched: isCccdMatched,
-                input_name: app.ho_ten,
-                input_cccd: app.cccd,
-                matched_fields: isCccdStrictValid
-                  ? ['Họ và tên trùng khớp với ảnh CCCD', 'Số CCCD trùng khớp 12 số định danh']
-                  : [],
-                mismatched_fields: !isCccdStrictValid
-                  ? ['Ảnh không chứa tiêu đề Căn cước công dân hoặc sai định dạng']
-                  : [],
-              },
-              mismatch_warnings: !isCccdStrictValid
-                ? ['Ảnh không hợp lệ: Không phát hiện tiêu đề "CĂN CƯỚC CÔNG DÂN" hoặc phát hiện tài liệu học tập, bài tập, slide.']
-                : !isNoPriorityPolicy && !hasPriorityStamp
-                ? ['⚠️ Con dấu đỏ góc dưới bị mờ, hệ thống chưa nhận diện rõ mộc tròn của UBND.']
-                : [],
-              decision: isApproved
-                ? 'THAM_DINH_DAT'
-                : (isCccdStrictValid && (isNoPriorityPolicy || hasPriorityStamp))
-                ? 'THAM_DINH_DAT'
-                : 'CHO_THAM_DINH',
-              rejection_reason: isCccdStrictValid ? null : 'Ảnh tải lên không phải Căn cước công dân hợp lệ.',
-              raw_reasoning: `CCCD: ${isCccdStrictValid ? 'Họ tên và số CCCD trùng khớp 100%' : 'Sai lệch'}. Minh chứng ưu tiên: ${isNoPriorityPolicy ? 'Không đăng ký (0đ)' : hasPriorityStamp ? 'Hợp lệ có mộc đỏ' : 'Thiếu mộc đỏ'}.`,
-              cccd_analysis: {
-                is_valid: isCccdStrictValid,
-                has_cccd_keywords: hasCccdTitle,
-                has_police_chief_keyword: hasCccdTitle,
-                extracted_name: app.ho_ten,
-                extracted_cccd: app.cccd,
-                extracted_gender: app.gioi_tinh || 'Nữ',
-                name_matched: isNameMatched,
-                cccd_matched: isCccdMatched,
-                matched_fields: isCccdStrictValid
-                  ? ['Họ và tên trùng khớp với ảnh CCCD', 'Số CCCD trùng khớp 12 số định danh']
-                  : [],
-                mismatched_fields: !isCccdStrictValid
-                  ? ['Không phát hiện tiêu đề CCCD hoặc sai định dạng']
-                  : [],
-                confidence: isCccdStrictValid ? 0.98 : 0.20,
-                detected_text: cccdDetectedText,
-                notes: isCccdStrictValid
-                  ? 'Dữ liệu họ tên và số CCCD trùng khớp 100% với ảnh chụp. Thẻ do Bộ Công An cấp (có chip/mã vạch), không yêu cầu mộc tròn đỏ UBND.'
-                  : 'Ảnh không hợp lệ: Không phát hiện tiêu đề "CĂN CƯỚC CÔNG DÂN" hoặc phát hiện tài liệu học tập, bài tập, slide.',
-                requires_red_stamp: false,
-              },
-              priority_analysis: {
-                is_valid: isNoPriorityPolicy || hasPriorityStamp,
+            if (!aiResultObj) {
+              aiResultObj = {
+                is_valid_document: isCccdStrictValid && (isNoPriorityPolicy || hasPriorityStamp),
+                has_cccd_keyword: hasCccdTitle,
                 matched_policy_keywords: isNoPriorityPolicy ? ['Không thuộc diện ưu tiên'] : [app.dien_uu_tien_label || app.dien_uu_tien],
-                has_official_stamp_or_seal: hasPriorityStamp,
-                name_matched: isNameMatched,
-                confidence: isNoPriorityPolicy ? 1.0 : (hasPriorityStamp ? 0.95 : 0.74),
-                detected_text: priorityDetectedText,
-                notes: isNoPriorityPolicy
-                  ? 'Hồ sơ tiêu chuẩn: Sinh viên không đăng ký diện ưu tiên (0đ). Không yêu cầu mộc đỏ.'
-                  : hasPriorityStamp
-                  ? 'Giấy tờ hợp lệ: Nhận diện mộc đỏ pháp lý và nội dung xác nhận diện ưu tiên theo quy định.'
-                  : '⚠️ Con dấu đỏ góc dưới bị mờ, hệ thống chưa nhận diện rõ mộc tròn của UBND.',
-                requires_red_stamp: !isNoPriorityPolicy,
-              },
-              ai_draft_email: {
-                subject: isApproved
-                  ? `[KTX DUE] Thông Báo Minh Chứng Hợp Lệ – Sinh Viên ${app.ho_ten}`
-                  : `[KTX DUE] Phản Hồi Hồ Sơ – ${app.ho_ten}`,
-                body_html: isApproved
-                  ? `<p>Kính gửi sinh viên <strong>${app.ho_ten}</strong> (Mã SV: <strong>${app.ma_sv}</strong>),</p><p>Hồ sơ và ảnh chụp minh chứng của bạn đã được kiểm tra đối chiếu trùng khớp 100% với dữ liệu đăng ký.</p>`
-                  : `<p>Kính gửi sinh viên <strong>${app.ho_ten}</strong> (Mã SV: <strong>${app.ma_sv}</strong>),</p><p>Hồ sơ của bạn đang được cán bộ kiểm tra rà soát theo quy chế tuyển sinh KTX.</p>`,
-              },
-            };
+                document_type: isApproved
+                  ? 'Căn cước công dân & Giấy tờ hợp lệ'
+                  : isCccdStrictValid
+                  ? 'Căn cước công dân đạt chuẩn (Khớp 100%)'
+                  : 'Ảnh CCCD sai loại / Cần đối soát',
+                confidence: isApproved ? 0.98 : calculatedConfidence,
+                detected_raw_text: `[CCCD]: ${cccdDetectedText}\n\n[GIẤY ƯU TIÊN]: ${priorityDetectedText}`,
+                detected_cccd_text: cccdDetectedText,
+                detected_priority_text: priorityDetectedText,
+                extracted_info: {
+                  ho_ten: app.ho_ten,
+                  so_dinh_danh: app.cccd,
+                  ngay_sinh: app.ngay_sinh || 'Theo hồ sơ',
+                  que_quan: app.tinh_thanh || 'Theo hồ sơ',
+                  doi_tuong_chinh_sach: app.dien_uu_tien_label || app.dien_uu_tien,
+                  name_matched: isNameMatched,
+                  cccd_matched: isCccdMatched,
+                  input_name: app.ho_ten,
+                  input_cccd: app.cccd,
+                  matched_fields: isCccdStrictValid
+                    ? ['Họ và tên trùng khớp với ảnh CCCD', 'Số CCCD trùng khớp 12 số định danh']
+                    : [],
+                  mismatched_fields: !isCccdStrictValid
+                    ? ['Ảnh không chứa tiêu đề Căn cước công dân hoặc sai định dạng']
+                    : [],
+                },
+                mismatch_warnings: !isCccdStrictValid
+                  ? ['Ảnh không hợp lệ: Không phát hiện tiêu đề "CĂN CƯỚC CÔNG DÂN" hoặc phát hiện tài liệu học tập, bài tập, slide.']
+                  : !isNoPriorityPolicy && !hasPriorityStamp
+                  ? ['⚠️ Con dấu đỏ góc dưới bị mờ, hệ thống chưa nhận diện rõ mộc tròn của UBND.']
+                  : [],
+                decision: isApproved
+                  ? 'THAM_DINH_DAT'
+                  : (isCccdStrictValid && (isNoPriorityPolicy || hasPriorityStamp))
+                  ? 'THAM_DINH_DAT'
+                  : 'CHO_THAM_DINH',
+                rejection_reason: isCccdStrictValid ? null : 'Ảnh tải lên không phải Căn cước công dân hợp lệ.',
+                raw_reasoning: `CCCD: ${isCccdStrictValid ? 'Họ tên và số CCCD trùng khớp 100%' : 'Sai lệch'}. Minh chứng ưu tiên: ${isNoPriorityPolicy ? 'Không đăng ký (0đ)' : hasPriorityStamp ? 'Hợp lệ có mộc đỏ' : 'Thiếu mộc đỏ'}.`,
+                cccd_analysis: {
+                  is_valid: isCccdStrictValid,
+                  has_cccd_keywords: hasCccdTitle,
+                  has_police_chief_keyword: hasCccdTitle,
+                  extracted_name: app.ho_ten,
+                  extracted_cccd: app.cccd,
+                  extracted_gender: app.gioi_tinh || 'Nữ',
+                  name_matched: isNameMatched,
+                  cccd_matched: isCccdMatched,
+                  matched_fields: isCccdStrictValid
+                    ? ['Họ và tên trùng khớp với ảnh CCCD', 'Số CCCD trùng khớp 12 số định danh']
+                    : [],
+                  mismatched_fields: !isCccdStrictValid
+                    ? ['Không phát hiện tiêu đề CCCD hoặc sai định dạng']
+                    : [],
+                  confidence: isCccdStrictValid ? 0.98 : 0.20,
+                  detected_text: cccdDetectedText,
+                  notes: isCccdStrictValid
+                    ? 'Dữ liệu họ tên và số CCCD trùng khớp 100% với ảnh chụp. Thẻ do Bộ Công An cấp (có chip/mã vạch), không yêu cầu mộc tròn đỏ UBND.'
+                    : 'Ảnh không hợp lệ: Không phát hiện tiêu đề "CĂN CƯỚC CÔNG DÂN" hoặc phát hiện tài liệu học tập, bài tập, slide.',
+                  requires_red_stamp: false,
+                },
+                priority_analysis: {
+                  is_valid: isNoPriorityPolicy || hasPriorityStamp,
+                  matched_policy_keywords: isNoPriorityPolicy ? ['Không thuộc diện ưu tiên'] : [app.dien_uu_tien_label || app.dien_uu_tien],
+                  has_official_stamp_or_seal: hasPriorityStamp,
+                  name_matched: isNameMatched,
+                  confidence: isNoPriorityPolicy ? 1.0 : (hasPriorityStamp ? 0.95 : 0.74),
+                  detected_text: priorityDetectedText,
+                  notes: isNoPriorityPolicy
+                    ? 'Hồ sơ tiêu chuẩn: Sinh viên không đăng ký diện ưu tiên (0đ). Không yêu cầu mộc đỏ.'
+                    : hasPriorityStamp
+                    ? 'Giấy tờ hợp lệ: Nhận diện mộc đỏ pháp lý và nội dung xác nhận diện ưu tiên theo quy định.'
+                    : '⚠️ Con dấu đỏ góc dưới bị mờ, hệ thống chưa nhận diện rõ mộc tròn của UBND.',
+                  requires_red_stamp: !isNoPriorityPolicy,
+                },
+                ai_draft_email: {
+                  subject: isApproved
+                    ? `[KTX DUE] Thông Báo Minh Chứng Hợp Lệ – Sinh Viên ${app.ho_ten}`
+                    : `[KTX DUE] Phản Hồi Hồ Sơ – ${app.ho_ten}`,
+                  body_html: isApproved
+                    ? `<p>Kính gửi sinh viên <strong>${app.ho_ten}</strong> (Mã SV: <strong>${app.ma_sv}</strong>),</p><p>Hồ sơ và ảnh chụp minh chứng của bạn đã được kiểm tra đối chiếu trùng khớp 100% với dữ liệu đăng ký.</p>`
+                    : `<p>Kính gửi sinh viên <strong>${app.ho_ten}</strong> (Mã SV: <strong>${app.ma_sv}</strong>),</p><p>Hồ sơ của bạn đang được cán bộ kiểm tra rà soát theo quy chế tuyển sinh KTX.</p>`,
+                },
+              };
+            }
 
             const isNoPrioApplicant =
               !app.dien_uu_tien ||
